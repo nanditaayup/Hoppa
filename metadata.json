@@ -1,0 +1,6 @@
+{
+  "name": "PaceCraft",
+  "description": "Kalkulator menu latihan lari ideal (5K, 10K, 21K, 42K), pelacakan progres harian, dan integrasi riwayat aktivitas Strava.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

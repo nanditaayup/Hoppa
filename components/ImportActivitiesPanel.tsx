@@ -1,0 +1,261 @@
+'use client';
+
+import React, { useRef, useState } from 'react';
+import {
+  FileSpreadsheet,
+  Link2,
+  Play,
+  Trash2,
+  Info,
+} from 'lucide-react';
+import { parseGpxFiles, parseStravaCsv } from '@/lib/strava/import-parser';
+import { AppLanguage, RunActivity } from '@/lib/strava/types';
+import { UI_COPY } from '@/lib/strava/i18n';
+
+export type ImportSourceKind = 'both' | 'csv' | 'gpx';
+
+interface ImportActivitiesPanelProps {
+  runsCount: number;
+  isOAuthConnected: boolean;
+  lang: AppLanguage;
+  onLoadSampleData: () => void;
+  onImportRuns: (
+    runs: RunActivity[],
+    skippedNonRuns: number,
+    sourceKind: ImportSourceKind,
+    errors?: string[]
+  ) => void;
+  onOpenDisconnectModal: () => void;
+  onSyncStravaOAuthRuns: (runs: RunActivity[]) => void;
+}
+
+type OAuthNoticeKey =
+  | 'missing_creds'
+  | 'popup_blocked'
+  | 'canceled'
+  | 'endpoint_error'
+  | null;
+
+export default function ImportActivitiesPanel({
+  runsCount,
+  isOAuthConnected,
+  lang,
+  onLoadSampleData,
+  onImportRuns,
+  onOpenDisconnectModal,
+  onSyncStravaOAuthRuns,
+}: ImportActivitiesPanelProps) {
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const [oauthNoticeKey, setOauthNoticeKey] = useState<OAuthNoticeKey>(null);
+  const [customOAuthMessage, setCustomOAuthMessage] = useState<string | null>(
+    null
+  );
+  const [isConnectingOAuth, setIsConnectingOAuth] = useState(false);
+
+  const t = UI_COPY[lang].strava;
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    const csvFiles: File[] = [];
+    const gpxFiles: Array<{ name: string; content: string }> = [];
+
+    for (const file of Array.from(files)) {
+      const lower = file.name.toLowerCase();
+      if (lower.endsWith('.csv')) {
+        csvFiles.push(file);
+      } else if (lower.endsWith('.gpx')) {
+        const content = await file.text();
+        gpxFiles.push({ name: file.name, content });
+      }
+    }
+
+    let combinedRuns: RunActivity[] = [];
+    let totalSkipped = 0;
+    const allErrors: string[] = [];
+
+    for (const csvFile of csvFiles) {
+      const content = await csvFile.text();
+      const parsed = parseStravaCsv(content);
+      combinedRuns = [...combinedRuns, ...parsed.runs];
+      totalSkipped += parsed.skippedNonRuns;
+      allErrors.push(...parsed.errors);
+    }
+
+    if (gpxFiles.length > 0) {
+      const parsedGpx = parseGpxFiles(gpxFiles);
+      combinedRuns = [...combinedRuns, ...parsedGpx.runs];
+      totalSkipped += parsedGpx.skippedNonRuns;
+      allErrors.push(...parsedGpx.errors);
+    }
+
+    const sourceKind: ImportSourceKind =
+      csvFiles.length > 0 && gpxFiles.length > 0
+        ? 'both'
+        : csvFiles.length > 0
+          ? 'csv'
+          : 'gpx';
+
+    onImportRuns(combinedRuns, totalSkipped, sourceKind, allErrors);
+    e.target.value = '';
+  };
+
+  const handleConnectStrava = async () => {
+    setIsConnectingOAuth(true);
+    setOauthNoticeKey(null);
+    setCustomOAuthMessage(null);
+
+    try {
+      const res = await fetch('/api/strava/auth/url');
+      const data = await res.json();
+
+      if (!data.configured) {
+        if (data.message && lang === 'id') {
+          setCustomOAuthMessage(data.message);
+        }
+        setOauthNoticeKey('missing_creds');
+        setIsConnectingOAuth(false);
+        return;
+      }
+
+      const popup = window.open(
+        data.url,
+        'strava_oauth_popup',
+        'width=600,height=720'
+      );
+
+      if (!popup) {
+        setOauthNoticeKey('popup_blocked');
+        setIsConnectingOAuth(false);
+        return;
+      }
+
+      const handleMessage = async (event: MessageEvent) => {
+        if (
+          !event.origin.endsWith('.run.app') &&
+          !event.origin.includes('localhost')
+        ) {
+          return;
+        }
+        if (event.data?.type === 'STRAVA_OAUTH_SUCCESS') {
+          window.removeEventListener('message', handleMessage);
+          const actRes = await fetch('/api/strava/activities');
+          const actData = await actRes.json();
+          if (actData.connected && Array.isArray(actData.runs)) {
+            onSyncStravaOAuthRuns(actData.runs);
+          }
+          setIsConnectingOAuth(false);
+        } else if (event.data?.type === 'STRAVA_OAUTH_ERROR') {
+          window.removeEventListener('message', handleMessage);
+          setOauthNoticeKey('canceled');
+          setIsConnectingOAuth(false);
+        }
+      };
+
+      window.addEventListener('message', handleMessage);
+    } catch {
+      setOauthNoticeKey('endpoint_error');
+      setIsConnectingOAuth(false);
+    }
+  };
+
+  const resolvedOAuthNotice =
+    oauthNoticeKey === 'missing_creds'
+      ? customOAuthMessage ?? t.oauthMissingCreds
+      : oauthNoticeKey === 'popup_blocked'
+        ? t.oauthPopupBlocked
+        : oauthNoticeKey === 'canceled'
+          ? t.oauthCanceled
+          : oauthNoticeKey === 'endpoint_error'
+            ? t.oauthEndpointError
+            : null;
+
+  return (
+    <div className="bg-white border border-slate-200 rounded-2xl p-5 sm:p-6 space-y-4">
+      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+        <div className="space-y-1">
+          <h3 className="text-base font-bold text-slate-900">
+            {t.importSourceHeading}
+          </h3>
+          <p className="text-sm text-slate-600">
+            {t.importSourceDescBeforeCsv}{' '}
+            <span className="font-mono text-xs">activities.csv</span>{' '}
+            {t.importSourceDescMiddle}{' '}
+            <span className="font-mono text-xs">.gpx</span>{' '}
+            {t.importSourceDescAfterGpx}
+          </p>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2.5 shrink-0">
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".csv,.gpx"
+            multiple
+            onChange={handleFileChange}
+            className="hidden"
+            aria-label={t.fileInputAria}
+          />
+
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            className="min-h-[44px] px-4 py-2 rounded-xl bg-teal-700 text-white text-sm font-semibold hover:bg-teal-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-700 focus-visible:ring-offset-2 inline-flex items-center gap-2 whitespace-nowrap shrink-0 transition-colors"
+          >
+            <FileSpreadsheet className="w-4 h-4" aria-hidden="true" />
+            {t.importBtn}
+          </button>
+
+          <button
+            type="button"
+            onClick={onLoadSampleData}
+            className="min-h-[44px] px-4 py-2 rounded-xl bg-teal-50 text-teal-800 border border-teal-200 text-sm font-semibold hover:bg-teal-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-700 inline-flex items-center gap-2 whitespace-nowrap shrink-0 transition-colors"
+          >
+            <Play className="w-4 h-4" aria-hidden="true" />
+            {t.loadSampleBtn}
+          </button>
+
+          <button
+            type="button"
+            onClick={handleConnectStrava}
+            disabled={isConnectingOAuth}
+            className="min-h-[44px] px-4 py-2 rounded-xl bg-white text-slate-700 border border-slate-200 text-sm font-medium hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-700 inline-flex items-center gap-2 whitespace-nowrap shrink-0 transition-colors disabled:opacity-60"
+          >
+            <Link2 className="w-4 h-4" aria-hidden="true" />
+            {isOAuthConnected
+              ? t.resyncStravaBtn
+              : isConnectingOAuth
+                ? t.connectingStravaBtn
+                : t.oauthBtn}
+          </button>
+
+          {runsCount > 0 && (
+            <button
+              type="button"
+              onClick={onOpenDisconnectModal}
+              aria-label={t.clearDataAria}
+              className="min-h-[44px] px-3.5 py-2 rounded-xl text-slate-600 hover:text-rose-700 hover:bg-rose-50 border border-slate-200 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-600 inline-flex items-center gap-1.5 whitespace-nowrap shrink-0 transition-colors"
+            >
+              <Trash2 className="w-4 h-4" aria-hidden="true" />
+              {t.clearDataBtn}
+            </button>
+          )}
+        </div>
+      </div>
+
+      {resolvedOAuthNotice && (
+        <div
+          role="status"
+          className="rounded-xl bg-indigo-50/80 border border-indigo-200/80 px-4 py-3 text-xs text-indigo-900 flex items-start gap-2.5"
+        >
+          <Info
+            className="w-4 h-4 text-indigo-700 shrink-0 mt-0.5"
+            aria-hidden="true"
+          />
+          <span>{resolvedOAuthNotice}</span>
+        </div>
+      )}
+    </div>
+  );
+}
