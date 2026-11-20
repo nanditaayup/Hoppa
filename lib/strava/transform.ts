@@ -272,7 +272,7 @@ export function decodePolyline(encoded: string | null): RoutePoint[] {
  */
 export function computeKpiSummary(
   runs: RunActivity[],
-  referenceNow: Date = new Date('2026-11-19T12:00:00+07:00')
+  referenceNow: Date = new Date()
 ): KpiSummary {
   if (runs.length === 0) {
     return {
@@ -289,12 +289,14 @@ export function computeKpiSummary(
     (a, b) => new Date(b.startDate).getTime() - new Date(a.startDate).getTime()
   );
 
-  // Anchor to referenceNow if there are runs within 30 days of referenceNow,
-  // otherwise anchor to the newest activity's timestamp so historical imports still produce useful KPIs.
+  // Anchor to referenceNow if the newest run is within the last 30 days,
+  // or anchor to newestRunTime if all runs are older than 30 days or newer than referenceNow.
   const newestRunTime = new Date(sorted[0].startDate).getTime();
   const refTime = referenceNow.getTime();
   const anchorMs =
-    refTime - newestRunTime <= 30 * 24 * 60 * 60 * 1000 ? refTime : newestRunTime;
+    newestRunTime <= refTime && refTime - newestRunTime <= 30 * 24 * 60 * 60 * 1000
+      ? refTime
+      : newestRunTime;
 
   const thirtyDaysMs = 30 * 24 * 60 * 60 * 1000;
   const twentyEightDaysMs = 28 * 24 * 60 * 60 * 1000;
@@ -360,7 +362,7 @@ function getWeekStartWib(date: Date): Date {
 export function computeWeeklyChartBuckets(
   runs: RunActivity[],
   weeks = 8,
-  referenceNow: Date = new Date('2026-11-19T12:00:00+07:00'),
+  referenceNow: Date = new Date(),
   lang: AppLanguage = 'id'
 ): WeeklyChartBucket[] {
   const anchorDate =
@@ -369,7 +371,8 @@ export function computeWeeklyChartBuckets(
           const newest = Math.max(
             ...runs.map((r) => new Date(r.startDate).getTime())
           );
-          return referenceNow.getTime() - newest <= 56 * 24 * 60 * 60 * 1000
+          const refMs = referenceNow.getTime();
+          return newest <= refMs && refMs - newest <= 56 * 24 * 60 * 60 * 1000
             ? referenceNow
             : new Date(newest);
         })()

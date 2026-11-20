@@ -833,8 +833,8 @@ export const UI_COPY: Record<AppLanguage, PaceCraftCopy> = {
       closeAria: 'Tutup informasi privasi',
       items: [
         {
-          title: '1. Isolasi Ketat per Akun Google',
-          body: 'Profil tubuh, target lomba, log progres harian, dan riwayat lari Anda hanya dapat dibaca dan diubah oleh UID akun Google Anda sendiri melalui aturan keamanan server Firestore.',
+          title: '1. Isolasi Ketat per Akun Google & Proteksi App Check',
+          body: 'Profil tubuh, target lomba, log progres harian, dan riwayat lari Anda hanya dapat dibaca dan diubah oleh UID akun Google Anda melalui aturan server Firestore, serta mendukung verifikasi Firebase App Check (reCAPTCHA v3) untuk mencegah akses bot otomatis.',
         },
         {
           title: '2. Tanpa Penyimpanan Email di Database',
@@ -1316,8 +1316,8 @@ export const UI_COPY: Record<AppLanguage, PaceCraftCopy> = {
       closeAria: 'Close privacy policy',
       items: [
         {
-          title: '1. Strict Per-Account Isolation',
-          body: 'Your body profile, race targets, daily progress logs, and running history can only be read and modified by your verified Google account UID enforced by Firestore rules.',
+          title: '1. Strict Per-Account Isolation & App Check Protection',
+          body: 'Your body profile, race targets, daily progress logs, and running history can only be read and modified by your verified Google account UID enforced by Firestore rules, alongside Firebase App Check (reCAPTCHA v3) support to block automated bot abuse.',
         },
         {
           title: '2. Zero Email PII in Database',

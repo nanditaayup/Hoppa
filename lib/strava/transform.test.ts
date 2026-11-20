@@ -518,5 +518,34 @@ test('computeHeartRateAndVo2Max computes Tanaka HRmax, Karvonen Z1-Z5, VO2max, a
   assert.equal(stats.avgHeartRateBpm, 157);
 });
 
+test('computeKpiSummary and computeWeeklyChartBuckets adapt dynamically to newer 2027 runs and older historical runs', () => {
+  const futureRun = [
+    {
+      ...SAMPLE_STRAVA_RUNS[0],
+      id: '9901001',
+      startDate: '2027-03-15T06:00:00+07:00',
+    },
+  ];
+  const refPast = new Date('2026-11-20T12:00:00+07:00');
+  const kpiFuture = computeKpiSummary(futureRun, refPast);
+  assert.equal(kpiFuture.runCount30Days, 1);
+  assert.equal(kpiFuture.thirtyDayTotalKm, 16.2);
+
+  const bucketsFuture = computeWeeklyChartBuckets(futureRun, 8, refPast, 'id');
+  assert.equal(
+    bucketsFuture.reduce((sum, b) => sum + b.runCount, 0),
+    1
+  );
+
+  const ref2027 = new Date('2027-06-01T12:00:00+07:00');
+  const kpiOld = computeKpiSummary(SAMPLE_STRAVA_RUNS, ref2027);
+  assert.equal(kpiOld.runCount30Days, SAMPLE_STRAVA_RUNS.length);
+  const bucketsOld = computeWeeklyChartBuckets(SAMPLE_STRAVA_RUNS, 8, ref2027, 'id');
+  assert.equal(
+    bucketsOld.reduce((sum, b) => sum + b.runCount, 0),
+    SAMPLE_STRAVA_RUNS.length
+  );
+});
+
 
 

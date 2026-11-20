@@ -4,8 +4,16 @@ import { getApp, getApps, initializeApp } from 'firebase/app';
 import { getAuth, GoogleAuthProvider } from 'firebase/auth';
 import { doc, getDocFromServer, getFirestore } from 'firebase/firestore';
 import firebaseConfig from '../../firebase-applet-config.json';
+import { initFirebaseAppCheck } from './app-check';
 
 const app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
+
+export const appCheckState = initFirebaseAppCheck(app, {
+  envSiteKey: process.env.NEXT_PUBLIC_FIREBASE_APPCHECK_RECAPTCHA_KEY,
+  configSiteKey: firebaseConfig.recaptchaSiteKey,
+  providerEnv: process.env.NEXT_PUBLIC_FIREBASE_APPCHECK_PROVIDER,
+  debugFlag: process.env.NEXT_PUBLIC_FIREBASE_APPCHECK_DEBUG_TOKEN,
+});
 
 export const db = getFirestore(app, firebaseConfig.firestoreDatabaseId);
 export const auth = getAuth(app);

@@ -455,16 +455,15 @@ export default function PaceCraftApp({
     [profile, safeLang]
   );
 
-  const kpi = useMemo(() => computeKpiSummary(runs), [runs]);
+  const chartReferenceNow = useMemo(() => new Date(), []);
+  const kpi = useMemo(
+    () => computeKpiSummary(runs, chartReferenceNow),
+    [runs, chartReferenceNow]
+  );
   const weeklyBuckets = useMemo(
     () =>
-      computeWeeklyChartBuckets(
-        runs,
-        8,
-        new Date('2026-11-19T12:00:00+07:00'),
-        safeLang
-      ),
-    [runs, safeLang]
+      computeWeeklyChartBuckets(runs, 8, chartReferenceNow, safeLang),
+    [runs, chartReferenceNow, safeLang]
   );
   const effectiveRaceDateKey =
     customRaceDate ||
