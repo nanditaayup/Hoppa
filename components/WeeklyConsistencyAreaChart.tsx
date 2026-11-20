@@ -14,6 +14,7 @@ import {
 import { AppLanguage, WeeklyChartBucket } from '@/lib/strava/types';
 import { UI_COPY } from '@/lib/strava/i18n';
 import { formatDecimalComma } from '@/lib/strava/transform';
+import { useAppTheme } from '@/lib/strava/theme';
 
 interface WeeklyConsistencyAreaChartProps {
   buckets: WeeklyChartBucket[];
@@ -39,14 +40,14 @@ function AreaChartTooltip({
   const t = UI_COPY[lang].strava;
 
   return (
-    <div className="bg-white border border-slate-200 rounded-xl px-3 py-2 shadow-sm text-xs space-y-0.5">
-      <p className="font-semibold text-slate-900">
+    <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 shadow-sm text-xs space-y-0.5">
+      <p className="font-semibold text-slate-900 dark:text-slate-100">
         {t.barChartWeekPrefix} {label}
       </p>
-      <p className="font-mono tabular-nums text-teal-700 font-semibold">
+      <p className="font-mono tabular-nums text-teal-700 dark:text-teal-400 font-semibold">
         {formatDecimalComma(item.totalKm, 1, lang)} km
       </p>
-      <p className="text-slate-500 font-mono tabular-nums">
+      <p className="text-slate-500 dark:text-slate-400 font-mono tabular-nums">
         {item.runCount}{' '}
         {lang === 'en' && item.runCount === 1
           ? 'run'
@@ -66,24 +67,33 @@ export default function WeeklyConsistencyAreaChart({
     () => true,
     () => false
   );
+  const { isDark } = useAppTheme();
 
   const t = UI_COPY[lang].strava;
   const activeWeeksCount = buckets.filter((b) => b.totalKm > 0).length;
 
+  const gridStroke = isDark ? '#334155' : '#E2E8F0';
+  const axisTickFill = isDark ? '#94A3B8' : '#64748B';
+  const lineStroke = isDark ? '#2DD4BF' : '#0D9488';
+  const refLineStroke = isDark ? '#5EEAD4' : '#0F766E';
+  const dotStroke = isDark ? '#0F172A' : '#FFFFFF';
+
   return (
     <div
       data-testid="weekly-area-chart-card"
-      className="bg-white border border-slate-200 rounded-2xl p-6 space-y-5 flex flex-col justify-between"
+      className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 space-y-5 flex flex-col justify-between"
     >
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
         <div>
-          <h3 className="text-base font-bold text-slate-900">
+          <h3 className="text-base font-bold text-slate-900 dark:text-slate-100">
             {t.areaChartTitle}
           </h3>
-          <p className="text-xs text-slate-500 mt-0.5">{t.areaChartDesc}</p>
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+            {t.areaChartDesc}
+          </p>
         </div>
 
-        <span className="text-xs font-mono tabular-nums text-indigo-800 bg-indigo-50/80 px-3 py-1.5 rounded-lg self-start sm:self-auto whitespace-nowrap">
+        <span className="text-xs font-mono tabular-nums text-indigo-800 dark:text-indigo-200 bg-indigo-50/80 dark:bg-indigo-950/60 px-3 py-1.5 rounded-lg self-start sm:self-auto whitespace-nowrap">
           {t.areaChartActiveWeeks(activeWeeksCount)}
         </span>
       </div>
@@ -97,23 +107,31 @@ export default function WeeklyConsistencyAreaChart({
             >
               <defs>
                 <linearGradient id="pacecraftAreaFill" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#2DD4BF" stopOpacity={0.36} />
-                  <stop offset="95%" stopColor="#CCFBF1" stopOpacity={0.05} />
+                  <stop
+                    offset="5%"
+                    stopColor="#2DD4BF"
+                    stopOpacity={isDark ? 0.34 : 0.36}
+                  />
+                  <stop
+                    offset="95%"
+                    stopColor={isDark ? '#0F172A' : '#CCFBF1'}
+                    stopOpacity={0.05}
+                  />
                 </linearGradient>
               </defs>
               <CartesianGrid
                 strokeDasharray="3 3"
                 vertical={false}
-                stroke="#E2E8F0"
+                stroke={gridStroke}
               />
               <XAxis
                 dataKey="weekLabel"
-                tick={{ fontSize: 11, fill: '#64748B' }}
+                tick={{ fontSize: 11, fill: axisTickFill }}
                 axisLine={false}
                 tickLine={false}
               />
               <YAxis
-                tick={{ fontSize: 11, fill: '#64748B' }}
+                tick={{ fontSize: 11, fill: axisTickFill }}
                 axisLine={false}
                 tickLine={false}
                 tickFormatter={(val: number) => `${val}`}
@@ -122,7 +140,7 @@ export default function WeeklyConsistencyAreaChart({
               {fourWeekAvgKm > 0 && (
                 <ReferenceLine
                   y={fourWeekAvgKm}
-                  stroke="#0F766E"
+                  stroke={refLineStroke}
                   strokeDasharray="4 4"
                   strokeOpacity={0.65}
                 />
@@ -131,16 +149,21 @@ export default function WeeklyConsistencyAreaChart({
                 type="monotone"
                 dataKey="totalKm"
                 name={t.areaChartSeriesName}
-                stroke="#0D9488"
+                stroke={lineStroke}
                 strokeWidth={2.5}
                 fillOpacity={1}
                 fill="url(#pacecraftAreaFill)"
-                activeDot={{ r: 5, fill: '#0D9488', stroke: '#FFFFFF', strokeWidth: 2 }}
+                activeDot={{
+                  r: 5,
+                  fill: lineStroke,
+                  stroke: dotStroke,
+                  strokeWidth: 2,
+                }}
               />
             </AreaChart>
           </ResponsiveContainer>
         ) : (
-          <div className="w-full h-full rounded-xl bg-slate-50 animate-pulse" />
+          <div className="w-full h-full rounded-xl bg-slate-50 dark:bg-slate-800 animate-pulse" />
         )}
       </div>
     </div>

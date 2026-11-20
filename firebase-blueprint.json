@@ -1,0 +1,204 @@
+{
+  "entities": {
+    "RunnerProfile": {
+      "title": "RunnerProfile",
+      "description": "Biometric and training target preferences for a PaceCraft runner.",
+      "type": "object",
+      "properties": {
+        "weightKg": { "type": "number", "description": "Body weight in kilograms (30-200)." },
+        "heightCm": { "type": "number", "description": "Height in centimeters (120-230)." },
+        "directBmi": { "type": "number", "description": "Optional direct BMI override (10-60) or null." },
+        "useDirectBmi": { "type": "boolean", "description": "Whether direct BMI input is active." },
+        "age": { "type": "number", "description": "Runner age in years (12-100)." },
+        "injuryStatus": {
+          "type": "string",
+          "enum": ["none", "recovering", "active"],
+          "maxLength": 16
+        },
+        "targetRace": {
+          "type": "string",
+          "enum": ["5K", "10K", "21K", "42K"],
+          "maxLength": 8
+        },
+        "trainingDaysPerWeek": {
+          "type": "number",
+          "enum": [3, 4, 5, 6]
+        },
+        "restingHrBpm": { "type": "number", "description": "Resting heart rate in bpm (35-110)." },
+        "maxHrBpm": { "type": "number", "description": "Optional custom max heart rate in bpm (120-230) or null." }
+      },
+      "required": [
+        "weightKg",
+        "heightCm",
+        "useDirectBmi",
+        "age",
+        "injuryStatus",
+        "targetRace",
+        "trainingDaysPerWeek"
+      ]
+    },
+    "UserWorkspace": {
+      "title": "UserWorkspace",
+      "description": "Per-account runner preferences, language, and target race countdown metadata.",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "language": {
+          "type": "string",
+          "enum": ["id", "en"],
+          "maxLength": 4
+        },
+        "customRaceDate": {
+          "type": "string",
+          "maxLength": 10,
+          "pattern": "^(\\d{4}-\\d{2}-\\d{2})?$"
+        },
+        "customRaceName": {
+          "type": "string",
+          "maxLength": 80
+        },
+        "migratedFromLocal": {
+          "type": "boolean"
+        },
+        "profile": {
+          "type": "object",
+          "$ref": "#/entities/RunnerProfile"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "uid",
+        "language",
+        "customRaceDate",
+        "customRaceName",
+        "migratedFromLocal",
+        "profile",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "DailyProgress": {
+      "title": "DailyProgress",
+      "description": "Logged daily training session entry including pace, heart rate, comfort, and notes.",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "dateKey": {
+          "type": "string",
+          "maxLength": 10,
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+        },
+        "dayIndex": { "type": "number" },
+        "sessionTitle": { "type": "string", "maxLength": 120 },
+        "zone": {
+          "type": "string",
+          "enum": ["easy", "tempo", "interval", "long_run", "rest"],
+          "maxLength": 16
+        },
+        "plannedKm": { "type": "number" },
+        "actualKm": { "type": "number" },
+        "paceSecPerKm": { "type": "number" },
+        "avgHeartRateBpm": { "type": "number" },
+        "comfortRating": { "type": "number", "enum": [1, 2, 3, 4, 5] },
+        "note": { "type": "string", "maxLength": 280 },
+        "completedAt": { "type": "string", "maxLength": 40 },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "uid",
+        "dateKey",
+        "dayIndex",
+        "sessionTitle",
+        "zone",
+        "plannedKm",
+        "actualKm",
+        "comfortRating",
+        "note",
+        "completedAt",
+        "updatedAt"
+      ]
+    },
+    "RunActivity": {
+      "title": "RunActivity",
+      "description": "Imported or sample Strava running session scoped to an authenticated runner.",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "id": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "name": { "type": "string", "maxLength": 160 },
+        "type": {
+          "type": "string",
+          "enum": ["Run", "TrailRun", "VirtualRun"],
+          "maxLength": 20
+        },
+        "startDate": { "type": "string", "maxLength": 40 },
+        "distanceMeters": { "type": "number" },
+        "movingTimeSeconds": { "type": "number" },
+        "elapsedTimeSeconds": { "type": "number" },
+        "elevationGainMeters": { "type": "number" },
+        "averageHeartRate": { "type": "number" },
+        "maxSpeedMps": { "type": "number" },
+        "averageSpeedMps": { "type": "number" },
+        "summaryPolyline": { "type": "string", "maxLength": 50000 },
+        "source": {
+          "type": "string",
+          "enum": ["sample", "csv", "gpx", "strava_oauth"],
+          "maxLength": 20
+        },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "uid",
+        "id",
+        "name",
+        "type",
+        "startDate",
+        "distanceMeters",
+        "movingTimeSeconds",
+        "elapsedTimeSeconds",
+        "elevationGainMeters",
+        "maxSpeedMps",
+        "averageSpeedMps",
+        "source",
+        "updatedAt"
+      ]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/UserWorkspace" },
+      "description": "Owner-only runner workspace profile, language preference, and race countdown configuration."
+    },
+    "/users/{userId}/progress/{progressId}": {
+      "schema": { "$ref": "#/entities/DailyProgress" },
+      "description": "Owner-only daily training logs keyed by YYYY-MM-DD_dayIndex."
+    },
+    "/users/{userId}/runs/{runId}": {
+      "schema": { "$ref": "#/entities/RunActivity" },
+      "description": "Owner-only imported or sample Strava run activities."
+    }
+  }
+}

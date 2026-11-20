@@ -172,13 +172,13 @@ export default function ImportActivitiesPanel({
             : null;
 
   return (
-    <div className="bg-white border border-slate-200 rounded-2xl p-5 sm:p-6 space-y-4">
+    <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 sm:p-6 space-y-4">
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
         <div className="space-y-1">
-          <h3 className="text-base font-bold text-slate-900">
+          <h3 className="text-base font-bold text-slate-900 dark:text-slate-100">
             {t.importSourceHeading}
           </h3>
-          <p className="text-sm text-slate-600">
+          <p className="text-sm text-slate-600 dark:text-slate-300">
             {t.importSourceDescBeforeCsv}{' '}
             <span className="font-mono text-xs">activities.csv</span>{' '}
             {t.importSourceDescMiddle}{' '}
@@ -201,7 +201,7 @@ export default function ImportActivitiesPanel({
           <button
             type="button"
             onClick={() => fileInputRef.current?.click()}
-            className="min-h-[44px] px-4 py-2 rounded-xl bg-teal-700 text-white text-sm font-semibold hover:bg-teal-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-700 focus-visible:ring-offset-2 inline-flex items-center gap-2 whitespace-nowrap shrink-0 transition-colors"
+            className="min-h-[44px] px-4 py-2 rounded-xl bg-teal-700 dark:bg-teal-600 text-white text-sm font-semibold hover:bg-teal-800 dark:hover:bg-teal-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-700 dark:focus-visible:ring-teal-400 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-900 inline-flex items-center gap-2 whitespace-nowrap shrink-0 transition-colors"
           >
             <FileSpreadsheet className="w-4 h-4" aria-hidden="true" />
             {t.importBtn}
@@ -210,7 +210,7 @@ export default function ImportActivitiesPanel({
           <button
             type="button"
             onClick={onLoadSampleData}
-            className="min-h-[44px] px-4 py-2 rounded-xl bg-teal-50 text-teal-800 border border-teal-200 text-sm font-semibold hover:bg-teal-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-700 inline-flex items-center gap-2 whitespace-nowrap shrink-0 transition-colors"
+            className="min-h-[44px] px-4 py-2 rounded-xl bg-teal-50 dark:bg-teal-950/60 text-teal-800 dark:text-teal-200 border border-teal-200 dark:border-teal-800 text-sm font-semibold hover:bg-teal-100 dark:hover:bg-teal-900/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-700 dark:focus-visible:ring-teal-400 inline-flex items-center gap-2 whitespace-nowrap shrink-0 transition-colors"
           >
             <Play className="w-4 h-4" aria-hidden="true" />
             {t.loadSampleBtn}
@@ -220,7 +220,7 @@ export default function ImportActivitiesPanel({
             type="button"
             onClick={handleConnectStrava}
             disabled={isConnectingOAuth}
-            className="min-h-[44px] px-4 py-2 rounded-xl bg-white text-slate-700 border border-slate-200 text-sm font-medium hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-700 inline-flex items-center gap-2 whitespace-nowrap shrink-0 transition-colors disabled:opacity-60"
+            className="min-h-[44px] px-4 py-2 rounded-xl bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 text-sm font-medium hover:bg-slate-50 dark:hover:bg-slate-700/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-700 dark:focus-visible:ring-teal-400 inline-flex items-center gap-2 whitespace-nowrap shrink-0 transition-colors disabled:opacity-60"
           >
             <Link2 className="w-4 h-4" aria-hidden="true" />
             {isOAuthConnected
@@ -235,7 +235,7 @@ export default function ImportActivitiesPanel({
               type="button"
               onClick={onOpenDisconnectModal}
               aria-label={t.clearDataAria}
-              className="min-h-[44px] px-3.5 py-2 rounded-xl text-slate-600 hover:text-rose-700 hover:bg-rose-50 border border-slate-200 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-600 inline-flex items-center gap-1.5 whitespace-nowrap shrink-0 transition-colors"
+              className="min-h-[44px] px-3.5 py-2 rounded-xl text-slate-600 dark:text-slate-300 hover:text-rose-700 dark:hover:text-rose-300 hover:bg-rose-50 dark:hover:bg-rose-950/50 border border-slate-200 dark:border-slate-700 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-600 inline-flex items-center gap-1.5 whitespace-nowrap shrink-0 transition-colors"
             >
               <Trash2 className="w-4 h-4" aria-hidden="true" />
               {t.clearDataBtn}
@@ -247,10 +247,10 @@ export default function ImportActivitiesPanel({
       {resolvedOAuthNotice && (
         <div
           role="status"
-          className="rounded-xl bg-indigo-50/80 border border-indigo-200/80 px-4 py-3 text-xs text-indigo-900 flex items-start gap-2.5"
+          className="rounded-xl bg-indigo-50/80 dark:bg-indigo-950/50 border border-indigo-200/80 dark:border-indigo-800/70 px-4 py-3 text-xs text-indigo-900 dark:text-indigo-200 flex items-start gap-2.5"
         >
           <Info
-            className="w-4 h-4 text-indigo-700 shrink-0 mt-0.5"
+            className="w-4 h-4 text-indigo-700 dark:text-indigo-400 shrink-0 mt-0.5"
             aria-hidden="true"
           />
           <span>{resolvedOAuthNotice}</span>

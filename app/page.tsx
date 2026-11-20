@@ -1,5 +1,5 @@
-import PaceCraftApp from '@/components/PaceCraftApp';
+import PaceCraftAuthShell from '@/components/PaceCraftAuthShell';
 
 export default function HomePage() {
-  return <PaceCraftApp />;
+  return <PaceCraftAuthShell />;
 }

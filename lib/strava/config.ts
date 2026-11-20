@@ -4,6 +4,7 @@ export const IMPORTED_RUNS_STORAGE_KEY = 'pacecraft_imported_runs_v1';
 export const DAILY_PROGRESS_STORAGE_KEY = 'pacecraft_training_progress_v1';
 export const RUNNER_PROFILE_STORAGE_KEY = 'pacecraft_runner_profile_v1';
 export const LANGUAGE_STORAGE_KEY = 'pacecraft_language_v1';
+export const THEME_STORAGE_KEY = 'pacecraft_theme_v1';
 export const RACE_DATE_STORAGE_KEY = 'pacecraft_race_date_v1';
 export const RACE_NAME_STORAGE_KEY = 'pacecraft_race_name_v1';
 

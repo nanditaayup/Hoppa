@@ -60,6 +60,7 @@ export default function StravaDashboard({
 }: StravaDashboardProps) {
   const [typeFilter, setTypeFilter] = useState<TypeFilter>('all');
   const [searchQuery, setSearchQuery] = useState('');
+  const [chartMode, setChartMode] = useState<'area' | 'bar'>('area');
   const t = UI_COPY[lang].strava;
 
   const filteredRuns = useMemo(() => {
@@ -92,11 +93,11 @@ export default function StravaDashboard({
       <div className="space-y-1">
         <h2
           id="strava-section-heading"
-          className="text-2xl font-bold text-slate-900 tracking-tight"
+          className="text-2xl font-bold text-slate-900 dark:text-slate-100 tracking-tight"
         >
           {t.heading}
         </h2>
-        <p className="text-sm text-slate-600">{t.subtitle}</p>
+        <p className="text-sm text-slate-600 dark:text-slate-300">{t.subtitle}</p>
       </div>
 
       <ImportActivitiesPanel
@@ -112,7 +113,7 @@ export default function StravaDashboard({
       {(importNotice || (runs.length > 0 && stravaSyncCount > 0)) && (
         <div
           role="status"
-          className="rounded-xl bg-emerald-50/80 border border-emerald-200 px-4 py-3 text-sm text-emerald-900 flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+          className="rounded-xl bg-emerald-50/80 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800/70 px-4 py-3 text-sm text-emerald-900 dark:text-emerald-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3"
         >
           <span>{importNotice ?? t.syncToProgressDone}</span>
           {stravaSyncCount > 0 && (
@@ -120,7 +121,7 @@ export default function StravaDashboard({
               type="button"
               onClick={onSyncStravaToProgress}
               data-testid="strava-apply-progress-btn"
-              className="min-h-[40px] px-3.5 py-1.5 rounded-xl bg-teal-700 text-white text-xs font-semibold hover:bg-teal-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-700 inline-flex items-center gap-1.5 transition-colors whitespace-nowrap shrink-0"
+              className="min-h-[40px] px-3.5 py-1.5 rounded-xl bg-teal-700 dark:bg-teal-600 text-white text-xs font-semibold hover:bg-teal-800 dark:hover:bg-teal-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-700 dark:focus-visible:ring-teal-400 inline-flex items-center gap-1.5 transition-colors whitespace-nowrap shrink-0"
             >
               <RefreshCw className="w-3.5 h-3.5" aria-hidden="true" />
               {t.syncToProgressBtn(stravaSyncCount)}
@@ -131,84 +132,120 @@ export default function StravaDashboard({
 
       {/* 4-column KPI strip with calm pastel accent */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-white border border-slate-200 rounded-2xl p-5">
-          <p className="text-xs font-medium text-slate-500">
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5">
+          <p className="text-xs font-medium text-slate-500 dark:text-slate-400">
             {t.kpi4WeekTitle}
           </p>
-          <p className="text-2xl font-bold text-slate-900 font-mono tabular-nums mt-1.5">
+          <p className="text-2xl font-bold text-slate-900 dark:text-slate-100 font-mono tabular-nums mt-1.5">
             {formatDecimalComma(kpi.fourWeekAvgKm, 2, lang)}{' '}
-            <span className="text-sm font-medium text-slate-500">
+            <span className="text-sm font-medium text-slate-500 dark:text-slate-400">
               {t.kpiPerWeekUnit}
             </span>
           </p>
-          <p className="text-xs text-teal-700 mt-1">{t.kpi4WeekSub}</p>
+          <p className="text-xs text-teal-700 dark:text-teal-400 mt-1">
+            {t.kpi4WeekSub}
+          </p>
         </div>
 
-        <div className="bg-white border border-slate-200 rounded-2xl p-5">
-          <p className="text-xs font-medium text-slate-500">{t.kpi30DayTitle}</p>
-          <p className="text-2xl font-bold text-slate-900 font-mono tabular-nums mt-1.5">
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5">
+          <p className="text-xs font-medium text-slate-500 dark:text-slate-400">
+            {t.kpi30DayTitle}
+          </p>
+          <p className="text-2xl font-bold text-slate-900 dark:text-slate-100 font-mono tabular-nums mt-1.5">
             {formatKmValue(kpi.thirtyDayTotalKm, 2, lang)}
           </p>
-          <p className="text-xs text-slate-500 mt-1 font-mono tabular-nums">
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 font-mono tabular-nums">
             {kpi.runCount30Days} {t.kpi30DaySub}
           </p>
         </div>
 
-        <div className="bg-white border border-slate-200 rounded-2xl p-5">
-          <p className="text-xs font-medium text-slate-500">{t.kpiPaceTitle}</p>
-          <p className="text-2xl font-bold text-teal-700 font-mono tabular-nums mt-1.5">
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5">
+          <p className="text-xs font-medium text-slate-500 dark:text-slate-400">
+            {t.kpiPaceTitle}
+          </p>
+          <p className="text-2xl font-bold text-teal-700 dark:text-teal-400 font-mono tabular-nums mt-1.5">
             {kpi.thirtyDayAvgPaceSecPerKm > 0
               ? formatPace(kpi.thirtyDayAvgPaceSecPerKm)
               : '--:--/km'}
           </p>
-          <p className="text-xs text-slate-500 mt-1">{t.kpiPaceSub}</p>
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+            {t.kpiPaceSub}
+          </p>
         </div>
 
-        <div className="bg-white border border-slate-200 rounded-2xl p-5">
-          <p className="text-xs font-medium text-slate-500">
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5">
+          <p className="text-xs font-medium text-slate-500 dark:text-slate-400">
             {t.kpiLongestTitle}
           </p>
-          <p className="text-2xl font-bold text-slate-900 font-mono tabular-nums mt-1.5">
+          <p className="text-2xl font-bold text-slate-900 dark:text-slate-100 font-mono tabular-nums mt-1.5">
             {formatKmValue(kpi.longestRunKm, 2, lang)}
           </p>
-          <p className="text-xs text-slate-500 mt-1 font-mono tabular-nums">
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 font-mono tabular-nums">
             {t.kpiLongestSubPrefix} {kpi.totalActivitiesCount}{' '}
             {t.kpiLongestSubSuffix}
           </p>
         </div>
       </div>
 
-      {/* 8-Week Volume Bar & Recharts Area Consistency Charts */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <WeeklyVolumeChart
-          buckets={weeklyBuckets}
-          fourWeekAvgKm={kpi.fourWeekAvgKm}
-          lang={lang}
-        />
-        <WeeklyConsistencyAreaChart
-          buckets={weeklyBuckets}
-          fourWeekAvgKm={kpi.fourWeekAvgKm}
-          lang={lang}
-        />
+      {/* Single Focused 8-Week Chart with Area / Bar Switcher */}
+      <div className="space-y-3">
+        <div className="inline-flex items-center gap-1 p-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl">
+          <button
+            type="button"
+            onClick={() => setChartMode('area')}
+            className={`min-h-[36px] px-3.5 py-1 rounded-lg text-xs font-semibold transition-colors ${
+              chartMode === 'area'
+                ? 'bg-teal-700 dark:bg-teal-600 text-white'
+                : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
+            }`}
+          >
+            {t.chartAreaTab}
+          </button>
+          <button
+            type="button"
+            onClick={() => setChartMode('bar')}
+            className={`min-h-[36px] px-3.5 py-1 rounded-lg text-xs font-semibold transition-colors ${
+              chartMode === 'bar'
+                ? 'bg-teal-700 dark:bg-teal-600 text-white'
+                : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
+            }`}
+          >
+            {t.chartBarTab}
+          </button>
+        </div>
+
+        {chartMode === 'area' ? (
+          <WeeklyConsistencyAreaChart
+            buckets={weeklyBuckets}
+            fourWeekAvgKm={kpi.fourWeekAvgKm}
+            lang={lang}
+          />
+        ) : (
+          <WeeklyVolumeChart
+            buckets={weeklyBuckets}
+            fourWeekAvgKm={kpi.fourWeekAvgKm}
+            lang={lang}
+          />
+        )}
       </div>
 
       {/* Filter & Search Toolbar */}
-      <div className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-5 space-y-4">
+      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 sm:p-5 space-y-4">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
           <div
             role="group"
             aria-label={t.filterGroupAria}
-            className="flex items-center gap-1 p-1 bg-slate-100 rounded-xl overflow-x-auto"
+            className="flex items-center gap-1 p-1 bg-slate-100 dark:bg-slate-800 rounded-xl overflow-x-auto"
           >
             {filterOptions.map((opt) => (
               <button
                 key={opt.key}
                 type="button"
                 onClick={() => setTypeFilter(opt.key)}
-                className={`min-h-[40px] px-3.5 py-1.5 text-xs font-semibold rounded-lg transition-colors whitespace-nowrap shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-700 ${
+                className={`min-h-[40px] px-3.5 py-1.5 text-xs font-semibold rounded-lg transition-colors whitespace-nowrap shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-700 dark:focus-visible:ring-teal-400 ${
                   typeFilter === opt.key
-                    ? 'bg-white text-slate-900 shadow-sm'
-                    : 'text-slate-600 hover:text-slate-900'
+                    ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm'
+                    : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
                 }`}
               >
                 {opt.label}
@@ -219,7 +256,7 @@ export default function StravaDashboard({
           <div className="flex items-center gap-2.5">
             <div className="relative flex-1 md:w-64">
               <Search
-                className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none"
+                className="w-4 h-4 text-slate-400 dark:text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none"
                 aria-hidden="true"
               />
               <input
@@ -228,7 +265,7 @@ export default function StravaDashboard({
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder={t.searchPlaceholder}
                 aria-label={t.searchAria}
-                className="w-full min-h-[44px] pl-10 pr-3 py-2 rounded-xl border border-slate-200 bg-slate-50/50 text-sm text-slate-900 placeholder:text-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-teal-700 focus:border-transparent"
+                className="w-full min-h-[44px] pl-10 pr-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/70 text-sm text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:bg-white dark:focus:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-700 dark:focus-visible:ring-teal-400 focus:border-transparent"
               />
             </div>
 
@@ -236,7 +273,7 @@ export default function StravaDashboard({
               <button
                 type="button"
                 onClick={handleResetFilters}
-                className="min-h-[44px] px-3.5 py-2 rounded-xl border border-slate-200 text-xs font-semibold text-slate-700 hover:bg-slate-50 inline-flex items-center gap-1.5 whitespace-nowrap shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-700"
+                className="min-h-[44px] px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 inline-flex items-center gap-1.5 whitespace-nowrap shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-700 dark:focus-visible:ring-teal-400"
               >
                 <RotateCcw className="w-3.5 h-3.5" aria-hidden="true" />
                 {t.resetFilterBtn}
@@ -247,15 +284,15 @@ export default function StravaDashboard({
 
         {/* Empty / Populated Activity Cards */}
         {runs.length === 0 ? (
-          <div className="py-12 px-4 text-center space-y-3 border-t border-slate-100">
-            <div className="w-12 h-12 rounded-2xl bg-teal-50 text-teal-700 mx-auto flex items-center justify-center">
+          <div className="py-12 px-4 text-center space-y-3 border-t border-slate-100 dark:border-slate-800">
+            <div className="w-12 h-12 rounded-2xl bg-teal-50 dark:bg-teal-950/60 text-teal-700 dark:text-teal-400 mx-auto flex items-center justify-center">
               <Footprints className="w-6 h-6" aria-hidden="true" />
             </div>
             <div className="space-y-1 max-w-md mx-auto">
-              <h3 className="text-base font-bold text-slate-900">
+              <h3 className="text-base font-bold text-slate-900 dark:text-slate-100">
                 {t.emptyRunsTitle}
               </h3>
-              <p className="text-sm text-slate-600">
+              <p className="text-sm text-slate-600 dark:text-slate-300">
                 {t.emptyRunsDescBefore}{' '}
                 <span className="font-mono text-xs">activities.csv</span>{' '}
                 {t.emptyRunsDescMiddle}{' '}
@@ -267,19 +304,21 @@ export default function StravaDashboard({
               <button
                 type="button"
                 onClick={onLoadSampleData}
-                className="min-h-[44px] px-5 py-2.5 rounded-xl bg-teal-700 text-white text-sm font-semibold hover:bg-teal-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-700"
+                className="min-h-[44px] px-5 py-2.5 rounded-xl bg-teal-700 dark:bg-teal-600 text-white text-sm font-semibold hover:bg-teal-800 dark:hover:bg-teal-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-700 dark:focus-visible:ring-teal-400"
               >
                 {t.loadSampleBtn}
               </button>
             </div>
           </div>
         ) : filteredRuns.length === 0 ? (
-          <div className="py-10 px-4 text-center space-y-3 border-t border-slate-100">
-            <p className="text-sm text-slate-600">{t.emptyFilterDesc}</p>
+          <div className="py-10 px-4 text-center space-y-3 border-t border-slate-100 dark:border-slate-800">
+            <p className="text-sm text-slate-600 dark:text-slate-300">
+              {t.emptyFilterDesc}
+            </p>
             <button
               type="button"
               onClick={handleResetFilters}
-              className="min-h-[44px] px-4 py-2 rounded-xl border border-slate-200 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+              className="min-h-[44px] px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-sm font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800"
             >
               {t.resetFilterBtn}
             </button>
@@ -287,7 +326,7 @@ export default function StravaDashboard({
         ) : (
           <div
             data-testid="activity-cards-grid"
-            className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 pt-2 border-t border-slate-100"
+            className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 pt-2 border-t border-slate-100 dark:border-slate-800"
           >
             {filteredRuns.map((activity) => (
               <RunActivityCard

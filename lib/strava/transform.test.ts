@@ -4,6 +4,7 @@ import {
   buildProgressEntriesFromMatches,
   calculateBmi,
   computeDailyProgressStats,
+  computeHeartRateAndVo2Max,
   computeKpiSummary,
   computeNutritionRecommendation,
   computePaceSecPerKm,
@@ -19,6 +20,7 @@ import {
   formatSpeedKmh,
   generateTrainingPlan,
   getDefaultRaceDateKey,
+  parsePaceInputToSecPerKm,
 } from './transform';
 import { SAMPLE_STRAVA_RUNS, encodePolyline } from './config';
 
@@ -239,7 +241,8 @@ test('bilingual localization supports English number, date, BMI, plan, and nutri
   );
 
   assert.equal(planEn.weeklySchedule[0].dayName, 'Monday');
-  assert.equal(planEn.weeklySchedule[0].title, 'Rest & Active Recovery');
+  assert.equal(planEn.weeklySchedule[0].title, 'Cross-Train: Strength & Mobility');
+  assert.equal(planEn.weeklySchedule[5].title, 'Rest & Active Recovery');
   assert.equal(planEn.fourWeekProgression[3].label, 'Week 4 (Cutback -20%)');
 
   const nutritionEn = computeNutritionRecommendation(
@@ -369,6 +372,150 @@ test('findStravaProgressMatches maps recent Strava runs to weekday schedule with
   );
   assert.equal(remaining.length, 1);
   assert.equal(remaining[0].dateKey, '2026-11-16');
+  assert.ok((remaining[0].paceSecPerKm ?? 0) > 0);
+  assert.ok((remaining[0].avgHeartRateBpm ?? 0) > 0);
+});
+
+test('parsePaceInputToSecPerKm parses mm:ss and rejects out-of-range inputs', () => {
+  assert.equal(parsePaceInputToSecPerKm('06:15'), 375);
+  assert.equal(parsePaceInputToSecPerKm('5.30'), 330);
+  assert.equal(parsePaceInputToSecPerKm('06:75'), null);
+  assert.equal(parsePaceInputToSecPerKm(''), null);
+  assert.equal(parsePaceInputToSecPerKm('abc'), null);
+});
+
+test('generateTrainingPlan includes 2 strength training sessions in normal weeks and omits them in race_week', () => {
+  const kpi = computeKpiSummary(
+    SAMPLE_STRAVA_RUNS,
+    new Date('2026-11-19T12:00:00+07:00')
+  );
+  const baseProfile = {
+    weightKg: 68,
+    heightCm: 170,
+    directBmi: null,
+    useDirectBmi: false,
+    age: 29,
+    injuryStatus: 'none' as const,
+    targetRace: '10K' as const,
+    trainingDaysPerWeek: 4 as const,
+  };
+
+  const plan4 = generateTrainingPlan(baseProfile, kpi, 'id', 'upcoming');
+  assert.equal(
+    plan4.weeklySchedule.filter((s) => Boolean(s.strengthSession)).length,
+    2
+  );
+
+  const plan5 = generateTrainingPlan(
+    { ...baseProfile, trainingDaysPerWeek: 5 },
+    kpi,
+    'en',
+    'upcoming'
+  );
+  assert.equal(
+    plan5.weeklySchedule.filter((s) => Boolean(s.strengthSession)).length,
+    2
+  );
+
+  const plan6 = generateTrainingPlan(
+    { ...baseProfile, trainingDaysPerWeek: 6 },
+    kpi,
+    'id',
+    'upcoming'
+  );
+  assert.equal(
+    plan6.weeklySchedule.filter((s) => Boolean(s.strengthSession)).length,
+    2
+  );
+
+  const raceWeekPlan = generateTrainingPlan(baseProfile, kpi, 'id', 'race_week');
+  assert.equal(
+    raceWeekPlan.weeklySchedule.filter((s) => Boolean(s.strengthSession)).length,
+    0
+  );
+});
+
+test('computeHeartRateAndVo2Max computes Tanaka HRmax, Karvonen Z1-Z5, VO2max, and avg pace/HR daily stats', () => {
+  const profile = {
+    weightKg: 68,
+    heightCm: 170,
+    directBmi: null,
+    useDirectBmi: false,
+    age: 30,
+    injuryStatus: 'none' as const,
+    targetRace: '10K' as const,
+    trainingDaysPerWeek: 4 as const,
+    restingHrBpm: 55,
+    maxHrBpm: null,
+  };
+
+  // Resting-only fallback (no Strava runs)
+  const restOnly = computeHeartRateAndVo2Max(profile, [], [], 'id');
+  assert.equal(restOnly.maxHrBpm, 187); // 208 - 0.7 * 30 = 187
+  assert.equal(restOnly.zones.length, 5);
+  assert.equal(restOnly.vo2MaxSource, 'resting_ratio');
+  assert.ok(restOnly.vo2Max > 45);
+  assert.equal(restOnly.avgLoggedHrBpm, null);
+
+  // Blended with Strava runs + daily log HR
+  const blended = computeHeartRateAndVo2Max(
+    profile,
+    SAMPLE_STRAVA_RUNS,
+    [
+      {
+        dateKey: '2026-11-19',
+        dayIndex: 3,
+        sessionTitle: 'Easy Run',
+        zone: 'easy',
+        plannedKm: 6,
+        actualKm: 6,
+        paceSecPerKm: 360,
+        avgHeartRateBpm: 152,
+        comfortRating: 4,
+        note: 'Stabil',
+        completedAt: '2026-11-19T06:00:00Z',
+      },
+    ],
+    'en'
+  );
+  assert.equal(blended.vo2MaxSource, 'strava_hr_blended');
+  assert.ok((blended.avgLoggedHrBpm ?? 0) > 130);
+
+  const plan = generateTrainingPlan(profile, computeKpiSummary(SAMPLE_STRAVA_RUNS), 'id');
+  const stats = computeDailyProgressStats(
+    [
+      {
+        dateKey: '2026-11-19',
+        dayIndex: 3,
+        sessionTitle: 'Easy',
+        zone: 'easy',
+        plannedKm: 6,
+        actualKm: 6,
+        paceSecPerKm: 360,
+        avgHeartRateBpm: 150,
+        comfortRating: 4,
+        note: '',
+        completedAt: '2026-11-19T06:00:00Z',
+      },
+      {
+        dateKey: '2026-11-18',
+        dayIndex: 2,
+        sessionTitle: 'Tempo',
+        zone: 'tempo',
+        plannedKm: 7,
+        actualKm: 7,
+        paceSecPerKm: 320,
+        avgHeartRateBpm: 164,
+        comfortRating: 4,
+        note: '',
+        completedAt: '2026-11-18T06:00:00Z',
+      },
+    ],
+    plan.weeklySchedule,
+    '2026-11-19'
+  );
+  assert.equal(stats.avgPaceSecPerKm, 340);
+  assert.equal(stats.avgHeartRateBpm, 157);
 });
 
 

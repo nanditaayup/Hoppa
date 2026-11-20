@@ -27,9 +27,9 @@ export default function RoutePreview({
   if (points.length < 2) {
     return (
       <div
-        className={`${heightClass} w-full rounded-xl bg-[#F2F6F7] border border-slate-200/70 flex items-center justify-center gap-2 px-3 text-xs text-slate-500`}
+        className={`${heightClass} w-full rounded-xl bg-[#F2F6F7] dark:bg-slate-800/70 border border-slate-200/70 dark:border-slate-700 flex items-center justify-center gap-2 px-3 text-xs text-slate-500 dark:text-slate-400`}
       >
-        <Route className="w-4 h-4 text-slate-400 shrink-0" aria-hidden="true" />
+        <Route className="w-4 h-4 text-slate-400 dark:text-slate-500 shrink-0" aria-hidden="true" />
         <span className="truncate">{t.noGpsRoute}</span>
       </div>
     );
@@ -72,7 +72,7 @@ export default function RoutePreview({
 
   return (
     <div
-      className={`${heightClass} w-full rounded-xl bg-[#EFF7F6] border border-teal-100/90 overflow-hidden flex items-center justify-center`}
+      className={`${heightClass} w-full rounded-xl bg-[#EFF7F6] dark:bg-slate-800/80 border border-teal-100/90 dark:border-teal-900/60 overflow-hidden flex items-center justify-center`}
     >
       <svg
         viewBox={`0 0 ${width} ${height}`}
@@ -82,7 +82,7 @@ export default function RoutePreview({
       >
         <polyline
           fill="none"
-          stroke="#0D9488"
+          className="stroke-teal-600 dark:stroke-teal-400"
           strokeWidth={showMarkers ? 3.2 : 2.6}
           strokeLinecap="round"
           strokeLinejoin="round"
@@ -99,16 +99,14 @@ export default function RoutePreview({
                 cx={startX}
                 cy={start.y}
                 r={5.5}
-                fill="#16A34A"
-                stroke="#FFFFFF"
+                className="fill-emerald-600 dark:fill-emerald-400 stroke-white dark:stroke-slate-900"
                 strokeWidth={1.5}
               />
               <circle
                 cx={endX}
                 cy={end.y}
                 r={5.5}
-                fill="#0F172A"
-                stroke="#FFFFFF"
+                className="fill-slate-900 dark:fill-slate-100 stroke-white dark:stroke-slate-900"
                 strokeWidth={1.5}
               />
             </>

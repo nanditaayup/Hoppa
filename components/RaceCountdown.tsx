@@ -1,7 +1,7 @@
 'use client';
 
-import React from 'react';
-import { Calendar, Flag, RotateCcw } from 'lucide-react';
+import React, { useState } from 'react';
+import { Calendar, Flag, PencilLine, RotateCcw } from 'lucide-react';
 import { RACE_TARGETS_BY_LANG } from '@/lib/strava/config';
 import { UI_COPY } from '@/lib/strava/i18n';
 import {
@@ -31,6 +31,7 @@ export default function RaceCountdown({
   onChangeRaceDate,
   onResetRaceMeta,
 }: RaceCountdownProps) {
+  const [isEditing, setIsEditing] = useState(false);
   const t = UI_COPY[lang].countdown;
   const raceMeta = RACE_TARGETS_BY_LANG[lang][targetRace];
   const trimmedName = customRaceName.trim();
@@ -41,19 +42,19 @@ export default function RaceCountdown({
 
   const accentNumberClass =
     countdown.status === 'race_day'
-      ? 'text-emerald-700'
+      ? 'text-emerald-700 dark:text-emerald-400'
       : countdown.status === 'race_week' || countdown.status === 'tapering'
-        ? 'text-indigo-700'
+        ? 'text-indigo-700 dark:text-indigo-300'
         : countdown.status === 'passed'
-          ? 'text-slate-600'
-          : 'text-teal-700';
+          ? 'text-slate-600 dark:text-slate-400'
+          : 'text-teal-700 dark:text-teal-400';
 
   const statusTextClass =
     countdown.status === 'race_day'
-      ? 'text-emerald-700'
+      ? 'text-emerald-700 dark:text-emerald-400'
       : countdown.status === 'race_week' || countdown.status === 'tapering'
-        ? 'text-indigo-700'
-        : 'text-teal-700';
+        ? 'text-indigo-700 dark:text-indigo-300'
+        : 'text-teal-700 dark:text-teal-400';
 
   const weeksBreakdown =
     countdown.daysRemaining > 0
@@ -61,140 +62,152 @@ export default function RaceCountdown({
       : null;
 
   return (
-    <div
-      data-testid="race-countdown"
-      className="border-y border-teal-200/70 py-4 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4"
-    >
-      {/* Left: Race Countdown Metric & Motivation */}
-      <div className="flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-6 min-w-0">
-        <div className="flex items-baseline gap-2.5 shrink-0">
-          <Flag
-            className="w-4 h-4 text-teal-700 self-center shrink-0"
-            aria-hidden="true"
-          />
-          {countdown.status === 'race_day' ? (
-            <span
-              data-testid="race-countdown-days"
-              className={`text-2xl sm:text-3xl font-bold font-mono tabular-nums tracking-tight ${accentNumberClass}`}
-            >
-              {t.todayLabel}
-            </span>
-          ) : countdown.status === 'passed' ? (
-            <>
+    <div data-testid="race-countdown" className="space-y-3">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        {/* Left: Race Countdown Metric & Motivation */}
+        <div className="flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-6 min-w-0">
+          <div className="flex items-baseline gap-2.5 shrink-0">
+            <Flag
+              className="w-4 h-4 text-teal-700 dark:text-teal-400 self-center shrink-0"
+              aria-hidden="true"
+            />
+            {countdown.status === 'race_day' ? (
               <span
                 data-testid="race-countdown-days"
-                className={`text-3xl sm:text-4xl font-bold font-mono tabular-nums tracking-tight ${accentNumberClass}`}
+                className={`text-2xl sm:text-3xl font-bold font-mono tabular-nums tracking-tight ${accentNumberClass}`}
               >
-                {Math.abs(countdown.daysRemaining)}
+                {t.todayLabel}
               </span>
-              <span className="text-sm font-medium text-slate-600">
-                {t.passedDaysSuffix}
-              </span>
-            </>
-          ) : (
-            <>
-              <span
-                data-testid="race-countdown-days"
-                className={`text-3xl sm:text-4xl font-bold font-mono tabular-nums tracking-tight ${accentNumberClass}`}
-              >
-                {countdown.daysRemaining}
-              </span>
-              <span className="text-sm font-medium text-slate-700">
-                {t.daysLeftUnit}
-              </span>
-            </>
-          )}
-        </div>
-
-        <div className="sm:border-l sm:border-teal-200/70 sm:pl-5 space-y-1 min-w-0">
-          <p
-            data-testid="race-countdown-title"
-            className="text-xs sm:text-sm font-semibold text-slate-900"
-          >
-            {t.badgeLabel}: {t.untilPrefix} {targetEventLabel}
-          </p>
-
-          <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs">
-            <span className={`font-semibold ${statusTextClass}`}>
-              {countdown.phaseLabel}
-            </span>
-            {weeksBreakdown && (
+            ) : countdown.status === 'passed' ? (
               <>
-                <span className="text-slate-400" aria-hidden="true">
-                  ·
+                <span
+                  data-testid="race-countdown-days"
+                  className={`text-3xl sm:text-4xl font-bold font-mono tabular-nums tracking-tight ${accentNumberClass}`}
+                >
+                  {Math.abs(countdown.daysRemaining)}
                 </span>
-                <span className="font-mono tabular-nums text-slate-600 whitespace-nowrap">
-                  {weeksBreakdown}
+                <span className="text-sm font-medium text-slate-600 dark:text-slate-300">
+                  {t.passedDaysSuffix}
+                </span>
+              </>
+            ) : (
+              <>
+                <span
+                  data-testid="race-countdown-days"
+                  className={`text-3xl sm:text-4xl font-bold font-mono tabular-nums tracking-tight ${accentNumberClass}`}
+                >
+                  {countdown.daysRemaining}
+                </span>
+                <span className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                  {t.daysLeftUnit}
                 </span>
               </>
             )}
-            <span className="text-slate-400" aria-hidden="true">
-              ·
-            </span>
-            <span className="font-mono tabular-nums text-slate-600 whitespace-nowrap">
-              {countdown.formattedRaceDate}
-            </span>
           </div>
 
-          <p className="text-xs text-slate-600 leading-relaxed">
-            {countdown.motivationTip}
-          </p>
+          <div className="sm:border-l sm:border-teal-200/70 dark:sm:border-teal-800/60 sm:pl-5 space-y-1 min-w-0">
+            <p
+              data-testid="race-countdown-title"
+              className="text-xs sm:text-sm font-semibold text-slate-900 dark:text-slate-100"
+            >
+              {t.badgeLabel}: {t.untilPrefix} {targetEventLabel}
+            </p>
+
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs">
+              <span className={`font-semibold ${statusTextClass}`}>
+                {countdown.phaseLabel}
+              </span>
+              {weeksBreakdown && (
+                <>
+                  <span className="text-slate-400 dark:text-slate-500" aria-hidden="true">
+                    ·
+                  </span>
+                  <span className="font-mono tabular-nums text-slate-600 dark:text-slate-300 whitespace-nowrap">
+                    {weeksBreakdown}
+                  </span>
+                </>
+              )}
+              <span className="text-slate-400 dark:text-slate-500" aria-hidden="true">
+                ·
+              </span>
+              <span className="font-mono tabular-nums text-slate-600 dark:text-slate-300 whitespace-nowrap">
+                {countdown.formattedRaceDate}
+              </span>
+            </div>
+
+            <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+              {countdown.motivationTip}
+            </p>
+          </div>
         </div>
+
+        <button
+          type="button"
+          onClick={() => setIsEditing((prev) => !prev)}
+          data-testid="race-countdown-edit-toggle"
+          aria-expanded={isEditing}
+          className="min-h-[40px] px-3.5 py-2 rounded-xl border border-teal-200/80 dark:border-teal-800 bg-white/85 dark:bg-slate-900/80 text-xs font-semibold text-teal-900 dark:text-teal-200 hover:border-teal-300 dark:hover:border-teal-600 hover:bg-white dark:hover:bg-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-700 dark:focus-visible:ring-teal-400 inline-flex items-center gap-1.5 transition-colors whitespace-nowrap shrink-0 self-start sm:self-center"
+        >
+          <PencilLine className="w-3.5 h-3.5" aria-hidden="true" />
+          {isEditing ? t.doneEditBtn : t.editEventBtn}
+        </button>
       </div>
 
-      {/* Right: Custom Event Name, Date Picker & Reset */}
-      <div className="flex flex-wrap items-center gap-2.5 shrink-0">
-        <div className="flex items-center gap-2">
-          <label
-            htmlFor="input-race-name"
-            className="text-xs font-medium text-slate-600 whitespace-nowrap"
-          >
-            {t.nameInputLabel}
-          </label>
-          <input
-            id="input-race-name"
-            type="text"
-            maxLength={40}
-            aria-label={t.nameInputAria}
-            data-testid="race-countdown-name-input"
-            value={customRaceName}
-            onChange={(e) => onChangeRaceName(e.target.value)}
-            placeholder={t.nameInputPlaceholder}
-            className="w-40 sm:w-44 min-h-[44px] px-3 py-1.5 rounded-xl border border-teal-200/80 bg-white/90 text-xs sm:text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-700"
-          />
-        </div>
+      {/* Collapsible Event Customization Row */}
+      {isEditing && (
+        <div className="pt-3 border-t border-teal-200/60 dark:border-teal-800/50 flex flex-wrap items-center gap-3">
+          <div className="flex items-center gap-2">
+            <label
+              htmlFor="input-race-name"
+              className="text-xs font-medium text-slate-600 dark:text-slate-300 whitespace-nowrap"
+            >
+              {t.nameInputLabel}
+            </label>
+            <input
+              id="input-race-name"
+              type="text"
+              maxLength={40}
+              aria-label={t.nameInputAria}
+              data-testid="race-countdown-name-input"
+              value={customRaceName}
+              onChange={(e) => onChangeRaceName(e.target.value)}
+              placeholder={t.nameInputPlaceholder}
+              className="w-44 sm:w-52 min-h-[40px] px-3 py-1.5 rounded-xl border border-teal-200/80 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs sm:text-sm text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-teal-700 dark:focus:ring-teal-400"
+            />
+          </div>
 
-        <div className="flex items-center gap-2">
-          <label
-            htmlFor="input-race-date"
-            className="text-xs font-medium text-slate-600 inline-flex items-center gap-1.5 whitespace-nowrap"
-          >
-            <Calendar className="w-3.5 h-3.5 text-teal-700" aria-hidden="true" />
-            {t.dateInputLabel}
-          </label>
-          <input
-            id="input-race-date"
-            type="date"
-            aria-label={t.dateInputAria}
-            data-testid="race-countdown-date-input"
-            value={countdown.raceDateKey}
-            onChange={(e) => onChangeRaceDate(e.target.value)}
-            className="min-h-[44px] px-3 py-1.5 rounded-xl border border-teal-200/80 bg-white/90 text-xs sm:text-sm font-mono tabular-nums text-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-700"
-          />
-        </div>
+          <div className="flex items-center gap-2">
+            <label
+              htmlFor="input-race-date"
+              className="text-xs font-medium text-slate-600 dark:text-slate-300 inline-flex items-center gap-1.5 whitespace-nowrap"
+            >
+              <Calendar className="w-3.5 h-3.5 text-teal-700 dark:text-teal-400" aria-hidden="true" />
+              {t.dateInputLabel}
+            </label>
+            <input
+              id="input-race-date"
+              type="date"
+              aria-label={t.dateInputAria}
+              data-testid="race-countdown-date-input"
+              value={countdown.raceDateKey}
+              onChange={(e) => onChangeRaceDate(e.target.value)}
+              className="min-h-[40px] px-3 py-1.5 rounded-xl border border-teal-200/80 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs sm:text-sm font-mono tabular-nums text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-teal-700 dark:focus:ring-teal-400"
+            />
+          </div>
 
-        {showReset && (
-          <button
-            type="button"
-            onClick={onResetRaceMeta}
-            data-testid="race-countdown-reset-btn"
-            className="min-h-[44px] px-3 py-1.5 rounded-xl border border-slate-200 bg-white/90 text-xs font-medium text-slate-700 hover:border-teal-300 hover:text-teal-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-700 inline-flex items-center gap-1.5 transition-colors whitespace-nowrap shrink-0"
-          >
-            <RotateCcw className="w-3.5 h-3.5" aria-hidden="true" />
-            {t.resetDateBtn}
-          </button>
-        )}
-      </div>
+          {showReset && (
+            <button
+              type="button"
+              onClick={onResetRaceMeta}
+              data-testid="race-countdown-reset-btn"
+              className="min-h-[40px] px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs font-medium text-slate-700 dark:text-slate-200 hover:border-teal-300 dark:hover:border-teal-600 hover:text-teal-800 dark:hover:text-teal-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-700 dark:focus-visible:ring-teal-400 inline-flex items-center gap-1.5 transition-colors whitespace-nowrap shrink-0"
+            >
+              <RotateCcw className="w-3.5 h-3.5" aria-hidden="true" />
+              {t.resetDateBtn}
+            </button>
+          )}
+        </div>
+      )}
     </div>
   );
 }

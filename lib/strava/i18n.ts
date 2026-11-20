@@ -14,6 +14,38 @@ export interface PaceCraftCopy {
     idButton: string;
     enButton: string;
   };
+  sidebar: {
+    ariaLabel: string;
+    openMenuAria: string;
+    closeMenuAria: string;
+    workspaceCaption: string;
+    items: {
+      overview: { label: string; hint: string };
+      training: { label: string; hint: string };
+      progress: { label: string; hint: string };
+      profile: { label: string; hint: string };
+      nutrition: { label: string; hint: string };
+      strava: { label: string; hint: string };
+    };
+  };
+  overview: {
+    greetingTitle: string;
+    greetingSubtitle: string;
+    quickPlanBtn: string;
+    quickLogBtn: string;
+    cards: {
+      trainingTitle: string;
+      trainingAction: string;
+      progressTitle: string;
+      progressAction: string;
+      profileTitle: string;
+      profileAction: string;
+      nutritionTitle: string;
+      nutritionAction: string;
+    };
+    stravaEmptyBanner: string;
+    stravaLoadSampleShort: string;
+  };
   hero: {
     eyebrow: string;
     title: string;
@@ -44,6 +76,8 @@ export interface PaceCraftCopy {
     nameInputPlaceholder: string;
     nameInputAria: string;
     resetDateBtn: string;
+    editEventBtn: string;
+    doneEditBtn: string;
   };
   bmi: {
     heading: string;
@@ -64,6 +98,18 @@ export interface PaceCraftCopy {
     maxIncreaseLabel: string;
     maxPrefix: string;
     extraEasyLabel: string;
+    hrSectionTitle: string;
+    hrSectionSubtitle: string;
+    restingHrLabel: string;
+    restingHrHint: string;
+    maxHrLabel: string;
+    maxHrPlaceholder: string;
+    maxHrAutoHint: (autoVal: number) => string;
+    vo2MaxLabel: string;
+    vo2MaxUnit: string;
+    avgObservedHrLabel: string;
+    noObservedHrYet: string;
+    hrZonesTitle: string;
   };
   training: {
     heading: string;
@@ -93,6 +139,11 @@ export interface PaceCraftCopy {
     raceWeekNoticeBody: (days: number, eventLabel: string) => string;
     raceDayNoticeTitle: string;
     raceDayNoticeBody: (eventLabel: string) => string;
+    strengthHeaderTag: (count: number) => string;
+    strengthBadgePrefix: string;
+    minuteShort: string;
+    viewScheduleTab: string;
+    viewZonesTab: string;
     zoneLabels: Record<TrainingZoneType, string>;
   };
   nutrition: {
@@ -147,6 +198,31 @@ export interface PaceCraftCopy {
     stravaSyncBtn: (count: number) => string;
     stravaSyncSuccess: (count: number) => string;
     stravaSyncedTag: string;
+    paceInputLabel: string;
+    paceInputPlaceholder: string;
+    hrInputLabel: string;
+    hrInputPlaceholder: string;
+    avgPaceLabel: string;
+    avgHrLabel: string;
+    shareBtn: string;
+    shareModal: {
+      title: string;
+      subtitle: string;
+      closeAria: string;
+      cardBadge: string;
+      streakMetric: string;
+      sessionsMetric: string;
+      distanceMetric: string;
+      paceMetric: string;
+      hrMetric: string;
+      vo2Metric: string;
+      copyTextBtn: string;
+      copiedTextBtn: string;
+      downloadPngBtn: string;
+      nativeShareBtn: string;
+      captionHeader: (eventLabel: string) => string;
+      captionFooter: string;
+    };
   };
   strava: {
     heading: string;
@@ -187,6 +263,8 @@ export interface PaceCraftCopy {
     areaChartActiveWeeks: (active: number) => string;
     areaChartTooltipSessions: string;
     areaChartSeriesName: string;
+    chartAreaTab: string;
+    chartBarTab: string;
     filterGroupAria: string;
     filters: {
       all: string;
@@ -252,6 +330,67 @@ export interface PaceCraftCopy {
     left: string;
     right: string;
   };
+  auth: {
+    loadingText: string;
+    loginEyebrow: string;
+    loginTitle: string;
+    loginSubtitle: string;
+    feature1Title: string;
+    feature1Desc: string;
+    feature2Title: string;
+    feature2Desc: string;
+    feature3Title: string;
+    feature3Desc: string;
+    cardTitle: string;
+    cardSubtitle: string;
+    googleBtn: string;
+    signingInBtn: string;
+    privacyNote: string;
+    popupClosedError: string;
+    popupBlockedError: string;
+    genericAuthError: string;
+    accountLabel: string;
+    signOutBtn: string;
+    signingOutBtn: string;
+    syncReadyLabel: string;
+  };
+  migration: {
+    title: string;
+    desc: (runsCount: number, progressCount: number) => string;
+    importBtn: string;
+    importingBtn: string;
+    startFreshBtn: string;
+    importedNotice: string;
+  };
+  privacyModal: {
+    linkLabel: string;
+    title: string;
+    subtitle: string;
+    closeAria: string;
+    items: Array<{ title: string; body: string }>;
+    closeBtn: string;
+  };
+  accountSecurity: {
+    heading: string;
+    subtitle: string;
+    privacyBtn: string;
+    deleteBtn: string;
+    modalTitle: string;
+    modalDesc: string;
+    confirmKeyword: string;
+    inputLabel: (keyword: string) => string;
+    inputPlaceholder: string;
+    cancelBtn: string;
+    confirmDeleteBtn: string;
+    deletingBtn: string;
+    errorNotice: string;
+  };
+  theme: {
+    darkShort: string;
+    lightShort: string;
+    ariaToDark: string;
+    ariaToLight: string;
+  };
 }
 
 export const UI_COPY: Record<AppLanguage, PaceCraftCopy> = {
@@ -266,8 +405,42 @@ export const UI_COPY: Record<AppLanguage, PaceCraftCopy> = {
       stravaHistory: 'Riwayat Strava',
       buildMenuCta: 'Susun Menu',
       languageGroupLabel: 'Pilih bahasa',
-      idButton: 'Indonesia',
-      enButton: 'English',
+      idButton: 'ID',
+      enButton: 'EN',
+    },
+    sidebar: {
+      ariaLabel: 'Menu fitur PaceCraft',
+      openMenuAria: 'Buka menu samping',
+      closeMenuAria: 'Tutup menu samping',
+      workspaceCaption: 'Perencana Lari Terpadu',
+      items: {
+        overview: { label: 'Ringkasan', hint: 'Target & snapshot mingguan' },
+        training: { label: 'Menu Latihan', hint: 'Jadwal, pace & strength' },
+        progress: { label: 'Progres Harian', hint: 'Check-in, pace, HR & share' },
+        profile: { label: 'Profil & HR', hint: 'BMI, zona HR & VO2max' },
+        nutrition: { label: 'Nutrisi', hint: 'Karbo, protein & hidrasi' },
+        strava: { label: 'Riwayat Strava', hint: 'Impor CSV/GPX & grafik' },
+      },
+    },
+    overview: {
+      greetingTitle: 'Fokus latihan hari ini, satu langkah demi satu langkah.',
+      greetingSubtitle:
+        'Pilih fitur di sidebar kiri untuk mengatur menu, mencatat progres harian, atau meninjau riwayat lari Anda.',
+      quickPlanBtn: 'Lihat Menu Latihan',
+      quickLogBtn: 'Catat Progres Hari Ini',
+      cards: {
+        trainingTitle: 'Rencana Mingguan',
+        trainingAction: 'Buka Menu',
+        progressTitle: 'Capaian Minggu Ini',
+        progressAction: 'Catat Sesi',
+        profileTitle: 'Kondisi Tubuh & VO2max',
+        profileAction: 'Atur Profil & HR',
+        nutritionTitle: 'Kebutuhan Nutrisi',
+        nutritionAction: 'Panduan Makan',
+      },
+      stravaEmptyBanner:
+        'Belum ada riwayat Strava? Muat data contoh untuk mengkalibrasi pace dasar Anda secara otomatis.',
+      stravaLoadSampleShort: 'Muat Contoh Strava',
     },
     hero: {
       eyebrow: 'Perencana Lari 5K · 10K · 21K · 42K',
@@ -302,6 +475,8 @@ export const UI_COPY: Record<AppLanguage, PaceCraftCopy> = {
       nameInputPlaceholder: 'Misal: Jakarta Marathon',
       nameInputAria: 'Masukkan nama event lari pilihan Anda',
       resetDateBtn: 'Reset',
+      editEventBtn: 'Atur Event',
+      doneEditBtn: 'Selesai',
     },
     bmi: {
       heading: 'Profil Tubuh & Pengaman BMI',
@@ -327,6 +502,19 @@ export const UI_COPY: Record<AppLanguage, PaceCraftCopy> = {
       maxIncreaseLabel: 'Batas Kenaikan/Minggu',
       maxPrefix: 'Maks',
       extraEasyLabel: 'Tambahan Porsi Easy',
+      hrSectionTitle: 'Pelacakan Detak Jantung (HR) & Estimasi VO2max',
+      hrSectionSubtitle:
+        'Pantau detak jantung istirahat, zona latihan Karvonen (Z1–Z5), dan perkiraan kebugaran aerobik VO2max Anda.',
+      restingHrLabel: 'HR Istirahat (bpm)',
+      restingHrHint: 'Ukur saat bangun tidur (35–110 bpm)',
+      maxHrLabel: 'HR Maksimal (bpm, opsional)',
+      maxHrPlaceholder: 'Otomatis',
+      maxHrAutoHint: (autoVal) => `Otomatis Tanaka: ${autoVal} bpm`,
+      vo2MaxLabel: 'Estimasi VO2max',
+      vo2MaxUnit: 'ml/kg/mnt',
+      avgObservedHrLabel: 'Rata-rata HR Terpantau',
+      noObservedHrYet: 'Catat HR di log harian atau impor Strava',
+      hrZonesTitle: '5 Zona Detak Jantung Latihan Anda',
     },
     training: {
       heading: 'Kalkulator Menu Latihan Ideal',
@@ -360,6 +548,12 @@ export const UI_COPY: Record<AppLanguage, PaceCraftCopy> = {
       raceDayNoticeTitle: 'Hari Lomba Telah Tiba!',
       raceDayNoticeBody: (eventLabel) =>
         `Hari ini jadwal perlombaan ${eventLabel}. Lakukan pemanasan santai, jaga ritme awal, dan utamakan pemulihan setelah finis.`,
+      strengthHeaderTag: (count) =>
+        count > 0 ? `· ${count}x Strength Training` : '',
+      strengthBadgePrefix: 'Strength Training',
+      minuteShort: 'mnt',
+      viewScheduleTab: 'Jadwal Mingguan',
+      viewZonesTab: 'Zona Pace & Progresi 4 Minggu',
       zoneLabels: {
         easy: 'Easy Pace',
         tempo: 'Tempo Pace',
@@ -436,6 +630,33 @@ export const UI_COPY: Record<AppLanguage, PaceCraftCopy> = {
       stravaSyncSuccess: (count) =>
         `${count} sesi Strava berhasil dicatat ke Progres Harian Anda.`,
       stravaSyncedTag: 'Sinkronisasi Strava',
+      paceInputLabel: 'Catatan Pace (mnt:dtk/km)',
+      paceInputPlaceholder: 'Misal: 06:15',
+      hrInputLabel: 'Detak Jantung (bpm, opsional)',
+      hrInputPlaceholder: 'Misal: 148',
+      avgPaceLabel: 'Rata-rata Pace',
+      avgHrLabel: 'Rata-rata HR',
+      shareBtn: 'Bagikan Progres',
+      shareModal: {
+        title: 'Bagikan Ringkasan Progres',
+        subtitle:
+          'Salin teks pencapaian atau unduh kartu gambar siap unggah ke media sosial Anda.',
+        closeAria: 'Tutup jendela bagikan progres',
+        cardBadge: 'Ringkasan Latihan Mingguan',
+        streakMetric: 'Streak Aktif',
+        sessionsMetric: 'Sesi Pekan Ini',
+        distanceMetric: 'Total Jarak',
+        paceMetric: 'Pace Rata-rata',
+        hrMetric: 'Rata-rata HR',
+        vo2Metric: 'Estimasi VO2max',
+        copyTextBtn: 'Salin Teks Ringkasan',
+        copiedTextBtn: 'Teks Tersalin!',
+        downloadPngBtn: 'Unduh Kartu PNG',
+        nativeShareBtn: 'Bagikan Langsung',
+        captionHeader: (eventLabel) =>
+          `Progres lari minggu ini menuju ${eventLabel} bersama PaceCraft:`,
+        captionFooter: 'Konsistensi kecil setiap hari membangun hasil besar di garis finis!',
+      },
     },
     strava: {
       heading: 'Ringkasan & Riwayat Aktivitas Strava',
@@ -482,6 +703,8 @@ export const UI_COPY: Record<AppLanguage, PaceCraftCopy> = {
       areaChartActiveWeeks: (active) => `${active}/8 minggu aktif`,
       areaChartTooltipSessions: 'sesi lari',
       areaChartSeriesName: 'Jarak Mingguan',
+      chartAreaTab: 'Grafik Area',
+      chartBarTab: 'Grafik Batang',
       filterGroupAria: 'Filter tipe lari',
       filters: {
         all: 'Semua',
@@ -559,6 +782,99 @@ export const UI_COPY: Record<AppLanguage, PaceCraftCopy> = {
       left: 'PaceCraft — Kalkulator Menu Latihan Lari & Sinkronisasi Strava',
       right: 'Seluruh impor CSV & GPX diproses langsung di browser Anda.',
     },
+    auth: {
+      loadingText: 'Menyiapkan akun PaceCraft Anda...',
+      loginEyebrow: 'Ruang Latihan Lari Pribadi',
+      loginTitle: 'Satu akun khusus untuk setiap langkah dan progres lari Anda.',
+      loginSubtitle:
+        'Masuk dengan Akun Google agar profil BMI, zona detak jantung, jadwal lomba, log harian, dan riwayat Strava tersimpan aman terpisah per pelari.',
+      feature1Title: 'Menu & Zona Pribadi',
+      feature1Desc:
+        'Target 5K hingga Marathon disesuaikan dengan BMI, VO2max, dan jadwal strength training Anda.',
+      feature2Title: 'Log Harian & Streak Tersimpan',
+      feature2Desc:
+        'Catatan pace, HR, dan progres mingguan tetap utuh saat berganti perangkat atau browser.',
+      feature3Title: 'Riwayat Strava Terisolasi',
+      feature3Desc:
+        'Impor CSV atau GPX Strava langsung terkalibrasi ke baseline lari pribadi Anda sendiri.',
+      cardTitle: 'Masuk ke PaceCraft',
+      cardSubtitle:
+        'Gunakan Akun Google Anda untuk membuka ruang kerja latihan pribadi.',
+      googleBtn: 'Masuk dengan Google',
+      signingInBtn: 'Menghubungkan Akun...',
+      privacyNote:
+        'Data latihan Anda terisolasi privat per akun dan tidak dapat diakses pengguna lain.',
+      popupClosedError:
+        'Jendela login Google ditutup sebelum selesai. Silakan coba lagi.',
+      popupBlockedError:
+        'Popup login diblokir oleh browser Anda. Izinkan popup untuk melanjutkan.',
+      genericAuthError:
+        'Gagal masuk dengan Akun Google. Periksa koneksi Anda lalu coba kembali.',
+      accountLabel: 'Akun Aktif',
+      signOutBtn: 'Keluar',
+      signingOutBtn: 'Keluar...',
+      syncReadyLabel: 'Tersinkron ke akun',
+    },
+    migration: {
+      title: 'Data latihan lama ditemukan di browser ini',
+      desc: (runsCount, progressCount) =>
+        `Kami menemukan profil latihan (${runsCount} riwayat lari, ${progressCount} log progres) dari sesi lokal sebelumnya. Ingin memindahkannya ke akun Google Anda?`,
+      importBtn: 'Impor Data Lokal ke Akun',
+      importingBtn: 'Mengimpor ke Akun...',
+      startFreshBtn: 'Mulai Profil Baru',
+      importedNotice:
+        'Data latihan lokal berhasil diimpor ke akun cloud Anda.',
+    },
+    privacyModal: {
+      linkLabel: 'Privasi & Keamanan Data',
+      title: 'Privasi & Keamanan Akun PaceCraft',
+      subtitle:
+        'Ringkasan bagaimana data latihan Anda disimpan dan dilindungi secara terpisah per akun.',
+      closeAria: 'Tutup informasi privasi',
+      items: [
+        {
+          title: '1. Isolasi Ketat per Akun Google',
+          body: 'Profil tubuh, target lomba, log progres harian, dan riwayat lari Anda hanya dapat dibaca dan diubah oleh UID akun Google Anda sendiri melalui aturan keamanan server Firestore.',
+        },
+        {
+          title: '2. Tanpa Penyimpanan Email di Database',
+          body: 'Alamat email Anda hanya dipakai oleh sesi autentikasi Google di browser untuk menampilkan identitas akun aktif dan tidak disalin ke dokumen database.',
+        },
+        {
+          title: '3. Pemrosesan Lokal CSV/GPX & Pembersihan Sesi',
+          body: 'File CSV maupun GPX Strava diurai langsung di browser sebelum ringkasan larinya disinkronkan ke akun Anda. Saat Anda menekan Keluar, sesi Strava OAuth browser ikut diputuskan.',
+        },
+        {
+          title: '4. Kendali Penuh Menghapus Data',
+          body: 'Anda dapat menghapus riwayat lari Strava atau menghapus seluruh data akun Anda dari cloud kapan saja melalui tab Profil & HR.',
+        },
+      ],
+      closeBtn: 'Mengerti',
+    },
+    accountSecurity: {
+      heading: 'Privasi & Manajemen Akun',
+      subtitle:
+        'Tinjau kebijakan privasi data Anda atau hapus seluruh data latihan yang tersimpan di akun cloud ini.',
+      privacyBtn: 'Lihat Kebijakan Privasi',
+      deleteBtn: 'Hapus Akun & Semua Data',
+      modalTitle: 'Hapus Semua Data Akun Secara Permanen?',
+      modalDesc:
+        'Tindakan ini akan menghapus profil tubuh, target lomba, seluruh catatan progres harian, serta semua riwayat Strava Anda dari database cloud secara permanen dan mengeluarkan Anda dari sesi ini.',
+      confirmKeyword: 'HAPUS',
+      inputLabel: (keyword) => `Ketik ${keyword} untuk mengonfirmasi penghapusan:`,
+      inputPlaceholder: 'HAPUS',
+      cancelBtn: 'Batal',
+      confirmDeleteBtn: 'Hapus Permanen',
+      deletingBtn: 'Menghapus Data...',
+      errorNotice:
+        'Gagal menghapus sebagian data akun. Pastikan koneksi stabil lalu coba lagi.',
+    },
+    theme: {
+      darkShort: 'Malam',
+      lightShort: 'Terang',
+      ariaToDark: 'Aktifkan mode gelap untuk kenyamanan malam hari',
+      ariaToLight: 'Kembali ke mode terang',
+    },
   },
   en: {
     nav: {
@@ -571,8 +887,42 @@ export const UI_COPY: Record<AppLanguage, PaceCraftCopy> = {
       stravaHistory: 'Strava History',
       buildMenuCta: 'Build Plan',
       languageGroupLabel: 'Select language',
-      idButton: 'Indonesia',
-      enButton: 'English',
+      idButton: 'ID',
+      enButton: 'EN',
+    },
+    sidebar: {
+      ariaLabel: 'PaceCraft feature menu',
+      openMenuAria: 'Open sidebar menu',
+      closeMenuAria: 'Close sidebar menu',
+      workspaceCaption: 'Guided Running Planner',
+      items: {
+        overview: { label: 'Overview', hint: 'Race target & weekly snapshot' },
+        training: { label: 'Training Plan', hint: 'Schedule, pace & strength' },
+        progress: { label: 'Daily Progress', hint: 'Log pace, HR & share' },
+        profile: { label: 'Profile & HR', hint: 'BMI, HR zones & VO2max' },
+        nutrition: { label: 'Nutrition', hint: 'Carbs, protein & hydration' },
+        strava: { label: 'Strava History', hint: 'CSV/GPX import & charts' },
+      },
+    },
+    overview: {
+      greetingTitle: 'Stay focused on today, one comfortable kilometer at a time.',
+      greetingSubtitle:
+        'Pick any tool from the sidebar to customize your plan, log today’s run, or review your Strava history.',
+      quickPlanBtn: 'Open Training Plan',
+      quickLogBtn: "Log Today's Progress",
+      cards: {
+        trainingTitle: 'Weekly Plan',
+        trainingAction: 'Open Plan',
+        progressTitle: 'Weekly Progress',
+        progressAction: 'Log Session',
+        profileTitle: 'Body & VO2max',
+        profileAction: 'Edit Profile & HR',
+        nutritionTitle: 'Daily Fueling',
+        nutritionAction: 'View Guide',
+      },
+      stravaEmptyBanner:
+        'No Strava runs imported yet? Load sample runs to auto-calibrate your baseline pace.',
+      stravaLoadSampleShort: 'Load Sample Runs',
     },
     hero: {
       eyebrow: '5K · 10K · 21K · 42K Running Planner',
@@ -607,6 +957,8 @@ export const UI_COPY: Record<AppLanguage, PaceCraftCopy> = {
       nameInputPlaceholder: 'E.g., Jakarta Marathon',
       nameInputAria: 'Enter your target race event name',
       resetDateBtn: 'Reset',
+      editEventBtn: 'Edit Event',
+      doneEditBtn: 'Done',
     },
     bmi: {
       heading: 'Body Profile & BMI Safeguards',
@@ -632,6 +984,19 @@ export const UI_COPY: Record<AppLanguage, PaceCraftCopy> = {
       maxIncreaseLabel: 'Max Weekly Increase',
       maxPrefix: 'Max',
       extraEasyLabel: 'Extra Easy Share',
+      hrSectionTitle: 'Heart Rate Tracking & VO2max Estimate',
+      hrSectionSubtitle:
+        'Track your resting heart rate, Karvonen training zones (Z1–Z5), and estimated VO2max aerobic fitness.',
+      restingHrLabel: 'Resting HR (bpm)',
+      restingHrHint: 'Measure upon waking (35–110 bpm)',
+      maxHrLabel: 'Max HR (bpm, optional)',
+      maxHrPlaceholder: 'Auto',
+      maxHrAutoHint: (autoVal) => `Auto Tanaka: ${autoVal} bpm`,
+      vo2MaxLabel: 'Estimated VO2max',
+      vo2MaxUnit: 'ml/kg/min',
+      avgObservedHrLabel: 'Avg Observed HR',
+      noObservedHrYet: 'Log HR in daily check-ins or import Strava',
+      hrZonesTitle: 'Your 5 Heart Rate Training Zones',
     },
     training: {
       heading: 'Ideal Training Plan Calculator',
@@ -665,6 +1030,12 @@ export const UI_COPY: Record<AppLanguage, PaceCraftCopy> = {
       raceDayNoticeTitle: 'Race Day Has Arrived!',
       raceDayNoticeBody: (eventLabel) =>
         `Today is ${eventLabel}. Keep your warm-up relaxed, start at a calm rhythm, and prioritize post-race recovery.`,
+      strengthHeaderTag: (count) =>
+        count > 0 ? `· ${count}x Strength Training` : '',
+      strengthBadgePrefix: 'Strength Training',
+      minuteShort: 'min',
+      viewScheduleTab: 'Weekly Schedule',
+      viewZonesTab: 'Pace Zones & 4-Week Plan',
       zoneLabels: {
         easy: 'Easy Pace',
         tempo: 'Tempo Pace',
@@ -742,6 +1113,33 @@ export const UI_COPY: Record<AppLanguage, PaceCraftCopy> = {
       stravaSyncSuccess: (count) =>
         `${count} Strava runs have been logged into your Daily Progress.`,
       stravaSyncedTag: 'Strava Sync',
+      paceInputLabel: 'Pace Log (min:sec/km)',
+      paceInputPlaceholder: 'E.g., 06:15',
+      hrInputLabel: 'Heart Rate (bpm, optional)',
+      hrInputPlaceholder: 'E.g., 148',
+      avgPaceLabel: 'Avg Pace',
+      avgHrLabel: 'Avg HR',
+      shareBtn: 'Share Progress',
+      shareModal: {
+        title: 'Share Progress Summary',
+        subtitle:
+          'Copy your training caption or download a clean summary card for social media.',
+        closeAria: 'Close share progress modal',
+        cardBadge: 'Weekly Training Summary',
+        streakMetric: 'Active Streak',
+        sessionsMetric: 'This Week',
+        distanceMetric: 'Total Distance',
+        paceMetric: 'Avg Pace',
+        hrMetric: 'Avg Heart Rate',
+        vo2Metric: 'Est. VO2max',
+        copyTextBtn: 'Copy Summary Text',
+        copiedTextBtn: 'Copied!',
+        downloadPngBtn: 'Download PNG Card',
+        nativeShareBtn: 'Share Now',
+        captionHeader: (eventLabel) =>
+          `This week's running progress toward ${eventLabel} with PaceCraft:`,
+        captionFooter: 'Small daily consistency builds big race-day confidence!',
+      },
     },
     strava: {
       heading: 'Strava Summary & Run History',
@@ -788,6 +1186,8 @@ export const UI_COPY: Record<AppLanguage, PaceCraftCopy> = {
       areaChartActiveWeeks: (active) => `${active}/8 active weeks`,
       areaChartTooltipSessions: 'runs',
       areaChartSeriesName: 'Weekly Distance',
+      chartAreaTab: 'Area Chart',
+      chartBarTab: 'Bar Chart',
       filterGroupAria: 'Filter run type',
       filters: {
         all: 'All',
@@ -864,6 +1264,99 @@ export const UI_COPY: Record<AppLanguage, PaceCraftCopy> = {
     footer: {
       left: 'PaceCraft — Running Training Planner & Strava Sync',
       right: 'All CSV & GPX imports are processed locally in your browser.',
+    },
+    auth: {
+      loadingText: 'Preparing your PaceCraft workspace...',
+      loginEyebrow: 'Personal Running Workspace',
+      loginTitle: 'Your own private account for every mile, zone, and progress log.',
+      loginSubtitle:
+        'Sign in with Google so your BMI profile, heart-rate zones, race countdown, daily check-ins, and Strava history stay cleanly separated per runner.',
+      feature1Title: 'Tailored Plans & Zones',
+      feature1Desc:
+        '5K to Marathon schedules calibrated to your BMI, VO2max, and strength days.',
+      feature2Title: 'Synced Daily Streaks',
+      feature2Desc:
+        'Daily pace, HR logs, and weekly volume progress stay intact across devices.',
+      feature3Title: 'Isolated Strava History',
+      feature3Desc:
+        'Your CSV or GPX Strava uploads calibrate only your personal training baseline.',
+      cardTitle: 'Sign in to PaceCraft',
+      cardSubtitle:
+        'Continue with your Google Account to open your private running planner.',
+      googleBtn: 'Sign in with Google',
+      signingInBtn: 'Connecting Account...',
+      privacyNote:
+        'Your training data is strictly private to your signed-in account.',
+      popupClosedError:
+        'The Google sign-in window was closed before completing. Please try again.',
+      popupBlockedError:
+        'Sign-in popup was blocked by your browser. Please allow popups and retry.',
+      genericAuthError:
+        'Unable to sign in with Google. Please check your connection and try again.',
+      accountLabel: 'Signed-in Account',
+      signOutBtn: 'Sign Out',
+      signingOutBtn: 'Signing Out...',
+      syncReadyLabel: 'Synced to account',
+    },
+    migration: {
+      title: 'Previous local training data found in this browser',
+      desc: (runsCount, progressCount) =>
+        `We detected saved local data (${runsCount} Strava runs, ${progressCount} progress logs) on this device. Would you like to move it into your Google account?`,
+      importBtn: 'Import Local Data to Account',
+      importingBtn: 'Importing to Account...',
+      startFreshBtn: 'Start Fresh',
+      importedNotice:
+        'Local training data has been imported into your cloud account.',
+    },
+    privacyModal: {
+      linkLabel: 'Privacy & Data Security',
+      title: 'PaceCraft Privacy & Account Security',
+      subtitle:
+        'How your training data is stored, validated, and isolated per runner account.',
+      closeAria: 'Close privacy policy',
+      items: [
+        {
+          title: '1. Strict Per-Account Isolation',
+          body: 'Your body profile, race targets, daily progress logs, and running history can only be read and modified by your verified Google account UID enforced by Firestore rules.',
+        },
+        {
+          title: '2. Zero Email PII in Database',
+          body: 'Your email address stays inside your active Google Auth session in the browser and is never persisted into Firestore documents.',
+        },
+        {
+          title: '3. Local CSV/GPX Parsing & Clean Sign-Out',
+          body: 'Strava CSV and GPX exports are parsed locally in your browser before syncing run summaries to your account. Signing out automatically clears any browser Strava OAuth session.',
+        },
+        {
+          title: '4. Full Data Deletion Control',
+          body: 'You can clear your Strava history or permanently delete your entire cloud account data at any time from the Profile & HR tab.',
+        },
+      ],
+      closeBtn: 'Got It',
+    },
+    accountSecurity: {
+      heading: 'Privacy & Account Management',
+      subtitle:
+        'Review how your runner data is protected or permanently erase all cloud data tied to this account.',
+      privacyBtn: 'View Privacy Policy',
+      deleteBtn: 'Delete Account & All Data',
+      modalTitle: 'Permanently Delete All Account Data?',
+      modalDesc:
+        'This will permanently erase your body profile, race countdown, all daily progress logs, and all Strava running history from cloud storage and sign you out.',
+      confirmKeyword: 'DELETE',
+      inputLabel: (keyword) => `Type ${keyword} to confirm permanent deletion:`,
+      inputPlaceholder: 'DELETE',
+      cancelBtn: 'Cancel',
+      confirmDeleteBtn: 'Delete Permanently',
+      deletingBtn: 'Deleting Data...',
+      errorNotice:
+        'Could not complete account deletion. Please check your connection and try again.',
+    },
+    theme: {
+      darkShort: 'Dark',
+      lightShort: 'Light',
+      ariaToDark: 'Switch to dark mode for comfortable night viewing',
+      ariaToLight: 'Switch back to light mode',
     },
   },
 };

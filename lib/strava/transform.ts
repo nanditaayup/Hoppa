@@ -11,6 +11,8 @@ import {
   BmiResult,
   DailyProgressEntry,
   DailySessionPlan,
+  HeartRateVo2Summary,
+  HeartRateZone,
   KpiSummary,
   NutritionRecommendation,
   NutritionRecoveryTiming,
@@ -107,6 +109,25 @@ export function formatPace(secPerKm: number): string {
   const mins = Math.floor(totalSec / 60);
   const secs = totalSec % 60;
   return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}/km`;
+}
+
+/**
+ * Parses pace strings like "06:15", "6:15", or "5.45" into seconds per km.
+ * Returns null when blank or invalid.
+ */
+export function parsePaceInputToSecPerKm(raw: string): number | null {
+  const cleaned = raw.trim();
+  if (!cleaned) return null;
+  const match = /^(\d{1,2})[:.](\d{1,2})$/.exec(cleaned);
+  if (!match) return null;
+  const mins = Number(match[1]);
+  const secs = Number(match[2]);
+  if (!Number.isFinite(mins) || !Number.isFinite(secs) || secs >= 60) {
+    return null;
+  }
+  const total = mins * 60 + secs;
+  if (total < 150 || total > 1200) return null;
+  return total;
 }
 
 export function formatDuration(totalSeconds: number): string {
@@ -641,7 +662,92 @@ export function generateTrainingPlan(
 
   const minSessionKm = taperMultiplier < 1 ? 1.5 : 2.0;
 
+  const strengthScheduleMap: Record<
+    number,
+    { title: string; durationMin: number; exercises: string }
+  > = {};
+
+  if (!isRaceWeekOrDay) {
+    if (days === 3 || days === 4) {
+      strengthScheduleMap[0] =
+        lang === 'en'
+          ? {
+              title: 'Lower-Body Strength & Core',
+              durationMin: 30,
+              exercises: 'Squats, reverse lunges, calf raises & plank',
+            }
+          : {
+              title: 'Kekuatan Kaki & Core',
+              durationMin: 30,
+              exercises: 'Squat, lunges, calf raises & plank',
+            };
+      strengthScheduleMap[3] =
+        lang === 'en'
+          ? {
+              title: 'Single-Leg Stability & Mobility',
+              durationMin: 25,
+              exercises: 'Glute bridge, step-ups, clamshell & hip mobility',
+            }
+          : {
+              title: 'Stabilitas Satu Kaki & Mobilitas',
+              durationMin: 25,
+              exercises: 'Glute bridge, step-up, clamshell & mobilitas pinggul',
+            };
+    } else if (days === 5) {
+      strengthScheduleMap[0] =
+        lang === 'en'
+          ? {
+              title: 'Post-Run Core & Hip Stability',
+              durationMin: 20,
+              exercises: 'Plank, side plank, dead bug & clamshell',
+            }
+          : {
+              title: 'Core & Stabilitas Pinggul (Usai Lari)',
+              durationMin: 20,
+              exercises: 'Plank, side plank, dead bug & clamshell',
+            };
+      strengthScheduleMap[2] =
+        lang === 'en'
+          ? {
+              title: 'Runner Lower-Body Strength',
+              durationMin: 30,
+              exercises: 'Goblet squat, single-leg RDL & eccentric calf raises',
+            }
+          : {
+              title: 'Kekuatan Otot Lari (Hari Non-Lari)',
+              durationMin: 30,
+              exercises: 'Goblet squat, single-leg RDL & calf raises',
+            };
+    } else {
+      strengthScheduleMap[1] =
+        lang === 'en'
+          ? {
+              title: 'Post-Easy Core & Glute Activation',
+              durationMin: 20,
+              exercises: 'Glute bridge, plank & bird-dog',
+            }
+          : {
+              title: 'Core & Aktivasi Glute (Usai Easy Run)',
+              durationMin: 20,
+              exercises: 'Glute bridge, plank & bird-dog',
+            };
+      strengthScheduleMap[3] =
+        lang === 'en'
+          ? {
+              title: 'Light Leg Strength & Tendon Care',
+              durationMin: 25,
+              exercises: 'Step-ups, wall sit & heel drops',
+            }
+          : {
+              title: 'Kekuatan Kaki Ringan & Tendon',
+              durationMin: 25,
+              exercises: 'Step-up, wall sit & heel drops',
+            };
+    }
+  }
+
   const weeklySchedule: DailySessionPlan[] = dayNames.map((dayName, dayIndex) => {
+    const strengthSession = strengthScheduleMap[dayIndex] ?? null;
     const activePos = activeIndices.indexOf(dayIndex);
     if (activePos === -1) {
       return {
@@ -650,14 +756,19 @@ export function generateTrainingPlan(
         zone: 'rest',
         title:
           lang === 'en'
-            ? 'Rest & Active Recovery'
-            : 'Hari Istirahat & Pemulihan',
+            ? strengthSession
+              ? 'Cross-Train: Strength & Mobility'
+              : 'Rest & Active Recovery'
+            : strengthSession
+              ? 'Cross-Train: Strength & Mobilitas'
+              : 'Hari Istirahat & Pemulihan',
         targetDistanceKm: 0,
         paceRange: lang === 'en' ? 'Rest' : 'Istirahat',
         guidance:
           lang === 'en'
             ? 'Prioritize quality sleep, steady hydration, and 10 minutes of gentle mobility.'
             : 'Fokus tidur cukup, hidrasi, dan peregangan ringan 10 menit.',
+        strengthSession,
       };
     }
 
@@ -698,6 +809,7 @@ export function generateTrainingPlan(
               : lowImpactOnly
                 ? 'Kombinasikan lari pelan 3 menit dan jalan cepat 1 menit secara konsisten.'
                 : 'Jaga detak jantung stabil di zona aerobik nyaman sejak kilometer pertama.',
+        strengthSession,
       };
     }
 
@@ -716,6 +828,7 @@ export function generateTrainingPlan(
           lang === 'en'
             ? 'Warm up 1.5 km easy, hold Tempo pace for the core block, then cool down 1 km.'
             : 'Pemanasan 1,5 km Easy, masuk pace Tempo di inti sesi, lalu pendinginan 1 km.',
+        strengthSession,
       };
     }
 
@@ -732,6 +845,7 @@ export function generateTrainingPlan(
           lang === 'en'
             ? 'Run 5–6×400m fast repeats with 90 seconds of easy walk/jog recovery.'
             : 'Lakukan 5–6×400m cepat dengan jeda jalan/jogging 90 detik di antaranya.',
+        strengthSession,
       };
     }
 
@@ -765,6 +879,7 @@ export function generateTrainingPlan(
             : bmiResult.extraEasyRatioPct >= 15
               ? 'Sisipkan jeda jalan cepat 1 menit tiap 5 menit lari bila napas terasa berat.'
               : 'Lari santai tanpa mengejar waktu untuk membangun kapiler dan efisiensi langkah.',
+      strengthSession,
     };
   });
 
@@ -802,6 +917,8 @@ export function computeDailyProgressStats(
   plannedRunSessionsCount: number;
   totalLoggedKm: number;
   completionPct: number;
+  avgPaceSecPerKm: number | null;
+  avgHeartRateBpm: number | null;
 } {
   const uniqueDates = Array.from(new Set(entries.map((e) => e.dateKey))).sort(
     (a, b) => (a > b ? -1 : 1)
@@ -853,12 +970,42 @@ export function computeDailyProgressStats(
         )
       : 0;
 
+  const paceEntries = entries.filter(
+    (e) =>
+      typeof e.paceSecPerKm === 'number' &&
+      Number.isFinite(e.paceSecPerKm) &&
+      e.paceSecPerKm > 0
+  );
+  const avgPaceSecPerKm =
+    paceEntries.length > 0
+      ? Math.round(
+          paceEntries.reduce((sum, e) => sum + (e.paceSecPerKm ?? 0), 0) /
+            paceEntries.length
+        )
+      : null;
+
+  const hrEntries = entries.filter(
+    (e) =>
+      typeof e.avgHeartRateBpm === 'number' &&
+      Number.isFinite(e.avgHeartRateBpm) &&
+      e.avgHeartRateBpm > 0
+  );
+  const avgHeartRateBpm =
+    hrEntries.length > 0
+      ? Math.round(
+          hrEntries.reduce((sum, e) => sum + (e.avgHeartRateBpm ?? 0), 0) /
+            hrEntries.length
+        )
+      : null;
+
   return {
     currentStreakDays: streak,
     completedThisWeekCount,
     plannedRunSessionsCount,
     totalLoggedKm,
     completionPct,
+    avgPaceSecPerKm,
+    avgHeartRateBpm,
   };
 }
 
@@ -1193,6 +1340,8 @@ export function findStravaProgressMatches(
       dateKey: string;
       dayIndex: number;
       meters: number;
+      movingSeconds: number;
+      hrValues: number[];
       startDate: string;
     }
   >();
@@ -1209,10 +1358,19 @@ export function findStravaProgressMatches(
         dateKey: item.dateKey,
         dayIndex: item.dayIndex,
         meters: item.run.distanceMeters,
+        movingSeconds: item.run.movingTimeSeconds,
+        hrValues:
+          item.run.averageHeartRate && item.run.averageHeartRate > 0
+            ? [item.run.averageHeartRate]
+            : [],
         startDate: item.run.startDate,
       });
     } else {
       existing.meters += item.run.distanceMeters;
+      existing.movingSeconds += item.run.movingTimeSeconds;
+      if (item.run.averageHeartRate && item.run.averageHeartRate > 0) {
+        existing.hrValues.push(item.run.averageHeartRate);
+      }
       if (!existing.names.includes(item.run.name)) {
         existing.names.push(item.run.name);
       }
@@ -1225,6 +1383,17 @@ export function findStravaProgressMatches(
     if (!planDay) continue;
     const actualKm = Math.round((grouped.meters / 1000) * 10) / 10;
     if (actualKm <= 0) continue;
+    const paceSecPerKm =
+      grouped.movingSeconds > 0
+        ? computePaceSecPerKm(grouped.meters, grouped.movingSeconds)
+        : null;
+    const avgHeartRateBpm =
+      grouped.hrValues.length > 0
+        ? Math.round(
+            grouped.hrValues.reduce((s, v) => s + v, 0) /
+              grouped.hrValues.length
+          )
+        : null;
 
     candidates.push({
       runId: grouped.runId,
@@ -1234,6 +1403,8 @@ export function findStravaProgressMatches(
       dayName: planDay.dayName,
       actualKm,
       plannedKm: planDay.targetDistanceKm,
+      paceSecPerKm,
+      avgHeartRateBpm,
       zone: planDay.zone,
       sessionTitle: planDay.title,
       startDate: grouped.startDate,
@@ -1254,8 +1425,179 @@ export function buildProgressEntriesFromMatches(
     zone: c.zone,
     plannedKm: c.plannedKm,
     actualKm: c.actualKm,
+    paceSecPerKm: c.paceSecPerKm ?? null,
+    avgHeartRateBpm: c.avgHeartRateBpm ?? null,
     comfortRating: 4,
     note: `${syncTag}: ${c.runName}`,
     completedAt: c.startDate,
   }));
 }
+
+/**
+ * Computes Karvonen Heart Rate Zones (Z1-Z5), observed average HR,
+ * and estimated VO2max (Uth HRmax/HRrest ratio blended with submaximal Strava speed-HR efficiency).
+ */
+export function computeHeartRateAndVo2Max(
+  profile: RunnerProfile,
+  runs: RunActivity[],
+  dailyEntries: DailyProgressEntry[],
+  lang: AppLanguage = 'id'
+): HeartRateVo2Summary {
+  const safeAge = clampNumber(profile.age, 14, 85);
+  const restingHrBpm = Math.round(
+    clampNumber(profile.restingHrBpm ?? 60, 35, 110)
+  );
+  const autoMaxHr = Math.round(208 - 0.7 * safeAge);
+  const isCustomMaxHr = Boolean(
+    profile.maxHrBpm &&
+      Number.isFinite(profile.maxHrBpm) &&
+      profile.maxHrBpm >= 120 &&
+      profile.maxHrBpm <= 230
+  );
+  const maxHrBpm = isCustomMaxHr ? Math.round(profile.maxHrBpm!) : autoMaxHr;
+  const hrr = Math.max(40, maxHrBpm - restingHrBpm);
+
+  const zones: HeartRateZone[] = [
+    {
+      zone: 'Z1',
+      label: lang === 'en' ? 'Recovery' : 'Pemulihan',
+      pctRange: '50–60%',
+      minBpm: Math.round(restingHrBpm + hrr * 0.5),
+      maxBpm: Math.round(restingHrBpm + hrr * 0.6),
+      purpose:
+        lang === 'en'
+          ? 'Warm-up & light shakeout'
+          : 'Pemanasan & pemulihan aktif',
+    },
+    {
+      zone: 'Z2',
+      label: lang === 'en' ? 'Aerobic / Easy' : 'Aerobik / Easy',
+      pctRange: '60–70%',
+      minBpm: Math.round(restingHrBpm + hrr * 0.6),
+      maxBpm: Math.round(restingHrBpm + hrr * 0.7),
+      purpose:
+        lang === 'en'
+          ? 'Fat burn & endurance base'
+          : 'Bangun fondasi daya tahan',
+    },
+    {
+      zone: 'Z3',
+      label: lang === 'en' ? 'Tempo' : 'Tempo',
+      pctRange: '70–80%',
+      minBpm: Math.round(restingHrBpm + hrr * 0.7),
+      maxBpm: Math.round(restingHrBpm + hrr * 0.8),
+      purpose:
+        lang === 'en'
+          ? 'Steady aerobic rhythm'
+          : 'Ritme stabil daya tahan',
+    },
+    {
+      zone: 'Z4',
+      label: lang === 'en' ? 'Threshold' : 'Ambang Laktat',
+      pctRange: '80–90%',
+      minBpm: Math.round(restingHrBpm + hrr * 0.8),
+      maxBpm: Math.round(restingHrBpm + hrr * 0.9),
+      purpose:
+        lang === 'en'
+          ? 'Raise race-pace stamina'
+          : 'Tingkatkan ketahanan pace lomba',
+    },
+    {
+      zone: 'Z5',
+      label: lang === 'en' ? 'VO2max' : 'VO2max',
+      pctRange: '90–100%',
+      minBpm: Math.round(restingHrBpm + hrr * 0.9),
+      maxBpm: maxHrBpm,
+      purpose:
+        lang === 'en'
+          ? 'Peak oxygen capacity & speed'
+          : 'Kapasitas oksigen & kecepatan puncak',
+    },
+  ];
+
+  // Collect observed HR from daily logs + Strava runs
+  const dailyHrs = dailyEntries
+    .map((e) => e.avgHeartRateBpm)
+    .filter((v): v is number => typeof v === 'number' && v > 35 && v <= 230);
+  const stravaHrs = runs
+    .map((r) => r.averageHeartRate)
+    .filter((v): v is number => typeof v === 'number' && v > 35 && v <= 230);
+  const allHrs = [...dailyHrs, ...stravaHrs];
+  const avgLoggedHrBpm =
+    allHrs.length > 0
+      ? Math.round(allHrs.reduce((s, v) => s + v, 0) / allHrs.length)
+      : null;
+
+  // Base Uth-Sorensen VO2max from HRmax/HRrest ratio
+  const uthVo2 = clampNumber(15.3 * (maxHrBpm / restingHrBpm), 22, 85);
+
+  const stravaWithSpeedAndHr = runs.filter(
+    (r) =>
+      r.averageSpeedMps > 1.2 &&
+      r.averageHeartRate !== null &&
+      r.averageHeartRate > restingHrBpm + 20
+  );
+
+  let vo2Max = Math.round(uthVo2 * 10) / 10;
+  let vo2MaxSource: HeartRateVo2Summary['vo2MaxSource'] = 'resting_ratio';
+
+  if (stravaWithSpeedAndHr.length > 0) {
+    const sampleVo2s = stravaWithSpeedAndHr.map((r) => {
+      const speedMPerMin = r.averageSpeedMps * 60;
+      const runningVo2Cost = 0.2 * speedMPerMin + 3.5;
+      const pctHrr = clampNumber(
+        ((r.averageHeartRate ?? restingHrBpm) - restingHrBpm) / hrr,
+        0.45,
+        0.98
+      );
+      return clampNumber(runningVo2Cost / pctHrr, 22, 85);
+    });
+    const avgRunVo2 =
+      sampleVo2s.reduce((s, v) => s + v, 0) / sampleVo2s.length;
+    vo2Max = Math.round((0.55 * avgRunVo2 + 0.45 * uthVo2) * 10) / 10;
+    vo2MaxSource = 'strava_hr_blended';
+  }
+
+  const vo2MaxCategory =
+    lang === 'en'
+      ? vo2Max >= 56
+        ? 'Superior'
+        : vo2Max >= 48
+          ? 'Excellent'
+          : vo2Max >= 41
+            ? 'Good'
+            : vo2Max >= 34
+              ? 'Fair'
+              : 'Needs Base Building'
+      : vo2Max >= 56
+        ? 'Elit'
+        : vo2Max >= 48
+          ? 'Sangat Baik'
+          : vo2Max >= 41
+            ? 'Baik'
+            : vo2Max >= 34
+              ? 'Cukup'
+              : 'Perlu Bangun Dasar';
+
+  const vo2MaxNote =
+    lang === 'en'
+      ? vo2MaxSource === 'strava_hr_blended'
+        ? `Calibrated from ${stravaWithSpeedAndHr.length} Strava HR runs and your resting/max HR reserve.`
+        : 'Estimated from your Resting HR & Max HR ratio (Uth formula). Import Strava HR runs for pace-calibrated accuracy.'
+      : vo2MaxSource === 'strava_hr_blended'
+        ? `Dikalibrasi dari ${stravaWithSpeedAndHr.length} sesi Strava ber-HR serta rasio HR istirahat & maksimal Anda.`
+        : 'Diestimasi dari rasio HR Istirahat & HR Maksimal Anda (rumus Uth). Impor riwayat Strava ber-HR untuk kalibrasi tambahan.';
+
+  return {
+    restingHrBpm,
+    maxHrBpm,
+    isCustomMaxHr,
+    avgLoggedHrBpm,
+    vo2Max,
+    vo2MaxCategory,
+    vo2MaxNote,
+    vo2MaxSource,
+    zones,
+  };
+}
+

@@ -1,5 +1,15 @@
 export type AppLanguage = 'id' | 'en';
 
+export type AppTheme = 'light' | 'dark';
+
+export type WorkspaceTabId =
+  | 'overview'
+  | 'training'
+  | 'progress'
+  | 'profile'
+  | 'nutrition'
+  | 'strava';
+
 export type RunActivityType = 'Run' | 'TrailRun' | 'VirtualRun';
 
 export type DataSource = 'sample' | 'csv' | 'gpx' | 'strava_oauth';
@@ -53,6 +63,8 @@ export interface RunnerProfile {
   injuryStatus: InjuryStatus;
   targetRace: RaceDistanceKey;
   trainingDaysPerWeek: 3 | 4 | 5 | 6;
+  restingHrBpm?: number;
+  maxHrBpm?: number | null;
 }
 
 export interface PaceZoneRange {
@@ -72,6 +84,11 @@ export interface DailySessionPlan {
   targetDistanceKm: number;
   paceRange: string;
   guidance: string;
+  strengthSession?: {
+    title: string;
+    durationMin: number;
+    exercises: string;
+  } | null;
 }
 
 export interface WeeklyVolumeProgression {
@@ -120,6 +137,8 @@ export interface DailyProgressEntry {
   zone: TrainingZoneType;
   plannedKm: number;
   actualKm: number;
+  paceSecPerKm?: number | null;
+  avgHeartRateBpm?: number | null;
   comfortRating: 1 | 2 | 3 | 4 | 5;
   note: string;
   completedAt: string;
@@ -184,7 +203,31 @@ export interface StravaSyncCandidate {
   dayName: string;
   actualKm: number;
   plannedKm: number;
+  paceSecPerKm?: number | null;
+  avgHeartRateBpm?: number | null;
   zone: TrainingZoneType;
   sessionTitle: string;
   startDate: string;
 }
+
+export interface HeartRateZone {
+  zone: 'Z1' | 'Z2' | 'Z3' | 'Z4' | 'Z5';
+  label: string;
+  pctRange: string;
+  minBpm: number;
+  maxBpm: number;
+  purpose: string;
+}
+
+export interface HeartRateVo2Summary {
+  restingHrBpm: number;
+  maxHrBpm: number;
+  isCustomMaxHr: boolean;
+  avgLoggedHrBpm: number | null;
+  vo2Max: number;
+  vo2MaxCategory: string;
+  vo2MaxNote: string;
+  vo2MaxSource: 'resting_ratio' | 'strava_hr_blended';
+  zones: HeartRateZone[];
+}
+

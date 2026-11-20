@@ -46,26 +46,26 @@ export default function ActivityDetailModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-[2px] p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 dark:bg-black/70 backdrop-blur-[2px] p-4"
       onClick={onClose}
     >
       <div
         role="dialog"
         aria-modal="true"
         aria-labelledby="activity-detail-title"
-        className="w-full max-w-xl bg-white border border-slate-200 rounded-2xl p-6 shadow-xl space-y-5 max-h-[90vh] overflow-y-auto"
+        className="w-full max-w-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-xl space-y-5 max-h-[90vh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-start justify-between gap-4">
           <div className="space-y-1">
-            <p className="text-xs text-slate-500">
+            <p className="text-xs text-slate-500 dark:text-slate-400">
               {getRunTypeLabel(activity.type, lang)}
               <span aria-hidden="true"> · </span>
               {formatIndonesianDate(activity.startDate, true, lang)}
             </p>
             <h2
               id="activity-detail-title"
-              className="text-xl font-bold text-slate-900 leading-snug"
+              className="text-xl font-bold text-slate-900 dark:text-slate-100 leading-snug"
             >
               {activity.name}
             </h2>
@@ -75,7 +75,7 @@ export default function ActivityDetailModal({
             type="button"
             onClick={onClose}
             aria-label={t.closeAria}
-            className="min-h-[44px] min-w-[44px] inline-flex items-center justify-center rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-700"
+            className="min-h-[44px] min-w-[44px] inline-flex items-center justify-center rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-700 dark:focus-visible:ring-teal-400"
           >
             <X className="w-5 h-5" />
           </button>
@@ -90,17 +90,17 @@ export default function ActivityDetailModal({
             lang={lang}
           />
           {activity.summaryPolyline && (
-            <div className="flex items-center justify-between text-xs text-slate-600 px-1">
+            <div className="flex items-center justify-between text-xs text-slate-600 dark:text-slate-300 px-1">
               <span className="inline-flex items-center gap-2">
                 <span
-                  className="w-2.5 h-2.5 rounded-full bg-green-600 inline-block"
+                  className="w-2.5 h-2.5 rounded-full bg-green-600 dark:bg-emerald-400 inline-block"
                   aria-hidden="true"
                 />
                 {t.startPoint}
               </span>
               <span className="inline-flex items-center gap-2">
                 <span
-                  className="w-2.5 h-2.5 rounded-full bg-slate-900 inline-block"
+                  className="w-2.5 h-2.5 rounded-full bg-slate-900 dark:bg-slate-100 inline-block"
                   aria-hidden="true"
                 />
                 {t.endPoint}
@@ -109,50 +109,50 @@ export default function ActivityDetailModal({
           )}
         </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 pt-3 border-t border-slate-100">
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 pt-3 border-t border-slate-100 dark:border-slate-800">
           <div>
-            <p className="text-xs text-slate-500">{t.distance}</p>
-            <p className="text-lg font-bold text-slate-900 font-mono tabular-nums mt-0.5">
+            <p className="text-xs text-slate-500 dark:text-slate-400">{t.distance}</p>
+            <p className="text-lg font-bold text-slate-900 dark:text-slate-100 font-mono tabular-nums mt-0.5">
               {formatDistanceKm(activity.distanceMeters, lang)}
             </p>
           </div>
           <div>
-            <p className="text-xs text-slate-500">{t.avgPace}</p>
-            <p className="text-lg font-bold text-teal-700 font-mono tabular-nums mt-0.5">
+            <p className="text-xs text-slate-500 dark:text-slate-400">{t.avgPace}</p>
+            <p className="text-lg font-bold text-teal-700 dark:text-teal-400 font-mono tabular-nums mt-0.5">
               {formatPace(paceSec)}
             </p>
           </div>
           <div>
-            <p className="text-xs text-slate-500">{t.movingTime}</p>
-            <p className="text-lg font-bold text-slate-900 font-mono tabular-nums mt-0.5">
+            <p className="text-xs text-slate-500 dark:text-slate-400">{t.movingTime}</p>
+            <p className="text-lg font-bold text-slate-900 dark:text-slate-100 font-mono tabular-nums mt-0.5">
               {formatDuration(activity.movingTimeSeconds)}
             </p>
           </div>
 
           <div>
-            <p className="text-xs text-slate-500 inline-flex items-center gap-1">
-              <Clock className="w-3.5 h-3.5 text-slate-400" aria-hidden="true" />
+            <p className="text-xs text-slate-500 dark:text-slate-400 inline-flex items-center gap-1">
+              <Clock className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500" aria-hidden="true" />
               {t.elapsedTime}
             </p>
-            <p className="text-base font-semibold text-slate-800 font-mono tabular-nums mt-0.5">
+            <p className="text-base font-semibold text-slate-800 dark:text-slate-200 font-mono tabular-nums mt-0.5">
               {formatDuration(activity.elapsedTimeSeconds)}
             </p>
           </div>
           <div>
-            <p className="text-xs text-slate-500 inline-flex items-center gap-1">
-              <Gauge className="w-3.5 h-3.5 text-slate-400" aria-hidden="true" />
+            <p className="text-xs text-slate-500 dark:text-slate-400 inline-flex items-center gap-1">
+              <Gauge className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500" aria-hidden="true" />
               {t.maxSpeed}
             </p>
-            <p className="text-base font-semibold text-slate-800 font-mono tabular-nums mt-0.5">
+            <p className="text-base font-semibold text-slate-800 dark:text-slate-200 font-mono tabular-nums mt-0.5">
               {formatSpeedKmh(activity.maxSpeedMps, lang)}
             </p>
           </div>
           <div>
-            <p className="text-xs text-slate-500 inline-flex items-center gap-1">
-              <Mountain className="w-3.5 h-3.5 text-slate-400" aria-hidden="true" />
+            <p className="text-xs text-slate-500 dark:text-slate-400 inline-flex items-center gap-1">
+              <Mountain className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500" aria-hidden="true" />
               {t.elevationHr}
             </p>
-            <p className="text-base font-semibold text-slate-800 font-mono tabular-nums mt-0.5">
+            <p className="text-base font-semibold text-slate-800 dark:text-slate-200 font-mono tabular-nums mt-0.5">
               +{activity.elevationGainMeters} m
               <span aria-hidden="true"> · </span>
               {activity.averageHeartRate ? `${activity.averageHeartRate} bpm` : '-'}
@@ -160,15 +160,15 @@ export default function ActivityDetailModal({
           </div>
         </div>
 
-        <div className="pt-3 border-t border-slate-100 flex items-center justify-between gap-3">
-          <span className="inline-flex items-center gap-1.5 text-xs text-slate-500">
+        <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between gap-3">
+          <span className="inline-flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400">
             <Heart className="w-3.5 h-3.5 text-rose-400" aria-hidden="true" />
             {t.dataSourcePrefix} {t.sources[activity.source]}
           </span>
           <button
             type="button"
             onClick={onClose}
-            className="min-h-[44px] px-5 py-2 rounded-xl bg-teal-700 text-white text-sm font-medium hover:bg-teal-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-700"
+            className="min-h-[44px] px-5 py-2 rounded-xl bg-teal-700 dark:bg-teal-600 text-white text-sm font-medium hover:bg-teal-800 dark:hover:bg-teal-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-700 dark:focus-visible:ring-teal-400"
           >
             {t.closeBtn}
           </button>
