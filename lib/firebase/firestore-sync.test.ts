@@ -4,6 +4,7 @@ import {
   buildDailyProgressPayload,
   buildProgressDocId,
   buildRunActivityPayload,
+  buildUserWorkspaceUpdatePayload,
   DEFAULT_RUNNER_PROFILE,
   sanitizeFirestoreId,
   sanitizeRaceDateString,
@@ -32,6 +33,10 @@ test('sanitizeRunnerProfile clamps extreme inputs within Firestore rule bounds',
     injuryStatus: 'invalid' as never,
     targetRace: '100K' as never,
     trainingDaysPerWeek: 9 as never,
+    customTargetPaceSecPerKm: 40,
+    shoeName: 'S'.repeat(120),
+    shoeCurrentKm: -15,
+    shoeMaxKm: 9000,
   });
 
   assert.equal(sanitized.weightKg, 30);
@@ -43,6 +48,10 @@ test('sanitizeRunnerProfile clamps extreme inputs within Firestore rule bounds',
   assert.equal(sanitized.injuryStatus, 'none');
   assert.equal(sanitized.targetRace, '10K');
   assert.equal(sanitized.trainingDaysPerWeek, 4);
+  assert.equal(sanitized.customTargetPaceSecPerKm, 120);
+  assert.equal(sanitized.shoeName?.length, 60);
+  assert.equal(sanitized.shoeCurrentKm, 0);
+  assert.equal(sanitized.shoeMaxKm, 2000);
 });
 
 test('sanitizeRaceDateString and sanitizeRaceNameString enforce schema regex and max length', () => {
@@ -101,4 +110,30 @@ test('buildRunActivityPayload enforces runId parity, GPS spike clamps, and polyl
   assert.equal(payload.averageHeartRate, null);
   assert.equal(payload.maxSpeedMps, 30);
   assert.equal(String(payload.summaryPolyline).length, 50000);
+});
+
+test('buildUserWorkspaceUpdatePayload backfills legacy null customRaceDate and preserves concurrent edits', () => {
+  const payload = buildUserWorkspaceUpdatePayload(
+    {
+      language: 'id',
+      customRaceDate: null,
+      customRaceName: '  Borobudur Half Marathon  ',
+      migratedFromLocal: false,
+      profile: {
+        ...DEFAULT_RUNNER_PROFILE,
+        weightKg: 66,
+      },
+    },
+    {
+      language: 'en',
+      customRaceDate: null,
+    }
+  );
+
+  assert.equal(payload.language, 'en');
+  assert.equal(payload.customRaceDate, '');
+  assert.equal(payload.customRaceName, 'Borobudur Half Marathon');
+  assert.equal(payload.profile.weightKg, 66);
+  assert.equal(payload.profile.shoeName, 'Sepatu Lari Utama');
+  assert.equal(payload.profile.shoeMaxKm, 700);
 });

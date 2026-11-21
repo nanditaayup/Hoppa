@@ -39,6 +39,7 @@ import {
 } from '@/lib/strava/transform';
 import {
   AppLanguage,
+  BackupPayloadV1,
   DailyProgressEntry,
   DailySessionPlan,
   RunActivity,
@@ -46,6 +47,7 @@ import {
   WorkspaceTabId,
 } from '@/lib/strava/types';
 import { UI_COPY } from '@/lib/strava/i18n';
+import { buildBackupPayload } from '@/lib/strava/backup';
 import {
   clearAllCloudRuns,
   clearLegacyLocalData,
@@ -57,6 +59,7 @@ import {
   LegacyLocalSnapshot,
   markLocalMigrationHandled,
   readLegacyLocalSnapshot,
+  restoreCloudBackup,
   saveCloudDailyProgress,
   saveCloudDailyProgressBatch,
   saveCloudRunsBatch,
@@ -81,6 +84,7 @@ interface PaceCraftAppProps {
   user: User;
   initialPreferredLang: AppLanguage;
   authBusy: boolean;
+  isOwnerAdmin?: boolean;
   onSignOut: () => Promise<void>;
   onFinalizeAccountDeletion: () => Promise<void>;
 }
@@ -120,6 +124,7 @@ export default function PaceCraftApp({
   user,
   initialPreferredLang,
   authBusy,
+  isOwnerAdmin = false,
   onSignOut,
   onFinalizeAccountDeletion,
 }: PaceCraftAppProps) {
@@ -212,6 +217,13 @@ export default function PaceCraftApp({
             !hasPendingWrites &&
             Date.now() - lastWorkspaceWriteAtRef.current > 900
           ) {
+            latestWorkspaceRef.current = {
+              language: cloudState.language,
+              customRaceDate: cloudState.customRaceDate,
+              customRaceName: cloudState.customRaceName,
+              migratedFromLocal: cloudState.migratedFromLocal,
+              profile: cloudState.profile,
+            };
             setProfile(cloudState.profile);
             setLangState(cloudState.language);
             setCustomRaceDateState(cloudState.customRaceDate);
@@ -662,6 +674,43 @@ export default function PaceCraftApp({
     if (openProgressTab) {
       handleSelectTab('progress');
     }
+  };
+
+  const handleExportBackup = () => {
+    const payload = buildBackupPayload({
+      language: safeLang,
+      customRaceDate,
+      customRaceName,
+      profile,
+      progressEntries,
+      runs,
+    });
+    const json = JSON.stringify(payload, null, 2);
+    const blob = new Blob([json], { type: 'application/json;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `pacecraft-backup-${todayInfo.dateKey}.json`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
+  const handleRestoreBackup = async (backup: BackupPayloadV1) => {
+    setProfile(backup.profile);
+    setLangState(backup.language);
+    setCustomRaceDateState(backup.customRaceDate);
+    setCustomRaceNameState(backup.customRaceName);
+    if (backup.progressEntries.length > 0) {
+      setProgressEntries(backup.progressEntries);
+    }
+    if (backup.runs.length > 0) {
+      setRuns(backup.runs);
+    }
+    const exists = workspaceExistsRef.current;
+    workspaceExistsRef.current = true;
+    await restoreCloudBackup(user.uid, exists, backup);
   };
 
   const sidebarItems: Array<{
@@ -1317,7 +1366,16 @@ export default function PaceCraftApp({
                 bmiResult={bmiResult}
                 hrVo2={hrVo2Summary}
                 lang={safeLang}
+                latestRunKm={
+                  runs[0]
+                    ? Math.round((runs[0].distanceMeters / 1000) * 10) / 10
+                    : 0
+                }
+                isOwnerAdmin={isOwnerAdmin}
+                firebaseUser={user}
                 onChangeProfile={setProfileAndSync}
+                onExportBackup={handleExportBackup}
+                onRestoreBackup={handleRestoreBackup}
                 onOpenPrivacyModal={() => setIsPrivacyOpen(true)}
                 onOpenDeleteAccountModal={() => {
                   setDeleteAccountError(null);
@@ -1354,6 +1412,17 @@ export default function PaceCraftApp({
             )}
           </motion.div>
         </main>
+
+        {/* Health Disclaimer & App Footer */}
+        <footer
+          data-testid="health-disclaimer-footer"
+          className="max-w-5xl w-full mx-auto px-4 sm:px-8 py-5 border-t border-slate-200/80 dark:border-slate-800 text-xs text-slate-500 dark:text-slate-400 flex flex-col sm:flex-row sm:items-center justify-between gap-2"
+        >
+          <span>{t.disclaimer.text}</span>
+          <span className="text-[11px] text-slate-400 dark:text-slate-500 shrink-0">
+            {t.footer.right}
+          </span>
+        </footer>
       </div>
 
       {/* Modals */}

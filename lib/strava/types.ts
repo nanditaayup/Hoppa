@@ -65,6 +65,10 @@ export interface RunnerProfile {
   trainingDaysPerWeek: 3 | 4 | 5 | 6;
   restingHrBpm?: number;
   maxHrBpm?: number | null;
+  customTargetPaceSecPerKm?: number | null;
+  shoeName?: string;
+  shoeCurrentKm?: number;
+  shoeMaxKm?: number;
 }
 
 export interface PaceZoneRange {
@@ -105,6 +109,7 @@ export interface TrainingPlanSummary {
   baselineFourWeekAvgKm: number;
   baselinePaceSecPerKm: number;
   isUsingDefaultBaseline: boolean;
+  isUsingCustomTargetPace: boolean;
   bmiResult: BmiResult;
   paceZones: PaceZoneRange[];
   weeklySchedule: DailySessionPlan[];
@@ -231,3 +236,33 @@ export interface HeartRateVo2Summary {
   zones: HeartRateZone[];
 }
 
+export interface BackupPayloadV1 {
+  app: 'PaceCraft';
+  version: 1;
+  exportedAt: string;
+  language: AppLanguage;
+  customRaceDate: string | null;
+  customRaceName: string;
+  profile: RunnerProfile;
+  progressEntries: DailyProgressEntry[];
+  runs: RunActivity[];
+}
+
+export type AccessGrantStatus = 'pending' | 'active' | 'revoked';
+export type AccessPlanType = 'lifetime' | 'pro';
+export type AccessProvider =
+  | 'stripe'
+  | 'midtrans'
+  | 'license'
+  | 'admin_manual'
+  | 'owner';
+
+export interface AccessGrantRecord {
+  uid: string;
+  status: AccessGrantStatus;
+  planType: AccessPlanType;
+  provider: AccessProvider;
+  orderRef: string;
+  note: string;
+  updatedAtIso?: string;
+}

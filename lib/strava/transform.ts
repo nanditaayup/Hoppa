@@ -497,9 +497,17 @@ export function generateTrainingPlan(
     ? Math.max(6, kpi.fourWeekAvgKm)
     : race.defaultBaselineWeeklyKm;
 
-  const baselinePaceSecPerKm = hasRunHistory
-    ? kpi.thirtyDayAvgPaceSecPerKm
-    : 365; // default 06:05/km
+  const hasCustomTargetPace =
+    typeof profile.customTargetPaceSecPerKm === 'number' &&
+    Number.isFinite(profile.customTargetPaceSecPerKm) &&
+    profile.customTargetPaceSecPerKm >= 120 &&
+    profile.customTargetPaceSecPerKm <= 1800;
+
+  const baselinePaceSecPerKm = hasCustomTargetPace
+    ? Math.round(profile.customTargetPaceSecPerKm!)
+    : hasRunHistory
+      ? kpi.thirtyDayAvgPaceSecPerKm
+      : 365; // default 06:05/km
 
   const paceZones = computePaceZones(baselinePaceSecPerKm, lang);
   const easyZone = paceZones.find((z) => z.key === 'easy')!;
@@ -896,7 +904,8 @@ export function generateTrainingPlan(
     targetDistanceKm: race.distanceKm,
     baselineFourWeekAvgKm: Math.round(baselineFourWeekAvgKm * 10) / 10,
     baselinePaceSecPerKm,
-    isUsingDefaultBaseline: !hasRunHistory,
+    isUsingDefaultBaseline: !hasRunHistory && !hasCustomTargetPace,
+    isUsingCustomTargetPace: hasCustomTargetPace,
     bmiResult,
     paceZones,
     weeklySchedule,

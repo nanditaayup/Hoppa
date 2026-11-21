@@ -185,6 +185,9 @@ export default function ImportActivitiesPanel({
             <span className="font-mono text-xs">.gpx</span>{' '}
             {t.importSourceDescAfterGpx}
           </p>
+          <p className="text-xs text-teal-800 dark:text-teal-300 leading-relaxed">
+            {t.offlineFriendlyTip}
+          </p>
         </div>
 
         <div className="flex flex-wrap items-center gap-2.5 shrink-0">

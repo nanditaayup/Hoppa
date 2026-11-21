@@ -34,6 +34,7 @@ test('firestore.rules enforces Eight Pillars: isValidId, hasAll/hasOnly, request
   assert.match(rulesText, /isValidUserWorkspace\(incoming\(\),\s*userId\)/);
   assert.match(rulesText, /isValidDailyProgress\(incoming\(\),\s*userId\)/);
   assert.match(rulesText, /isValidRunActivity\(incoming\(\),\s*userId\)/);
+  assert.match(rulesText, /isValidAccessGrant\(incoming\(\),\s*userId\)/);
   assert.match(rulesText, /incoming\(\)\.createdAt\s*==\s*request\.time/);
   assert.match(rulesText, /incoming\(\)\.updatedAt\s*==\s*request\.time/);
   assert.match(rulesText, /incoming\(\)\.createdAt\s*==\s*existing\(\)\.createdAt/);
@@ -44,21 +45,47 @@ test('firestore.rules enforces Eight Pillars: isValidId, hasAll/hasOnly, request
 test('firebase-blueprint.json and firestore.rules cover every collection and forbid PII email fields', () => {
   const firestorePaths = Object.keys(blueprint.firestore ?? {});
   assert.deepEqual(firestorePaths.sort(), [
+    '/accessGrants/{userId}',
     '/users/{userId}',
     '/users/{userId}/progress/{progressId}',
     '/users/{userId}/runs/{runId}',
   ]);
 
-  // Ensure email PII is not part of UserWorkspace schema or rules
+  // Ensure email PII is not part of UserWorkspace or AccessGrant schema
   const userProps = Object.keys(blueprint.entities.UserWorkspace.properties ?? {});
   assert.equal(userProps.includes('email'), false);
   assert.equal(userProps.includes('phone'), false);
+  const grantProps = Object.keys(blueprint.entities.AccessGrant.properties ?? {});
+  assert.equal(grantProps.includes('email'), false);
 
   // Blueprint maxLength bounds match firestore.rules size guards verbatim
   assert.equal(blueprint.entities.UserWorkspace.properties.customRaceName.maxLength, 80);
   assert.match(rulesText, /data\.customRaceName\.size\(\)\s*<=\s*80/);
+  assert.equal(blueprint.entities.RunnerProfile.properties.shoeName.maxLength, 60);
+  assert.match(rulesText, /p\.shoeName\.size\(\)\s*<=\s*60/);
+  assert.equal(blueprint.entities.AccessGrant.properties.orderRef.maxLength, 80);
+  assert.match(rulesText, /data\.orderRef\.size\(\)\s*<=\s*80/);
   assert.equal(blueprint.entities.DailyProgress.properties.note.maxLength, 280);
   assert.match(rulesText, /data\.note\.size\(\)\s*<=\s*280/);
   assert.equal(blueprint.entities.RunActivity.properties.summaryPolyline.maxLength, 50000);
   assert.match(rulesText, /data\.summaryPolyline\.size\(\)\s*<=\s*50000/);
+});
+
+test('accessGrants rules block buyer self-activation and allow only pending requests or verified Admin writes', () => {
+  assert.match(rulesText, /function\s+isAdmin\(\)/);
+  assert.match(rulesText, /request\.auth\.token\.email\s*==\s*'nanditayup@gmail\.com'/);
+  assert.match(rulesText, /incoming\(\)\.status\s*==\s*'pending'/);
+  assert.match(rulesText, /incoming\(\)\.provider\s*==\s*'admin_manual'/);
+  assert.match(rulesText, /existing\(\)\.status\s*!=\s*'active'/);
+});
+
+test('firestore.rules allows partial updates on legacy user docs missing newer optional fields while blocking shadow keys', () => {
+  // Core RunnerProfile fields are in hasAll; newer optional fields are guarded with "in p" + hasOnly allowlist
+  assert.match(rulesText, /!\('shoeName' in p\)/);
+  assert.match(rulesText, /!\('shoeCurrentKm' in p\)/);
+  assert.match(rulesText, /!\('shoeMaxKm' in p\)/);
+  assert.match(rulesText, /!\('customTargetPaceSecPerKm' in p\)/);
+  assert.match(rulesText, /!\('restingHrBpm' in p\)/);
+  assert.match(rulesText, /!\('customRaceDate' in data\)/);
+  assert.match(rulesText, /p\.keys\(\)\.hasOnly\(/);
 });

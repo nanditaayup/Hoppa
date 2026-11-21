@@ -21,7 +21,12 @@ import {
   RUNNER_PROFILE_STORAGE_KEY,
 } from '@/lib/strava/config';
 import {
+  AccessGrantRecord,
+  AccessGrantStatus,
+  AccessPlanType,
+  AccessProvider,
   AppLanguage,
+  BackupPayloadV1,
   DailyProgressEntry,
   InjuryStatus,
   RaceDistanceKey,
@@ -31,6 +36,8 @@ import {
   TrainingZoneType,
 } from '@/lib/strava/types';
 import { db, handleFirestoreError, OperationType } from './client';
+
+export const OWNER_ADMIN_EMAIL = 'nanditayup@gmail.com';
 
 export const DEFAULT_RUNNER_PROFILE: RunnerProfile = {
   weightKg: 68,
@@ -43,6 +50,10 @@ export const DEFAULT_RUNNER_PROFILE: RunnerProfile = {
   trainingDaysPerWeek: 4,
   restingHrBpm: 60,
   maxHrBpm: null,
+  customTargetPaceSecPerKm: null,
+  shoeName: 'Sepatu Lari Utama',
+  shoeCurrentKm: 0,
+  shoeMaxKm: 700,
 };
 
 export interface CloudWorkspaceState {
@@ -106,6 +117,24 @@ export function sanitizeRunnerProfile(profile: RunnerProfile): RunnerProfile {
       ? Math.round(clampNumber(profile.maxHrBpm, 120, 230, 188))
       : null;
 
+  const customTargetPaceSecPerKm =
+    typeof profile.customTargetPaceSecPerKm === 'number' &&
+    Number.isFinite(profile.customTargetPaceSecPerKm)
+      ? Math.round(clampNumber(profile.customTargetPaceSecPerKm, 120, 1800, 360))
+      : null;
+
+  const shoeName =
+    typeof profile.shoeName === 'string' && profile.shoeName.trim().length > 0
+      ? profile.shoeName.trim().slice(0, 60)
+      : 'Sepatu Lari Utama';
+
+  const shoeCurrentKm =
+    Math.round(clampNumber(profile.shoeCurrentKm ?? 0, 0, 10000, 0) * 10) / 10;
+
+  const shoeMaxKm = Math.round(
+    clampNumber(profile.shoeMaxKm ?? 700, 200, 2000, 700)
+  );
+
   return {
     weightKg: Math.round(clampNumber(profile.weightKg, 30, 200, 68) * 10) / 10,
     heightCm: Math.round(clampNumber(profile.heightCm, 120, 230, 170) * 10) / 10,
@@ -119,6 +148,10 @@ export function sanitizeRunnerProfile(profile: RunnerProfile): RunnerProfile {
       clampNumber(profile.restingHrBpm ?? 60, 35, 110, 60)
     ),
     maxHrBpm,
+    customTargetPaceSecPerKm,
+    shoeName,
+    shoeCurrentKm,
+    shoeMaxKm,
   };
 }
 
@@ -393,62 +426,78 @@ export function subscribeToUserRuns(
   );
 }
 
+export interface WorkspaceMutableState {
+  language: AppLanguage;
+  customRaceDate: string | null;
+  customRaceName: string;
+  migratedFromLocal: boolean;
+  profile: RunnerProfile;
+}
+
+export function buildUserWorkspaceUpdatePayload(
+  fullState: WorkspaceMutableState,
+  changedFields?: Partial<WorkspaceMutableState>
+): {
+  language: AppLanguage;
+  customRaceDate: string;
+  customRaceName: string;
+  migratedFromLocal: boolean;
+  profile: RunnerProfile;
+} {
+  const language: AppLanguage =
+    (changedFields?.language ?? fullState.language) === 'en' ? 'en' : 'id';
+  const rawRaceDate =
+    changedFields && 'customRaceDate' in changedFields
+      ? (changedFields.customRaceDate ?? null)
+      : fullState.customRaceDate;
+  const rawRaceName =
+    changedFields && 'customRaceName' in changedFields
+      ? changedFields.customRaceName
+      : fullState.customRaceName;
+  const migratedFromLocal = Boolean(
+    changedFields && 'migratedFromLocal' in changedFields
+      ? changedFields.migratedFromLocal
+      : fullState.migratedFromLocal
+  );
+  const profile = sanitizeRunnerProfile(
+    changedFields?.profile ?? fullState.profile
+  );
+
+  return {
+    language,
+    customRaceDate: sanitizeRaceDateString(rawRaceDate),
+    customRaceName: sanitizeRaceNameString(rawRaceName),
+    migratedFromLocal,
+    profile,
+  };
+}
+
 export async function createOrUpdateUserWorkspace(
   uid: string,
   workspaceExists: boolean,
-  fullState: {
-    language: AppLanguage;
-    customRaceDate: string | null;
-    customRaceName: string;
-    migratedFromLocal: boolean;
-    profile: RunnerProfile;
-  },
-  changedFields?: Partial<{
-    language: AppLanguage;
-    customRaceDate: string | null;
-    customRaceName: string;
-    migratedFromLocal: boolean;
-    profile: RunnerProfile;
-  }>
+  fullState: WorkspaceMutableState,
+  changedFields?: Partial<WorkspaceMutableState>
 ): Promise<void> {
   const path = `users/${uid}`;
   const docRef = doc(db, 'users', uid);
 
   try {
     if (!workspaceExists) {
+      const normalized = buildUserWorkspaceUpdatePayload(fullState, changedFields);
       await setDoc(docRef, {
         uid: sanitizeFirestoreId(uid),
-        language: fullState.language === 'en' ? 'en' : 'id',
-        customRaceDate: sanitizeRaceDateString(fullState.customRaceDate),
-        customRaceName: sanitizeRaceNameString(fullState.customRaceName),
-        migratedFromLocal: Boolean(fullState.migratedFromLocal),
-        profile: sanitizeRunnerProfile(fullState.profile),
+        ...normalized,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       });
       return;
     }
 
-    const patch: Record<string, unknown> = {
+    const patch = buildUserWorkspaceUpdatePayload(fullState, changedFields);
+    await updateDoc(docRef, {
+      ...patch,
       updatedAt: serverTimestamp(),
-    };
-    if (changedFields?.language !== undefined) {
-      patch.language = changedFields.language === 'en' ? 'en' : 'id';
-    }
-    if (changedFields?.customRaceDate !== undefined) {
-      patch.customRaceDate = sanitizeRaceDateString(changedFields.customRaceDate);
-    }
-    if (changedFields?.customRaceName !== undefined) {
-      patch.customRaceName = sanitizeRaceNameString(changedFields.customRaceName);
-    }
-    if (changedFields?.migratedFromLocal !== undefined) {
-      patch.migratedFromLocal = Boolean(changedFields.migratedFromLocal);
-    }
-    if (changedFields?.profile !== undefined) {
-      patch.profile = sanitizeRunnerProfile(changedFields.profile);
-    }
-
-    await updateDoc(docRef, patch);
+    });
   } catch (error) {
     handleFirestoreError(
       error,
@@ -670,5 +719,224 @@ export function readLegacyLocalSnapshot(): LegacyLocalSnapshot {
     };
   } catch {
     return empty;
+  }
+}
+
+export async function restoreCloudBackup(
+  uid: string,
+  workspaceExists: boolean,
+  backup: BackupPayloadV1
+): Promise<void> {
+  await createOrUpdateUserWorkspace(
+    uid,
+    workspaceExists,
+    {
+      language: backup.language,
+      customRaceDate: backup.customRaceDate,
+      customRaceName: backup.customRaceName,
+      migratedFromLocal: true,
+      profile: backup.profile,
+    },
+    {
+      language: backup.language,
+      customRaceDate: backup.customRaceDate,
+      customRaceName: backup.customRaceName,
+      migratedFromLocal: true,
+      profile: backup.profile,
+    }
+  );
+
+  if (backup.progressEntries.length > 0) {
+    await saveCloudDailyProgressBatch(uid, backup.progressEntries);
+  }
+  if (backup.runs.length > 0) {
+    await saveCloudRunsBatch(uid, backup.runs);
+  }
+}
+
+export function sanitizeOrderRef(raw: string): string {
+  return (raw || '').trim().slice(0, 80);
+}
+
+export function sanitizeGrantNote(raw: string): string {
+  return (raw || '').trim().slice(0, 160);
+}
+
+function mapDocToAccessGrant(
+  fallbackUid: string,
+  d: Record<string, unknown>
+): AccessGrantRecord {
+  const validStatus: AccessGrantStatus[] = ['pending', 'active', 'revoked'];
+  const validPlan: AccessPlanType[] = ['lifetime', 'pro'];
+  const validProvider: AccessProvider[] = [
+    'stripe',
+    'midtrans',
+    'license',
+    'admin_manual',
+    'owner',
+  ];
+
+  const rawUpdatedAt = d.updatedAt as { toDate?: () => Date } | undefined;
+  const updatedAtIso =
+    rawUpdatedAt && typeof rawUpdatedAt.toDate === 'function'
+      ? rawUpdatedAt.toDate().toISOString()
+      : undefined;
+
+  return {
+    uid: String(d.uid ?? fallbackUid),
+    status: validStatus.includes(d.status as AccessGrantStatus)
+      ? (d.status as AccessGrantStatus)
+      : 'pending',
+    planType: validPlan.includes(d.planType as AccessPlanType)
+      ? (d.planType as AccessPlanType)
+      : 'lifetime',
+    provider: validProvider.includes(d.provider as AccessProvider)
+      ? (d.provider as AccessProvider)
+      : 'admin_manual',
+    orderRef: String(d.orderRef ?? ''),
+    note: String(d.note ?? ''),
+    updatedAtIso,
+  };
+}
+
+export function subscribeToAccessGrant(
+  uid: string,
+  onData: (grant: AccessGrantRecord | null) => void
+): Unsubscribe {
+  const path = `accessGrants/${uid}`;
+  const docRef = doc(db, 'accessGrants', uid);
+
+  return onSnapshot(
+    docRef,
+    (snapshot) => {
+      if (!snapshot.exists()) {
+        onData(null);
+        return;
+      }
+      onData(mapDocToAccessGrant(uid, snapshot.data() as Record<string, unknown>));
+    },
+    (error) => {
+      handleFirestoreError(error, OperationType.GET, path);
+    }
+  );
+}
+
+export async function requestManualAccessConfirmation(
+  uid: string,
+  grantExists: boolean,
+  planType: AccessPlanType,
+  orderRef: string,
+  note: string
+): Promise<void> {
+  const safeUid = sanitizeFirestoreId(uid);
+  const path = `accessGrants/${safeUid}`;
+  const docRef = doc(db, 'accessGrants', safeUid);
+  const safeOrderRef = sanitizeOrderRef(orderRef) || `ORDER-${Date.now()}`;
+  const safeNote = sanitizeGrantNote(note);
+
+  try {
+    if (!grantExists) {
+      await setDoc(docRef, {
+        uid: safeUid,
+        status: 'pending',
+        planType: planType === 'pro' ? 'pro' : 'lifetime',
+        provider: 'admin_manual',
+        orderRef: safeOrderRef,
+        note: safeNote,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      });
+      return;
+    }
+
+    await updateDoc(docRef, {
+      status: 'pending',
+      provider: 'admin_manual',
+      orderRef: safeOrderRef,
+      note: safeNote,
+      updatedAt: serverTimestamp(),
+    });
+  } catch (error) {
+    handleFirestoreError(
+      error,
+      grantExists ? OperationType.UPDATE : OperationType.CREATE,
+      path
+    );
+  }
+}
+
+export function subscribeToAdminAccessGrants(
+  onData: (grants: AccessGrantRecord[]) => void
+): Unsubscribe {
+  const path = 'accessGrants';
+  const q = query(
+    collection(db, 'accessGrants'),
+    where('status', 'in', ['pending', 'active', 'revoked'])
+  );
+
+  return onSnapshot(
+    q,
+    (snapshot) => {
+      const grants = snapshot.docs.map((docSnap) =>
+        mapDocToAccessGrant(
+          docSnap.id,
+          docSnap.data() as Record<string, unknown>
+        )
+      );
+      grants.sort((a, b) => {
+        if (a.status === 'pending' && b.status !== 'pending') return -1;
+        if (a.status !== 'pending' && b.status === 'pending') return 1;
+        return (b.updatedAtIso ?? '').localeCompare(a.updatedAtIso ?? '');
+      });
+      onData(grants);
+    },
+    (error) => {
+      handleFirestoreError(error, OperationType.LIST, path);
+    }
+  );
+}
+
+export async function adminUpsertAccessGrant(
+  targetUid: string,
+  grantExists: boolean,
+  status: AccessGrantStatus,
+  planType: AccessPlanType,
+  provider: AccessProvider,
+  orderRef: string,
+  note: string
+): Promise<void> {
+  const safeUid = sanitizeFirestoreId(targetUid);
+  const path = `accessGrants/${safeUid}`;
+  const docRef = doc(db, 'accessGrants', safeUid);
+
+  try {
+    if (!grantExists) {
+      await setDoc(docRef, {
+        uid: safeUid,
+        status,
+        planType,
+        provider,
+        orderRef: sanitizeOrderRef(orderRef) || `ADMIN-${Date.now()}`,
+        note: sanitizeGrantNote(note),
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      });
+      return;
+    }
+
+    await updateDoc(docRef, {
+      status,
+      planType,
+      provider,
+      orderRef: sanitizeOrderRef(orderRef),
+      note: sanitizeGrantNote(note),
+      updatedAt: serverTimestamp(),
+    });
+  } catch (error) {
+    handleFirestoreError(
+      error,
+      grantExists ? OperationType.UPDATE : OperationType.CREATE,
+      path
+    );
   }
 }

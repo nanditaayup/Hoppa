@@ -32,19 +32,20 @@ service cloud.firestore {
       return isVerifiedUser() && request.auth.uid == userId;
     }
 
+    function isAdmin() {
+      return isVerifiedUser() && request.auth.token.email == 'nanditayup@gmail.com';
+    }
+
     function isValidRunnerProfile(p) {
       return p is map
         && p.keys().hasAll([
           'weightKg',
           'heightCm',
-          'directBmi',
           'useDirectBmi',
           'age',
           'injuryStatus',
           'targetRace',
-          'trainingDaysPerWeek',
-          'restingHrBpm',
-          'maxHrBpm'
+          'trainingDaysPerWeek'
         ])
         && p.keys().hasOnly([
           'weightKg',
@@ -56,27 +57,32 @@ service cloud.firestore {
           'targetRace',
           'trainingDaysPerWeek',
           'restingHrBpm',
-          'maxHrBpm'
+          'maxHrBpm',
+          'customTargetPaceSecPerKm',
+          'shoeName',
+          'shoeCurrentKm',
+          'shoeMaxKm'
         ])
         && p.weightKg is number && p.weightKg >= 30 && p.weightKg <= 200
         && p.heightCm is number && p.heightCm >= 120 && p.heightCm <= 230
-        && (p.directBmi == null || (p.directBmi is number && p.directBmi >= 10 && p.directBmi <= 60))
+        && (!('directBmi' in p) || p.directBmi == null || (p.directBmi is number && p.directBmi >= 10 && p.directBmi <= 60))
         && p.useDirectBmi is bool
         && p.age is number && p.age >= 12 && p.age <= 100
         && p.injuryStatus is string && p.injuryStatus.size() <= 16 && p.injuryStatus in ['none', 'recovering', 'active']
         && p.targetRace is string && p.targetRace.size() <= 8 && p.targetRace in ['5K', '10K', '21K', '42K']
         && p.trainingDaysPerWeek is number && p.trainingDaysPerWeek in [3, 4, 5, 6]
-        && p.restingHrBpm is number && p.restingHrBpm >= 35 && p.restingHrBpm <= 110
-        && (p.maxHrBpm == null || (p.maxHrBpm is number && p.maxHrBpm >= 120 && p.maxHrBpm <= 230));
+        && (!('restingHrBpm' in p) || (p.restingHrBpm is number && p.restingHrBpm >= 35 && p.restingHrBpm <= 110))
+        && (!('maxHrBpm' in p) || p.maxHrBpm == null || (p.maxHrBpm is number && p.maxHrBpm >= 120 && p.maxHrBpm <= 230))
+        && (!('customTargetPaceSecPerKm' in p) || p.customTargetPaceSecPerKm == null || (p.customTargetPaceSecPerKm is number && p.customTargetPaceSecPerKm >= 120 && p.customTargetPaceSecPerKm <= 1800))
+        && (!('shoeName' in p) || (p.shoeName is string && p.shoeName.size() <= 60))
+        && (!('shoeCurrentKm' in p) || (p.shoeCurrentKm is number && p.shoeCurrentKm >= 0 && p.shoeCurrentKm <= 10000))
+        && (!('shoeMaxKm' in p) || (p.shoeMaxKm is number && p.shoeMaxKm >= 200 && p.shoeMaxKm <= 2000));
     }
 
     function isValidUserWorkspace(data, userId) {
       return data.keys().hasAll([
           'uid',
           'language',
-          'customRaceDate',
-          'customRaceName',
-          'migratedFromLocal',
           'profile',
           'createdAt',
           'updatedAt'
@@ -95,9 +101,9 @@ service cloud.firestore {
         && data.uid == request.auth.uid
         && data.uid == userId
         && data.language is string && data.language.size() <= 4 && data.language in ['id', 'en']
-        && data.customRaceDate is string && data.customRaceDate.size() <= 10 && data.customRaceDate.matches('^(\\d{4}-\\d{2}-\\d{2})?$')
-        && data.customRaceName is string && data.customRaceName.size() <= 80
-        && data.migratedFromLocal is bool
+        && (!('customRaceDate' in data) || data.customRaceDate == null || (data.customRaceDate is string && data.customRaceDate.size() <= 10 && data.customRaceDate.matches('^(\\d{4}-\\d{2}-\\d{2})?$')))
+        && (!('customRaceName' in data) || data.customRaceName == null || (data.customRaceName is string && data.customRaceName.size() <= 80))
+        && (!('migratedFromLocal' in data) || data.migratedFromLocal is bool)
         && isValidRunnerProfile(data.profile)
         && data.createdAt is timestamp
         && data.updatedAt is timestamp;
@@ -219,22 +225,14 @@ service cloud.firestore {
         && incoming().uid == existing().uid
         && incoming().createdAt == existing().createdAt
         && incoming().updatedAt == request.time
-        && (
-          incoming().diff(existing()).affectedKeys().hasOnly(['profile', 'updatedAt']) ||
-          incoming().diff(existing()).affectedKeys().hasOnly(['language', 'updatedAt']) ||
-          incoming().diff(existing()).affectedKeys().hasOnly(['customRaceDate', 'customRaceName', 'updatedAt']) ||
-          incoming().diff(existing()).affectedKeys().hasOnly(['customRaceDate', 'updatedAt']) ||
-          incoming().diff(existing()).affectedKeys().hasOnly(['customRaceName', 'updatedAt']) ||
-          incoming().diff(existing()).affectedKeys().hasOnly(['migratedFromLocal', 'updatedAt']) ||
-          incoming().diff(existing()).affectedKeys().hasOnly([
-            'language',
-            'customRaceDate',
-            'customRaceName',
-            'migratedFromLocal',
-            'profile',
-            'updatedAt'
-          ])
-        );
+        && incoming().diff(existing()).affectedKeys().hasOnly([
+          'language',
+          'customRaceDate',
+          'customRaceName',
+          'migratedFromLocal',
+          'profile',
+          'updatedAt'
+        ]);
       allow delete: if isValidId(userId) && isOwner(userId);
 
       match /progress/{progressId} {
@@ -302,6 +300,72 @@ service cloud.firestore {
           ]);
         allow delete: if isValidId(userId) && isValidId(runId) && isOwner(userId);
       }
+    }
+
+    function isValidAccessGrant(data, userId) {
+      return data.keys().hasAll([
+          'uid',
+          'status',
+          'planType',
+          'provider',
+          'orderRef',
+          'note',
+          'createdAt',
+          'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'uid',
+          'status',
+          'planType',
+          'provider',
+          'orderRef',
+          'note',
+          'createdAt',
+          'updatedAt'
+        ])
+        && isValidId(data.uid)
+        && data.uid == userId
+        && data.status is string && data.status.size() <= 16 && data.status in ['pending', 'active', 'revoked']
+        && data.planType is string && data.planType.size() <= 16 && data.planType in ['lifetime', 'pro']
+        && data.provider is string && data.provider.size() <= 24 && data.provider in ['stripe', 'midtrans', 'license', 'admin_manual', 'owner']
+        && data.orderRef is string && data.orderRef.size() <= 80
+        && data.note is string && data.note.size() <= 160
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    match /accessGrants/{userId} {
+      allow get: if isValidId(userId) && (isOwner(userId) || isAdmin());
+      allow list: if isAdmin() && existing().status in ['pending', 'active', 'revoked'];
+      allow create: if isValidId(userId)
+        && isValidAccessGrant(incoming(), userId)
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time
+        && (
+          isAdmin()
+          || (
+            isOwner(userId)
+            && incoming().uid == request.auth.uid
+            && incoming().status == 'pending'
+            && incoming().provider == 'admin_manual'
+          )
+        );
+      allow update: if isValidId(userId)
+        && isValidAccessGrant(incoming(), userId)
+        && incoming().uid == existing().uid
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && (
+          isAdmin()
+          || (
+            isOwner(userId)
+            && existing().status != 'active'
+            && incoming().status == 'pending'
+            && incoming().provider == 'admin_manual'
+            && incoming().diff(existing()).affectedKeys().hasOnly(['orderRef', 'note', 'status', 'provider', 'updatedAt'])
+          )
+        );
+      allow delete: if isValidId(userId) && (isAdmin() || isOwner(userId));
     }
   }
 }

@@ -25,7 +25,11 @@
           "enum": [3, 4, 5, 6]
         },
         "restingHrBpm": { "type": "number", "description": "Resting heart rate in bpm (35-110)." },
-        "maxHrBpm": { "type": "number", "description": "Optional custom max heart rate in bpm (120-230) or null." }
+        "maxHrBpm": { "type": "number", "description": "Optional custom max heart rate in bpm (120-230) or null." },
+        "customTargetPaceSecPerKm": { "type": "number", "description": "Optional target race pace in sec/km (120-1800) applied from Pace Calculator or null." },
+        "shoeName": { "type": "string", "maxLength": 60, "description": "Primary running shoe model name." },
+        "shoeCurrentKm": { "type": "number", "description": "Accumulated mileage on primary running shoe (0-10000 km)." },
+        "shoeMaxKm": { "type": "number", "description": "Recommended lifespan limit for running shoe (200-2000 km)." }
       },
       "required": [
         "weightKg",
@@ -80,9 +84,6 @@
       "required": [
         "uid",
         "language",
-        "customRaceDate",
-        "customRaceName",
-        "migratedFromLocal",
         "profile",
         "createdAt",
         "updatedAt"
@@ -185,6 +186,59 @@
         "source",
         "updatedAt"
       ]
+    },
+    "AccessGrant": {
+      "title": "AccessGrant",
+      "description": "Paid buyer access entitlement or manual payment confirmation request keyed by Firebase Auth UID (no email PII stored).",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "status": {
+          "type": "string",
+          "enum": ["pending", "active", "revoked"],
+          "maxLength": 16
+        },
+        "planType": {
+          "type": "string",
+          "enum": ["lifetime", "pro"],
+          "maxLength": 16
+        },
+        "provider": {
+          "type": "string",
+          "enum": ["stripe", "midtrans", "license", "admin_manual", "owner"],
+          "maxLength": 24
+        },
+        "orderRef": {
+          "type": "string",
+          "maxLength": 80
+        },
+        "note": {
+          "type": "string",
+          "maxLength": 160
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "uid",
+        "status",
+        "planType",
+        "provider",
+        "orderRef",
+        "note",
+        "createdAt",
+        "updatedAt"
+      ]
     }
   },
   "firestore": {
@@ -199,6 +253,10 @@
     "/users/{userId}/runs/{runId}": {
       "schema": { "$ref": "#/entities/RunActivity" },
       "description": "Owner-only imported or sample Strava run activities."
+    },
+    "/accessGrants/{userId}": {
+      "schema": { "$ref": "#/entities/AccessGrant" },
+      "description": "Paid buyer entitlement records and pending transfer confirmation requests; only verified Admin may approve/activate."
     }
   }
 }

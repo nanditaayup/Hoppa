@@ -547,5 +547,66 @@ test('computeKpiSummary and computeWeeklyChartBuckets adapt dynamically to newer
   );
 });
 
+test('generateTrainingPlan honors customTargetPaceSecPerKm and enforces <=10% weekly growth + >=1 rest day across all combinations', () => {
+  const kpi = computeKpiSummary(SAMPLE_STRAVA_RUNS, new Date('2026-11-19T12:00:00+07:00'));
+
+  // Custom pace overrides default/Strava baseline pace for training zones
+  const customPlan = generateTrainingPlan(
+    {
+      weightKg: 68,
+      heightCm: 170,
+      directBmi: null,
+      useDirectBmi: false,
+      age: 30,
+      injuryStatus: 'none',
+      targetRace: '21K',
+      trainingDaysPerWeek: 4,
+      customTargetPaceSecPerKm: 327, // 05:27/km from Pace Calculator
+    },
+    kpi
+  );
+  assert.equal(customPlan.isUsingCustomTargetPace, true);
+  assert.equal(customPlan.baselinePaceSecPerKm, 327);
+
+  // Exhaustive safety matrix: weekly volume jump never >10.5% and every week has >= 1 rest day
+  const weights = [48, 68, 84, 102]; // covers kurus, ideal, berlebih, obesitas
+  const frequencies: Array<3 | 4 | 5 | 6> = [3, 4, 5, 6];
+  const injuries: Array<'none' | 'recovering' | 'active'> = ['none', 'recovering', 'active'];
+  const races: Array<'5K' | '10K' | '21K' | '42K'> = ['5K', '10K', '21K', '42K'];
+
+  for (const weightKg of weights) {
+    for (const trainingDaysPerWeek of frequencies) {
+      for (const injuryStatus of injuries) {
+        for (const targetRace of races) {
+          const plan = generateTrainingPlan(
+            {
+              weightKg,
+              heightCm: 170,
+              directBmi: null,
+              useDirectBmi: false,
+              age: 32,
+              injuryStatus,
+              targetRace,
+              trainingDaysPerWeek,
+            },
+            kpi
+          );
+
+          const restDays = plan.weeklySchedule.filter((s) => s.zone === 'rest').length;
+          assert.ok(restDays >= 1, `Expected >=1 rest day for ${targetRace} ${trainingDaysPerWeek}d`);
+
+          const w1 = plan.fourWeekProgression[0].targetVolumeKm;
+          const w2 = plan.fourWeekProgression[1].targetVolumeKm;
+          const w3 = plan.fourWeekProgression[2].targetVolumeKm;
+          const w4 = plan.fourWeekProgression[3].targetVolumeKm;
+          assert.ok(w2 <= w1 * 1.105 + 0.1, `Week 2 spike exceeded 10%: ${w1} -> ${w2}`);
+          assert.ok(w3 <= w2 * 1.105 + 0.1, `Week 3 spike exceeded 10%: ${w2} -> ${w3}`);
+          assert.ok(w4 <= w3, `Week 4 cutback must be <= Week 3: ${w3} -> ${w4}`);
+        }
+      }
+    }
+  }
+});
+
 
 

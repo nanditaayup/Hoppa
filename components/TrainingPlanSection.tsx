@@ -20,6 +20,7 @@ import {
 } from '@/lib/strava/types';
 import { UI_COPY } from '@/lib/strava/i18n';
 import { formatDecimalComma, formatPace } from '@/lib/strava/transform';
+import PaceCalculator from './PaceCalculator';
 
 interface TrainingPlanSectionProps {
   profile: RunnerProfile;
@@ -50,8 +51,9 @@ export default function TrainingPlanSection({
   onChangeProfile,
   onQuickLogSession,
 }: TrainingPlanSectionProps) {
-  const [subTab, setSubTab] = useState<'schedule' | 'zones'>('schedule');
-  const t = UI_COPY[lang].training;
+  const [subTab, setSubTab] = useState<'schedule' | 'zones' | 'calculator'>('schedule');
+  const fullCopy = UI_COPY[lang];
+  const t = fullCopy.training;
   const raceTargets = RACE_TARGETS_BY_LANG[lang];
   const reductionPct = Math.round((1 - plan.taperMultiplier) * 100);
   const taperNotice =
@@ -109,9 +111,30 @@ export default function TrainingPlanSection({
             <span className="font-mono tabular-nums font-semibold text-teal-700 dark:text-teal-400">
               {formatPace(plan.baselinePaceSecPerKm)}
             </span>
-            {plan.isUsingDefaultBaseline
-              ? t.defaultBaselineTag
-              : t.stravaBaselineTag}
+            {plan.isUsingCustomTargetPace ? (
+              <>
+                {' '}
+                <span className="font-semibold text-teal-800 dark:text-teal-300">
+                  ({t.customPaceBadge})
+                </span>
+                <button
+                  type="button"
+                  onClick={() =>
+                    onChangeProfile((p) => ({
+                      ...p,
+                      customTargetPaceSecPerKm: null,
+                    }))
+                  }
+                  className="ml-2 text-xs font-semibold text-teal-700 dark:text-teal-400 hover:underline"
+                >
+                  {t.resetCustomPaceBtn}
+                </button>
+              </>
+            ) : plan.isUsingDefaultBaseline ? (
+              t.defaultBaselineTag
+            ) : (
+              t.stravaBaselineTag
+            )}
             .
           </p>
         </div>
@@ -210,8 +233,8 @@ export default function TrainingPlanSection({
         </div>
       </div>
 
-      {/* Clean 2-Tab Sub-Navigation (Weekly Schedule vs Pace Zones & 4-Week Plan) */}
-      <div className="inline-flex items-center gap-1 p-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl">
+      {/* Clean 3-Tab Sub-Navigation (Weekly Schedule vs Pace Zones vs Pace Calculator) */}
+      <div className="inline-flex flex-wrap items-center gap-1 p-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl">
         <button
           type="button"
           onClick={() => setSubTab('schedule')}
@@ -236,9 +259,40 @@ export default function TrainingPlanSection({
         >
           {t.viewZonesTab}
         </button>
+        <button
+          type="button"
+          onClick={() => setSubTab('calculator')}
+          data-testid="training-tab-calculator"
+          className={`min-h-[38px] px-4 py-1.5 rounded-lg text-xs font-semibold transition-colors whitespace-nowrap ${
+            subTab === 'calculator'
+              ? 'bg-teal-700 dark:bg-teal-600 text-white'
+              : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
+          }`}
+        >
+          {fullCopy.paceCalculator.heading}
+        </button>
       </div>
 
-      {subTab === 'schedule' ? (
+      {subTab === 'calculator' ? (
+        <PaceCalculator
+          initialRace={profile.targetRace}
+          activeCustomPaceSecPerKm={profile.customTargetPaceSecPerKm}
+          lang={lang}
+          onApplyTargetPace={(race, paceSecPerKm) =>
+            onChangeProfile((p) => ({
+              ...p,
+              targetRace: race,
+              customTargetPaceSecPerKm: paceSecPerKm,
+            }))
+          }
+          onResetCustomPace={() =>
+            onChangeProfile((p) => ({
+              ...p,
+              customTargetPaceSecPerKm: null,
+            }))
+          }
+        />
+      ) : subTab === 'schedule' ? (
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 space-y-4">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="flex items-center gap-2">

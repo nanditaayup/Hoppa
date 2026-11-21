@@ -229,6 +229,13 @@ export default function LoginGateScreen({
         </motion.div>
       </main>
 
+      <footer
+        data-testid="health-disclaimer-footer"
+        className="border-t border-slate-200/80 dark:border-slate-800 py-4 px-4 sm:px-8 text-center text-xs text-slate-500 dark:text-slate-400"
+      >
+        {t.disclaimer.text}
+      </footer>
+
       <PrivacyTermsModal
         isOpen={isPrivacyOpen}
         lang={lang}

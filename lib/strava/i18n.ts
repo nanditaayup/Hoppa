@@ -144,6 +144,8 @@ export interface PaceCraftCopy {
     minuteShort: string;
     viewScheduleTab: string;
     viewZonesTab: string;
+    customPaceBadge: string;
+    resetCustomPaceBtn: string;
     zoneLabels: Record<TrainingZoneType, string>;
   };
   nutrition: {
@@ -295,6 +297,7 @@ export interface PaceCraftCopy {
     gpxFileLabel: string;
     syncToProgressBtn: (count: number) => string;
     syncToProgressDone: string;
+    offlineFriendlyTip: string;
   };
   detailModal: {
     closeAria: string;
@@ -390,6 +393,112 @@ export interface PaceCraftCopy {
     lightShort: string;
     ariaToDark: string;
     ariaToLight: string;
+  };
+  paceCalculator: {
+    heading: string;
+    subtitle: string;
+    distanceLabel: string;
+    hoursLabel: string;
+    minutesLabel: string;
+    secondsLabel: string;
+    resetBtn: string;
+    applyToPlanBtn: string;
+    appliedNotice: (race: string, pace: string) => string;
+    activeCustomBanner: (pace: string) => string;
+    useStravaBaselineBtn: string;
+    racePaceLabel: string;
+    speedLabel: string;
+    easyTitle: string;
+    easyNote: string;
+    tempoTitle: string;
+    tempoNote: string;
+    intervalTitle: string;
+    intervalNote: string;
+  };
+  shoeTracker: {
+    heading: string;
+    subtitle: string;
+    nameLabel: string;
+    namePlaceholder: string;
+    currentKmLabel: string;
+    maxKmLabel: string;
+    maxKmHint: string;
+    usagePrefix: string;
+    remainingPrefix: string;
+    syncLatestRunBtn: (kmLabel: string) => string;
+    add5KmBtn: string;
+    resetNewShoeBtn: string;
+    healthyBadge: string;
+    warningBadge: string;
+    replaceBadge: string;
+    warningText: string;
+    replaceText: string;
+  };
+  backup: {
+    heading: string;
+    subtitle: string;
+    exportBtn: string;
+    importBtn: string;
+    exportDone: string;
+    restoreSuccess: (runsCount: number, progressCount: number) => string;
+    restoreInvalidError: string;
+  };
+  disclaimer: {
+    text: string;
+  };
+  accessGate: {
+    badge: string;
+    title: string;
+    subtitle: string;
+    signedInAs: string;
+    refreshBtn: string;
+    checkingText: string;
+    checkoutCardTitle: string;
+    checkoutCardDesc: string;
+    checkoutBtn: string;
+    checkoutOpeningBtn: string;
+    checkoutNotConfigured: string;
+    codeCardTitle: string;
+    codeCardDesc: string;
+    codeLabel: string;
+    codePlaceholder: string;
+    verifyCodeBtn: string;
+    verifyingBtn: string;
+    invalidCodeError: string;
+    manualCardTitle: string;
+    manualCardDesc: string;
+    planLabel: string;
+    planLifetime: string;
+    planPro: string;
+    orderRefLabel: string;
+    orderRefPlaceholder: string;
+    noteLabel: string;
+    notePlaceholder: string;
+    submitManualBtn: string;
+    submittingManualBtn: string;
+    pendingTitle: string;
+    pendingDesc: (orderRef: string) => string;
+    revokedTitle: string;
+    revokedDesc: string;
+    stripeReturnedChecking: string;
+    stripeCanceledNotice: string;
+  };
+  adminAccess: {
+    heading: string;
+    subtitle: string;
+    generateCodeBtn: string;
+    generatingBtn: string;
+    generatedLabel: string;
+    copyCodeBtn: string;
+    copiedBtn: string;
+    emptyList: string;
+    approveBtn: string;
+    revokeBtn: string;
+    statusLabels: {
+      pending: string;
+      active: string;
+      revoked: string;
+    };
   };
 }
 
@@ -554,6 +663,8 @@ export const UI_COPY: Record<AppLanguage, PaceCraftCopy> = {
       minuteShort: 'mnt',
       viewScheduleTab: 'Jadwal Mingguan',
       viewZonesTab: 'Zona Pace & Progresi 4 Minggu',
+      customPaceBadge: 'Target Pace Kalkulator Aktif',
+      resetCustomPaceBtn: 'Kembalikan ke Baseline Strava',
       zoneLabels: {
         easy: 'Easy Pace',
         tempo: 'Tempo Pace',
@@ -746,6 +857,8 @@ export const UI_COPY: Record<AppLanguage, PaceCraftCopy> = {
       gpxFileLabel: 'File GPX',
       syncToProgressBtn: (count) => `Terapkan ke Progres Harian (${count} sesi)`,
       syncToProgressDone: 'Semua sesi terbaru sudah tercatat di Progres Harian.',
+      offlineFriendlyTip:
+        'Tidak perlu langganan Strava API berbayar: Anda bisa langsung memakai Impor CSV / GPX atau Muat Data Contoh di browser secara gratis.',
     },
     detailModal: {
       closeAria: 'Tutup detail aktivitas',
@@ -874,6 +987,132 @@ export const UI_COPY: Record<AppLanguage, PaceCraftCopy> = {
       lightShort: 'Terang',
       ariaToDark: 'Aktifkan mode gelap untuk kenyamanan malam hari',
       ariaToLight: 'Kembali ke mode terang',
+    },
+    paceCalculator: {
+      heading: 'Kalkulator Pace & Zona Latihan',
+      subtitle:
+        'Konversikan target waktu finis 5K, 10K, 21K, atau 42K Anda menjadi acuan Race Pace serta zona Easy, Tempo, dan Interval secara otomatis.',
+      distanceLabel: 'Pilih Jarak Target Lomba',
+      hoursLabel: 'Jam',
+      minutesLabel: 'Menit',
+      secondsLabel: 'Detik',
+      resetBtn: 'Reset Default',
+      applyToPlanBtn: 'Terapkan ke Menu Latihan',
+      appliedNotice: (race, pace) =>
+        `Target ${race} dengan Race Pace ${pace} telah diterapkan ke jadwal latihan Anda.`,
+      activeCustomBanner: (pace) =>
+        `Menu latihan saat ini memakai Race Pace target Anda (${pace}).`,
+      useStravaBaselineBtn: 'Gunakan Baseline Strava',
+      racePaceLabel: 'Target Race Pace',
+      speedLabel: 'Kecepatan Rata-rata',
+      easyTitle: 'Easy Pace',
+      easyNote: 'Pemulihan & fondasi aerobik (+45 s/d +75 dtk/km)',
+      tempoTitle: 'Tempo Pace',
+      tempoNote: 'Ambang laktat & ketahanan ritme lomba',
+      intervalTitle: 'Interval Pace',
+      intervalNote: 'VO2 max & peningkatan kecepatan puncak',
+    },
+    shoeTracker: {
+      heading: 'Pelacak Jarak Sepatu Lari (Shoe Mileage Tracker)',
+      subtitle:
+        'Pantau usia pakai bantalan sepatu lari utama Anda (ideal 600–800 km) guna mengurangi risiko cedera lutut dan pergelangan kaki.',
+      nameLabel: 'Nama / Model Sepatu Utama',
+      namePlaceholder: 'Misal: Pegasus 41 / Novablast 4',
+      currentKmLabel: 'Jarak Terpakai (km)',
+      maxKmLabel: 'Batas Pakai Ideal (km)',
+      maxKmHint: 'Rentang rekomendasi 200 – 2.000 km (standar 600–800 km)',
+      usagePrefix: 'Terpakai',
+      remainingPrefix: 'Sisa estimasi',
+      syncLatestRunBtn: (kmLabel) => `+ Tambah Sesi Terakhir (${kmLabel} km)`,
+      add5KmBtn: '+ 5 km',
+      resetNewShoeBtn: 'Reset Sepatu Baru',
+      healthyBadge: 'Bantalan Masih Prima',
+      warningBadge: 'Mendekati Batas Pakai',
+      replaceBadge: 'Waktunya Evaluasi / Ganti Sepatu',
+      warningText:
+        'Sepatu sudah melewati 80% batas pakai ideal. Perhatikan respons bantalan dan kenyamanan tumit Anda.',
+      replaceText:
+        'Jarak tempuh sepatu mencapai batas maksimal. Pertimbangkan rotasi sepatu baru untuk menjaga keamanan persendian.',
+    },
+    backup: {
+      heading: 'Cadangan & Pemulihan Data (JSON)',
+      subtitle:
+        'Unduh seluruh data profil, target lomba, progres harian, sepatu, dan riwayat Strava Anda sebagai file JSON atau pulihkan kapan saja.',
+      exportBtn: 'Ekspor Backup JSON',
+      importBtn: 'Impor / Pulihkan JSON',
+      exportDone: 'File cadangan JSON berhasil diunduh ke perangkat Anda.',
+      restoreSuccess: (runsCount, progressCount) =>
+        `Pemulihan berhasil: profil, ${progressCount} catatan progres, dan ${runsCount} aktivitas lari disinkronkan ke cloud.`,
+      restoreInvalidError:
+        'Format file JSON tidak dikenali atau rusak. Pastikan Anda memilih file backup resmi PaceCraft.',
+    },
+    disclaimer: {
+      text: 'Program latihan dan rekomendasi nutrisi di PaceCraft bersifat panduan umum dan bukan pengganti saran medis profesional.',
+    },
+    accessGate: {
+      badge: 'Akses Pembeli Terverifikasi',
+      title: 'Aktifkan ruang latihan pribadi PaceCraft Anda.',
+      subtitle:
+        'Akun Google Anda sudah terhubung. Selesaikan pembayaran atau masukkan kode akses pembeli untuk membuka kalkulator menu latihan, sinkronisasi Strava, dan penyimpanan cloud pribadi.',
+      signedInAs: 'Masuk sebagai',
+      refreshBtn: 'Periksa Status Akses',
+      checkingText: 'Memeriksa status akses pembeli Anda...',
+      checkoutCardTitle: '1. Pembayaran Instan / Checkout',
+      checkoutCardDesc:
+        'Bayar melalui halaman checkout resmi agar akses akun Anda aktif otomatis.',
+      checkoutBtn: 'Lanjutkan ke Pembayaran',
+      checkoutOpeningBtn: 'Membuka Pembayaran...',
+      checkoutNotConfigured:
+        'Gateway checkout otomatis belum diaktifkan pada deployment ini. Gunakan kode lisensi atau konfirmasi manual di samping.',
+      codeCardTitle: '2. Punya Kode Akses / Lisensi Pembeli?',
+      codeCardDesc:
+        'Masukkan kode akses resmi dari bukti pembelian atau email konfirmasi Anda.',
+      codeLabel: 'Kode Lisensi / Akses Pembeli',
+      codePlaceholder: 'Misal: PC-XXXX...',
+      verifyCodeBtn: 'Verifikasi & Buka Akses',
+      verifyingBtn: 'Memverifikasi...',
+      invalidCodeError:
+        'Kode akses tidak valid atau sudah kedaluwarsa. Periksa kembali atau kirim konfirmasi pembayaran manual.',
+      manualCardTitle: '3. Konfirmasi Pembayaran Manual (Transfer / QRIS)',
+      manualCardDesc:
+        'Sudah melakukan pembayaran manual? Kirim nomor referensi transaksi agar pemilik dapat mengaktifkan akses akun Anda.',
+      planLabel: 'Paket Dipilih',
+      planLifetime: 'Akses Penuh (Lifetime)',
+      planPro: 'Paket Pro Pelari',
+      orderRefLabel: 'Nomor Referensi / Bukti Transfer',
+      orderRefPlaceholder: 'Misal: INV-20261121-001 / QRIS-8821',
+      noteLabel: 'Catatan Singkat (opsional)',
+      notePlaceholder: 'Misal: Transfer BCA a.n. Budi pukul 09.15',
+      submitManualBtn: 'Kirim Konfirmasi Pembayaran',
+      submittingManualBtn: 'Mengirim Konfirmasi...',
+      pendingTitle: 'Konfirmasi Pembayaran Sedang Ditinjau',
+      pendingDesc: (orderRef) =>
+        `Pengajuan referensi ${orderRef} sudah tercatat di database. Halaman akan terbuka otomatis begitu akses diaktifkan.`,
+      revokedTitle: 'Akses Akun Sedang Dinonaktifkan',
+      revokedDesc:
+        'Status akses untuk akun ini sedang ditangguhkan. Anda dapat menghubungi admin atau mengirim referensi pembayaran baru.',
+      stripeReturnedChecking:
+        'Memverifikasi status pembayaran checkout Anda...',
+      stripeCanceledNotice:
+        'Pembayaran checkout dibatalkan. Anda dapat mencoba kembali kapan saja.',
+    },
+    adminAccess: {
+      heading: 'Panel Pemilik: Konfirmasi Akses Pembeli',
+      subtitle:
+        'Setujui pengajuan pembayaran pembeli secara real-time atau buat kode lisensi bertanda tangan server.',
+      generateCodeBtn: 'Buat Kode Lisensi Pembeli',
+      generatingBtn: 'Membuat Kode...',
+      generatedLabel: 'Kode Lisensi Siap Kirim:',
+      copyCodeBtn: 'Salin Kode',
+      copiedBtn: 'Tersalin!',
+      emptyList: 'Belum ada permintaan aktivasi akses dari pembeli.',
+      approveBtn: 'Aktifkan Akses',
+      revokeBtn: 'Nonaktifkan',
+      statusLabels: {
+        pending: 'Menunggu Verifikasi',
+        active: 'Aktif',
+        revoked: 'Dinonaktifkan',
+      },
     },
   },
   en: {
@@ -1036,6 +1275,8 @@ export const UI_COPY: Record<AppLanguage, PaceCraftCopy> = {
       minuteShort: 'min',
       viewScheduleTab: 'Weekly Schedule',
       viewZonesTab: 'Pace Zones & 4-Week Plan',
+      customPaceBadge: 'Calculator Target Pace Active',
+      resetCustomPaceBtn: 'Revert to Strava Baseline',
       zoneLabels: {
         easy: 'Easy Pace',
         tempo: 'Tempo Pace',
@@ -1229,6 +1470,8 @@ export const UI_COPY: Record<AppLanguage, PaceCraftCopy> = {
       gpxFileLabel: 'GPX Files',
       syncToProgressBtn: (count) => `Apply to Daily Progress (${count} runs)`,
       syncToProgressDone: 'All recent runs are already logged in Daily Progress.',
+      offlineFriendlyTip:
+        'No paid Strava API subscription needed: you can use Import CSV / GPX or Load Sample Data for free directly in your browser.',
     },
     detailModal: {
       closeAria: 'Close activity details',
@@ -1357,6 +1600,131 @@ export const UI_COPY: Record<AppLanguage, PaceCraftCopy> = {
       lightShort: 'Light',
       ariaToDark: 'Switch to dark mode for comfortable night viewing',
       ariaToLight: 'Switch back to light mode',
+    },
+    paceCalculator: {
+      heading: 'Pace & Training Zone Calculator',
+      subtitle:
+        'Convert your 5K, 10K, 21K, or 42K finish time goal into an exact Race Pace plus calibrated Easy, Tempo, and Interval training zones.',
+      distanceLabel: 'Choose Race Distance',
+      hoursLabel: 'Hours',
+      minutesLabel: 'Minutes',
+      secondsLabel: 'Seconds',
+      resetBtn: 'Reset Default',
+      applyToPlanBtn: 'Apply to Training Plan',
+      appliedNotice: (race, pace) =>
+        `${race} target with Race Pace ${pace} has been applied to your training schedule.`,
+      activeCustomBanner: (pace) =>
+        `Your training plan is currently calibrated to your calculator Race Pace (${pace}).`,
+      useStravaBaselineBtn: 'Use Strava Baseline',
+      racePaceLabel: 'Target Race Pace',
+      speedLabel: 'Average Speed',
+      easyTitle: 'Easy Pace',
+      easyNote: 'Recovery & aerobic base (+45s to +75s/km)',
+      tempoTitle: 'Tempo Pace',
+      tempoNote: 'Lactate threshold & race rhythm stamina',
+      intervalTitle: 'Interval Pace',
+      intervalNote: 'VO2 max & top-end speed work',
+    },
+    shoeTracker: {
+      heading: 'Shoe Mileage Tracker',
+      subtitle:
+        'Monitor cushioning wear on your primary running shoe (recommended 600–800 km) to help protect knees and ankles from overuse.',
+      nameLabel: 'Primary Shoe Model / Name',
+      namePlaceholder: 'E.g., Pegasus 41 / Novablast 4',
+      currentKmLabel: 'Logged Distance (km)',
+      maxKmLabel: 'Lifespan Limit (km)',
+      maxKmHint: 'Recommended range 200 – 2,000 km (typical 600–800 km)',
+      usagePrefix: 'Used',
+      remainingPrefix: 'Remaining est.',
+      syncLatestRunBtn: (kmLabel) => `+ Add Latest Run (${kmLabel} km)`,
+      add5KmBtn: '+ 5 km',
+      resetNewShoeBtn: 'Reset for New Shoe',
+      healthyBadge: 'Cushioning Healthy',
+      warningBadge: 'Approaching Replacement',
+      replaceBadge: 'Inspect / Rotate New Shoe',
+      warningText:
+        'Your shoe has passed 80% of its lifespan limit. Pay attention to midsole responsiveness and heel comfort.',
+      replaceText:
+        'Shoe mileage has reached its target limit. Consider rotating in a fresh pair to protect your joints.',
+    },
+    backup: {
+      heading: 'Backup & Restore Data (JSON)',
+      subtitle:
+        'Download your profile, race target, daily logs, shoe mileage, and Strava runs as a JSON file or restore anytime.',
+      exportBtn: 'Export Backup JSON',
+      importBtn: 'Import / Restore JSON',
+      exportDone: 'Backup JSON file downloaded to your device.',
+      restoreSuccess: (runsCount, progressCount) =>
+        `Restore complete: profile, ${progressCount} progress entries, and ${runsCount} running activities synced to cloud.`,
+      restoreInvalidError:
+        'Unrecognized or invalid JSON backup file. Please choose a valid PaceCraft backup.',
+    },
+    disclaimer: {
+      text: 'Training plans and nutrition recommendations in PaceCraft are general guidance only and do not replace professional medical advice.',
+    },
+    accessGate: {
+      badge: 'Verified Buyer Access',
+      title: 'Unlock your private PaceCraft running workspace.',
+      subtitle:
+        'Your Google account is signed in. Complete checkout or enter your buyer license code to unlock the training calculator, Strava analytics, and cloud sync.',
+      signedInAs: 'Signed in as',
+      refreshBtn: 'Refresh Access Status',
+      checkingText: 'Verifying your buyer entitlement...',
+      checkoutCardTitle: '1. Instant Checkout',
+      checkoutCardDesc:
+        'Complete payment via our checkout page to activate your account automatically.',
+      checkoutBtn: 'Proceed to Payment',
+      checkoutOpeningBtn: 'Opening Checkout...',
+      checkoutNotConfigured:
+        'Automated checkout is not configured on this deployment. Please use a buyer license code or submit manual payment confirmation.',
+      codeCardTitle: '2. Have a Buyer License / Access Code?',
+      codeCardDesc:
+        'Enter the official access key from your purchase receipt or confirmation message.',
+      codeLabel: 'Buyer License / Access Code',
+      codePlaceholder: 'E.g., PC-XXXX...',
+      verifyCodeBtn: 'Verify & Unlock Access',
+      verifyingBtn: 'Verifying...',
+      invalidCodeError:
+        'Invalid or expired buyer code. Double-check your code or submit manual payment confirmation below.',
+      manualCardTitle: '3. Manual Payment Confirmation',
+      manualCardDesc:
+        'Already paid via bank transfer or QRIS? Submit your transaction reference so the owner can activate your account.',
+      planLabel: 'Selected Plan',
+      planLifetime: 'Full Access (Lifetime)',
+      planPro: 'Pro Runner Plan',
+      orderRefLabel: 'Order / Transfer Reference',
+      orderRefPlaceholder: 'E.g., INV-20261121-001 / QRIS-8821',
+      noteLabel: 'Short Note (optional)',
+      notePlaceholder: 'E.g., Bank transfer at 09:15 AM',
+      submitManualBtn: 'Submit Payment Confirmation',
+      submittingManualBtn: 'Submitting Confirmation...',
+      pendingTitle: 'Payment Confirmation Under Review',
+      pendingDesc: (orderRef) =>
+        `Reference ${orderRef} is recorded in our cloud database. Your workspace opens automatically once approved.`,
+      revokedTitle: 'Account Access Suspended',
+      revokedDesc:
+        'Access for this account is currently suspended. Contact the owner or submit a new payment confirmation.',
+      stripeReturnedChecking: 'Verifying your checkout payment status...',
+      stripeCanceledNotice:
+        'Checkout was canceled. You can retry whenever you are ready.',
+    },
+    adminAccess: {
+      heading: 'Owner Panel: Buyer Access Approvals',
+      subtitle:
+        'Approve buyer payment confirmations in real time or generate server-signed license keys.',
+      generateCodeBtn: 'Generate Buyer License Key',
+      generatingBtn: 'Generating...',
+      generatedLabel: 'Ready-to-Send License Key:',
+      copyCodeBtn: 'Copy Key',
+      copiedBtn: 'Copied!',
+      emptyList: 'No buyer access confirmation requests yet.',
+      approveBtn: 'Activate Access',
+      revokeBtn: 'Revoke',
+      statusLabels: {
+        pending: 'Pending Review',
+        active: 'Active',
+        revoked: 'Revoked',
+      },
     },
   },
 };
