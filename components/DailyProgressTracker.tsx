@@ -8,6 +8,8 @@ import {
   Award,
   RefreshCw,
   Share2,
+  ChevronDown,
+  ChevronUp,
 } from 'lucide-react';
 import {
   AppLanguage,
@@ -74,6 +76,7 @@ export default function DailyProgressTracker({
   const [hrInput, setHrInput] = useState('');
   const [comfortRating, setComfortRating] = useState<1 | 2 | 3 | 4 | 5>(4);
   const [note, setNote] = useState('');
+  const [showOptionalDetails, setShowOptionalDetails] = useState(false);
   const [savedDayIndex, setSavedDayIndex] = useState<number | null>(null);
   const [isShareOpen, setIsShareOpen] = useState(false);
 
@@ -401,65 +404,90 @@ export default function DailyProgressTracker({
             </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label
-                htmlFor="input-progress-pace"
-                className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5"
-              >
-                {t.paceInputLabel}
-              </label>
-              <input
-                id="input-progress-pace"
-                data-testid="input-progress-pace"
-                type="text"
-                maxLength={10}
-                value={paceInput}
-                onChange={(e) => setPaceInput(e.target.value)}
-                placeholder={t.paceInputPlaceholder}
-                className="w-full min-h-[44px] px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/70 text-slate-900 dark:text-slate-100 font-mono tabular-nums placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:bg-white dark:focus:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-700 dark:focus:ring-teal-400"
-              />
-            </div>
-
-            <div>
-              <label
-                htmlFor="input-progress-hr"
-                className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5"
-              >
-                {t.hrInputLabel}
-              </label>
-              <input
-                id="input-progress-hr"
-                data-testid="input-progress-hr"
-                type="number"
-                min={35}
-                max={230}
-                step={1}
-                value={hrInput}
-                onChange={(e) => setHrInput(e.target.value)}
-                placeholder={t.hrInputPlaceholder}
-                className="w-full min-h-[44px] px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/70 text-slate-900 dark:text-slate-100 font-mono tabular-nums placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:bg-white dark:focus:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-700 dark:focus:ring-teal-400"
-              />
-            </div>
-          </div>
-
           <div>
-            <label
-              htmlFor="input-progress-note"
-              className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5"
+            <button
+              type="button"
+              onClick={() => setShowOptionalDetails((prev) => !prev)}
+              aria-expanded={showOptionalDetails}
+              data-testid="toggle-optional-progress-details"
+              className="min-h-[40px] px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-[#F7F9FA] dark:bg-slate-800/70 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:border-teal-300 dark:hover:border-teal-600 inline-flex items-center gap-1.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-700 dark:focus-visible:ring-teal-400"
             >
-              {t.noteLabel}
-            </label>
-            <input
-              id="input-progress-note"
-              type="text"
-              maxLength={120}
-              value={note}
-              onChange={(e) => setNote(e.target.value)}
-              placeholder={t.notePlaceholder}
-              className="w-full min-h-[44px] px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/70 text-sm text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:bg-white dark:focus:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-700 dark:focus:ring-teal-400"
-            />
+              {showOptionalDetails ? (
+                <ChevronUp className="w-4 h-4 text-teal-700 dark:text-teal-400" aria-hidden="true" />
+              ) : (
+                <ChevronDown className="w-4 h-4 text-teal-700 dark:text-teal-400" aria-hidden="true" />
+              )}
+              <span>
+                {showOptionalDetails
+                  ? t.optionalDetailsHide
+                  : t.optionalDetailsShow}
+              </span>
+            </button>
           </div>
+
+          {showOptionalDetails && (
+            <div className="space-y-4 pt-1">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label
+                    htmlFor="input-progress-pace"
+                    className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5"
+                  >
+                    {t.paceInputLabel}
+                  </label>
+                  <input
+                    id="input-progress-pace"
+                    data-testid="input-progress-pace"
+                    type="text"
+                    maxLength={10}
+                    value={paceInput}
+                    onChange={(e) => setPaceInput(e.target.value)}
+                    placeholder={t.paceInputPlaceholder}
+                    className="w-full min-h-[44px] px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/70 text-slate-900 dark:text-slate-100 font-mono tabular-nums placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:bg-white dark:focus:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-700 dark:focus:ring-teal-400"
+                  />
+                </div>
+
+                <div>
+                  <label
+                    htmlFor="input-progress-hr"
+                    className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5"
+                  >
+                    {t.hrInputLabel}
+                  </label>
+                  <input
+                    id="input-progress-hr"
+                    data-testid="input-progress-hr"
+                    type="number"
+                    min={35}
+                    max={230}
+                    step={1}
+                    value={hrInput}
+                    onChange={(e) => setHrInput(e.target.value)}
+                    placeholder={t.hrInputPlaceholder}
+                    className="w-full min-h-[44px] px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/70 text-slate-900 dark:text-slate-100 font-mono tabular-nums placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:bg-white dark:focus:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-700 dark:focus:ring-teal-400"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label
+                  htmlFor="input-progress-note"
+                  className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5"
+                >
+                  {t.noteLabel}
+                </label>
+                <input
+                  id="input-progress-note"
+                  type="text"
+                  maxLength={120}
+                  value={note}
+                  onChange={(e) => setNote(e.target.value)}
+                  placeholder={t.notePlaceholder}
+                  className="w-full min-h-[44px] px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/70 text-sm text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:bg-white dark:focus:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-700 dark:focus:ring-teal-400"
+                />
+              </div>
+            </div>
+          )}
 
           <div className="flex flex-wrap items-center gap-3">
             <button

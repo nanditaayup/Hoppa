@@ -117,6 +117,18 @@ export async function POST(req: NextRequest) {
       multipleCodesCsv: process.env.BUYER_ACCESS_CODES,
     });
     if (result.valid) {
+      if (result.singleUse && result.codeId && result.claimSecret) {
+        // Legacy dot-signed single-use keys must be redeemed atomically in Firestore (/access-codes + /accessGrants)
+        // so one unique code can only ever unlock 1 Google account once.
+        return NextResponse.json({
+          unlocked: false,
+          requiresFirestoreRedeem: true,
+          codeId: result.codeId,
+          claimSecret: result.claimSecret,
+          planType: result.planType,
+          provider: 'license',
+        });
+      }
       unlocked = true;
       planType = result.planType;
       provider = result.provider;

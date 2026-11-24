@@ -15,6 +15,7 @@ interface PaceCalculatorProps {
   initialRace: RaceDistanceKey;
   activeCustomPaceSecPerKm?: number | null;
   lang: AppLanguage;
+  applyButtonLabel?: string;
   onApplyTargetPace: (race: RaceDistanceKey, paceSecPerKm: number) => void;
   onResetCustomPace: () => void;
 }
@@ -25,6 +26,7 @@ export default function PaceCalculator({
   initialRace,
   activeCustomPaceSecPerKm = null,
   lang,
+  applyButtonLabel,
   onApplyTargetPace,
   onResetCustomPace,
 }: PaceCalculatorProps) {
@@ -284,7 +286,7 @@ export default function PaceCalculator({
           data-testid="pace-calc-apply-btn"
           className="min-h-[44px] px-5 py-2.5 rounded-xl bg-teal-700 dark:bg-teal-600 text-white text-sm font-semibold hover:bg-teal-800 dark:hover:bg-teal-500 transition-colors whitespace-nowrap shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-700 dark:focus-visible:ring-teal-400"
         >
-          {t.applyToPlanBtn}
+          {applyButtonLabel || t.applyToPlanBtn}
         </button>
       </div>
 

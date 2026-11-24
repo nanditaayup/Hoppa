@@ -26,6 +26,7 @@ export interface BuyerLicensePayload {
   type: 'pc_license';
   planType: AccessPlanType;
   codeId: string;
+  claimSecret?: string;
   iat: number;
   exp: number;
 }
@@ -136,16 +137,51 @@ export function verifyEntitlementToken(
   }
 }
 
-export function signBuyerLicenseKey(
+import {
+  inferPlanTypeFromAccessCode,
+  isValidAccessCodeFormat,
+  normalizeAccessCode,
+} from './license-format';
+
+export {
+  inferPlanTypeFromAccessCode,
+  isValidAccessCodeFormat,
+  normalizeAccessCode,
+};
+
+const LICENSE_KEY_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+
+export function generateAccessCodeString(planType: AccessPlanType): string {
+  const safePlan: AccessPlanType = planType === 'pro' ? 'pro' : 'lifetime';
+  const prefix = safePlan === 'pro' ? 'PACE-PRO' : 'PACE-LT';
+  const bytes = crypto.randomBytes(12);
+  let raw = '';
+  for (let i = 0; i < 12; i++) {
+    raw += LICENSE_KEY_ALPHABET[bytes[i] % LICENSE_KEY_ALPHABET.length];
+  }
+  return `${prefix}-${raw.slice(0, 4)}-${raw.slice(4, 8)}-${raw.slice(8, 12)}`;
+}
+
+export function createSingleUseBuyerLicense(
   planType: AccessPlanType,
   secret: string,
   nowSec = Math.floor(Date.now() / 1000),
   ttlSec = 60 * 60 * 24 * 90 // 90 days to redeem
-): string {
+): {
+  licenseKey: string;
+  codeId: string;
+  claimSecret: string;
+  planType: AccessPlanType;
+  expiresAtIso: string;
+} {
+  const safePlan: AccessPlanType = planType === 'pro' ? 'pro' : 'lifetime';
+  const codeId = `LIC-${crypto.randomBytes(6).toString('hex').toUpperCase()}`;
+  const claimSecret = crypto.randomBytes(12).toString('hex');
   const payload: BuyerLicensePayload = {
     type: 'pc_license',
-    planType: planType === 'pro' ? 'pro' : 'lifetime',
-    codeId: crypto.randomBytes(4).toString('hex').toUpperCase(),
+    planType: safePlan,
+    codeId,
+    claimSecret,
     iat: nowSec,
     exp: nowSec + ttlSec,
   };
@@ -153,7 +189,22 @@ export function signBuyerLicenseKey(
     'base64url'
   );
   const sig = signHmacBase64Url(`PC:${encoded}`, secret);
-  return `PC-${encoded}.${sig}`;
+  return {
+    licenseKey: `PC-${encoded}.${sig}`,
+    codeId,
+    claimSecret,
+    planType: safePlan,
+    expiresAtIso: new Date((nowSec + ttlSec) * 1000).toISOString(),
+  };
+}
+
+export function signBuyerLicenseKey(
+  planType: AccessPlanType,
+  secret: string,
+  nowSec = Math.floor(Date.now() / 1000),
+  ttlSec = 60 * 60 * 24 * 90 // 90 days to redeem
+): string {
+  return createSingleUseBuyerLicense(planType, secret, nowSec, ttlSec).licenseKey;
 }
 
 export function verifyBuyerCodeOrLicense(
@@ -164,7 +215,14 @@ export function verifyBuyerCodeOrLicense(
     multipleCodesCsv?: string;
   },
   nowSec = Math.floor(Date.now() / 1000)
-): { valid: boolean; planType: AccessPlanType; provider: AccessProvider } {
+): {
+  valid: boolean;
+  planType: AccessPlanType;
+  provider: AccessProvider;
+  singleUse?: boolean;
+  codeId?: string;
+  claimSecret?: string;
+} {
   const trimmed = (rawCode || '').trim();
   if (!trimmed) {
     return { valid: false, planType: 'lifetime', provider: 'license' };
@@ -192,10 +250,19 @@ export function verifyBuyerCodeOrLicense(
               typeof parsed.exp === 'number' &&
               parsed.exp > nowSec
             ) {
+              const hasSingleUseClaim =
+                typeof parsed.codeId === 'string' &&
+                /^[a-zA-Z0-9_-]{4,64}$/.test(parsed.codeId) &&
+                typeof parsed.claimSecret === 'string' &&
+                /^[a-zA-Z0-9_-]{8,64}$/.test(parsed.claimSecret);
+
               return {
                 valid: true,
                 planType: parsed.planType === 'pro' ? 'pro' : 'lifetime',
                 provider: 'license',
+                singleUse: hasSingleUseClaim,
+                codeId: hasSingleUseClaim ? parsed.codeId : undefined,
+                claimSecret: hasSingleUseClaim ? parsed.claimSecret : undefined,
               };
             }
           } catch {
@@ -223,7 +290,12 @@ export function verifyBuyerCodeOrLicense(
     for (const candidate of candidates) {
       const candidateHash = sha256Buffer(candidate);
       if (crypto.timingSafeEqual(incomingHash, candidateHash)) {
-        return { valid: true, planType: 'lifetime', provider: 'license' };
+        return {
+          valid: true,
+          planType: 'lifetime',
+          provider: 'license',
+          singleUse: false,
+        };
       }
     }
   }

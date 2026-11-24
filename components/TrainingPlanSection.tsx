@@ -4,9 +4,12 @@ import React, { useState } from 'react';
 import {
   Check,
   CalendarCheck2,
+  CalendarPlus,
   Dumbbell,
   Sparkles,
   TrendingUp,
+  ChevronDown,
+  ChevronUp,
 } from 'lucide-react';
 import { RACE_TARGETS_BY_LANG } from '@/lib/strava/config';
 import {
@@ -20,6 +23,7 @@ import {
 } from '@/lib/strava/types';
 import { UI_COPY } from '@/lib/strava/i18n';
 import { formatDecimalComma, formatPace } from '@/lib/strava/transform';
+import { buildWeeklyScheduleIcs } from '@/lib/strava/ics-export';
 import PaceCalculator from './PaceCalculator';
 
 interface TrainingPlanSectionProps {
@@ -28,6 +32,8 @@ interface TrainingPlanSectionProps {
   progressEntries: DailyProgressEntry[];
   countdownDaysRemaining: number;
   raceEventLabel: string;
+  todayDateKey?: string;
+  todayDayIndex?: number;
   lang: AppLanguage;
   onChangeProfile: (updater: (prev: RunnerProfile) => RunnerProfile) => void;
   onQuickLogSession: (session: DailySessionPlan) => void;
@@ -47,11 +53,17 @@ export default function TrainingPlanSection({
   progressEntries,
   countdownDaysRemaining,
   raceEventLabel,
+  todayDateKey,
+  todayDayIndex,
   lang,
   onChangeProfile,
   onQuickLogSession,
 }: TrainingPlanSectionProps) {
   const [subTab, setSubTab] = useState<'schedule' | 'zones' | 'calculator'>('schedule');
+  const [expandedStrengthDays, setExpandedStrengthDays] = useState<
+    Record<number, boolean>
+  >({});
+  const [icsExportNotice, setIcsExportNotice] = useState(false);
   const fullCopy = UI_COPY[lang];
   const t = fullCopy.training;
   const raceTargets = RACE_TARGETS_BY_LANG[lang];
@@ -87,13 +99,43 @@ export default function TrainingPlanSection({
   const raceList: RaceDistanceKey[] = ['5K', '10K', '21K', '42K'];
   const dayOptions: Array<3 | 4 | 5 | 6> = [3, 4, 5, 6];
 
+  const handleExportScheduleIcs = () => {
+    if (typeof document === 'undefined') return;
+    const now = new Date();
+    const wib = new Date(now.getTime() + 7 * 60 * 60 * 1000);
+    const fallbackDateKey = wib.toISOString().slice(0, 10);
+    const utcDay = wib.getUTCDay();
+    const fallbackDayIndex = utcDay === 0 ? 6 : utcDay - 1;
+
+    const icsBody = buildWeeklyScheduleIcs({
+      weeklySchedule: plan.weeklySchedule,
+      todayDateKey: todayDateKey || fallbackDateKey,
+      todayDayIndex: typeof todayDayIndex === 'number' ? todayDayIndex : fallbackDayIndex,
+      targetRace: profile.targetRace,
+      raceEventLabel,
+      lang,
+    });
+
+    const blob = new Blob([icsBody], { type: 'text/calendar;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `pacecraft-jadwal-${profile.targetRace.toLowerCase()}.ics`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    setIcsExportNotice(true);
+    setTimeout(() => setIcsExportNotice(false), 5000);
+  };
+
   return (
     <section
       id="menu-latihan"
       aria-labelledby="training-plan-heading"
       className="space-y-5"
     >
-      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-2">
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-3">
         <div className="space-y-1">
           <h2
             id="training-plan-heading"
@@ -101,42 +143,46 @@ export default function TrainingPlanSection({
           >
             {t.heading}
           </h2>
-          <p className="text-sm text-slate-600 dark:text-slate-300">
-            {t.subtitlePrefix}
-            <span className="font-mono tabular-nums font-semibold text-slate-800 dark:text-slate-100">
-              {formatDecimalComma(plan.baselineFourWeekAvgKm, 1, lang)}{' '}
-              {t.weekUnit}
+          <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300">
+            {plan.isUsingCustomTargetPace
+              ? t.customPaceBadge
+              : plan.isUsingDefaultBaseline
+                ? t.defaultBaselineTag.replace(/^\s*\(|\)\s*$/g, '')
+                : t.stravaBaselineTag.replace(/^\s*\(|\)\s*$/g, '')}
+            {plan.isUsingCustomTargetPace && (
+              <button
+                type="button"
+                onClick={() =>
+                  onChangeProfile((p) => ({
+                    ...p,
+                    customTargetPaceSecPerKm: null,
+                  }))
+                }
+                className="ml-2 text-xs font-semibold text-teal-700 dark:text-teal-400 hover:underline"
+              >
+                · {t.resetCustomPaceBtn}
+              </button>
+            )}
+          </p>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2 shrink-0">
+          <div className="px-3 py-1.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs">
+            <span className="text-slate-500 dark:text-slate-400">
+              {t.baselineVolumeChip}:{' '}
             </span>
-            {t.subtitleMiddle}{' '}
-            <span className="font-mono tabular-nums font-semibold text-teal-700 dark:text-teal-400">
+            <span className="font-mono tabular-nums font-bold text-slate-900 dark:text-slate-100">
+              {formatDecimalComma(plan.baselineFourWeekAvgKm, 1, lang)} {t.weekUnit}
+            </span>
+          </div>
+          <div className="px-3 py-1.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs">
+            <span className="text-slate-500 dark:text-slate-400">
+              {t.baselinePaceChip}:{' '}
+            </span>
+            <span className="font-mono tabular-nums font-bold text-teal-700 dark:text-teal-400">
               {formatPace(plan.baselinePaceSecPerKm)}
             </span>
-            {plan.isUsingCustomTargetPace ? (
-              <>
-                {' '}
-                <span className="font-semibold text-teal-800 dark:text-teal-300">
-                  ({t.customPaceBadge})
-                </span>
-                <button
-                  type="button"
-                  onClick={() =>
-                    onChangeProfile((p) => ({
-                      ...p,
-                      customTargetPaceSecPerKm: null,
-                    }))
-                  }
-                  className="ml-2 text-xs font-semibold text-teal-700 dark:text-teal-400 hover:underline"
-                >
-                  {t.resetCustomPaceBtn}
-                </button>
-              </>
-            ) : plan.isUsingDefaultBaseline ? (
-              t.defaultBaselineTag
-            ) : (
-              t.stravaBaselineTag
-            )}
-            .
-          </p>
+          </div>
         </div>
       </div>
 
@@ -304,18 +350,41 @@ export default function TrainingPlanSection({
                 {t.scheduleHeadingPrefix} ({profile.targetRace})
               </h3>
             </div>
-            <span className="text-xs text-slate-500 dark:text-slate-400 font-mono tabular-nums">
-              {profile.trainingDaysPerWeek} {t.activeDaysUnit}{' '}
-              {strengthCount > 0 && (
-                <span
-                  data-testid="strength-header-tag"
-                  className="text-indigo-700 dark:text-indigo-300 font-semibold"
-                >
-                  {t.strengthHeaderTag(strengthCount)}
-                </span>
-              )}
-            </span>
+
+            <div className="flex flex-wrap items-center gap-2.5">
+              <span className="text-xs text-slate-500 dark:text-slate-400 font-mono tabular-nums">
+                {profile.trainingDaysPerWeek} {t.activeDaysUnit}{' '}
+                {strengthCount > 0 && (
+                  <span
+                    data-testid="strength-header-tag"
+                    className="text-indigo-700 dark:text-indigo-300 font-semibold"
+                  >
+                    {t.strengthHeaderTag(strengthCount)}
+                  </span>
+                )}
+              </span>
+
+              <button
+                type="button"
+                onClick={handleExportScheduleIcs}
+                data-testid="export-ics-btn"
+                className="min-h-[40px] px-3.5 py-1.5 rounded-xl bg-teal-50 dark:bg-teal-950/60 border border-teal-200 dark:border-teal-800/80 text-xs font-semibold text-teal-900 dark:text-teal-200 hover:bg-teal-100 dark:hover:bg-teal-900/60 inline-flex items-center gap-1.5 whitespace-nowrap transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-700 dark:focus-visible:ring-teal-400"
+              >
+                <CalendarPlus className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
+                <span>{t.exportIcsBtn}</span>
+              </button>
+            </div>
           </div>
+
+          {icsExportNotice && (
+            <div
+              role="status"
+              data-testid="export-ics-notice"
+              className="rounded-xl bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800/70 px-4 py-2.5 text-xs text-emerald-900 dark:text-emerald-200 leading-relaxed"
+            >
+              {t.exportedIcsNotice}
+            </div>
+          )}
 
           {taperNotice && (
             <div
@@ -377,26 +446,55 @@ export default function TrainingPlanSection({
                     {session.strengthSession && (
                       <div
                         data-testid={`strength-session-${session.dayIndex}`}
-                        className="mt-1.5 rounded-lg bg-indigo-50/75 dark:bg-indigo-950/50 border border-transparent dark:border-indigo-800/60 px-3 py-2 text-xs text-indigo-950 dark:text-indigo-100 flex items-start gap-2"
+                        className="mt-1.5 rounded-lg bg-indigo-50/75 dark:bg-indigo-950/50 border border-transparent dark:border-indigo-800/60 px-3 py-2 text-xs text-indigo-950 dark:text-indigo-100 space-y-1"
                       >
-                        <Dumbbell
-                          className="w-3.5 h-3.5 text-indigo-700 dark:text-indigo-400 shrink-0 mt-0.5"
-                          aria-hidden="true"
-                        />
-                        <div className="min-w-0">
-                          <span className="font-semibold">
-                            {t.strengthBadgePrefix} ·{' '}
-                            {session.strengthSession.title} (
-                            <span className="font-mono tabular-nums">
-                              {session.strengthSession.durationMin}{' '}
-                              {t.minuteShort}
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <span className="inline-flex items-center gap-1.5 font-semibold">
+                            <Dumbbell
+                              className="w-3.5 h-3.5 text-indigo-700 dark:text-indigo-400 shrink-0"
+                              aria-hidden="true"
+                            />
+                            <span>
+                              {t.strengthBadgePrefix} ·{' '}
+                              {session.strengthSession.title} (
+                              <span className="font-mono tabular-nums">
+                                {session.strengthSession.durationMin}{' '}
+                                {t.minuteShort}
+                              </span>
+                              )
                             </span>
-                            )
                           </span>
-                          <span className="block text-[11px] text-indigo-800/90 dark:text-indigo-200/85 mt-0.5">
-                            {session.strengthSession.exercises}
-                          </span>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setExpandedStrengthDays((prev) => ({
+                                ...prev,
+                                [session.dayIndex]: !prev[session.dayIndex],
+                              }))
+                            }
+                            aria-expanded={Boolean(
+                              expandedStrengthDays[session.dayIndex]
+                            )}
+                            className="inline-flex items-center gap-1 text-[11px] font-semibold text-indigo-700 dark:text-indigo-300 hover:underline"
+                          >
+                            <span>
+                              {expandedStrengthDays[session.dayIndex]
+                                ? t.strengthToggleHide
+                                : t.strengthToggleShow}
+                            </span>
+                            {expandedStrengthDays[session.dayIndex] ? (
+                              <ChevronUp className="w-3 h-3" aria-hidden="true" />
+                            ) : (
+                              <ChevronDown className="w-3 h-3" aria-hidden="true" />
+                            )}
+                          </button>
                         </div>
+
+                        {expandedStrengthDays[session.dayIndex] && (
+                          <p className="text-[11px] text-indigo-800/90 dark:text-indigo-200/85 leading-relaxed">
+                            {session.strengthSession.exercises}
+                          </p>
+                        )}
                       </div>
                     )}
                   </div>

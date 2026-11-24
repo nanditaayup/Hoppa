@@ -21,6 +21,8 @@ import {
   RUNNER_PROFILE_STORAGE_KEY,
 } from '@/lib/strava/config';
 import {
+  AccessCodeRecord,
+  AccessCodeStatus,
   AccessGrantRecord,
   AccessGrantStatus,
   AccessPlanType,
@@ -35,6 +37,12 @@ import {
   RunnerProfile,
   TrainingZoneType,
 } from '@/lib/strava/types';
+import {
+  inferPlanTypeFromAccessCode,
+  isValidAccessCodeFormat,
+  normalizeAccessCode,
+} from '@/lib/billing/license-format';
+import { clampPbSeconds } from '@/lib/strava/personal-bests';
 import { db, handleFirestoreError, OperationType } from './client';
 
 export const OWNER_ADMIN_EMAIL = 'nanditayup@gmail.com';
@@ -54,6 +62,11 @@ export const DEFAULT_RUNNER_PROFILE: RunnerProfile = {
   shoeName: 'Sepatu Lari Utama',
   shoeCurrentKm: 0,
   shoeMaxKm: 700,
+  pb5kSec: null,
+  pb10kSec: null,
+  pb21kSec: null,
+  pb42kSec: null,
+  onboardingCompleted: false,
 };
 
 export interface CloudWorkspaceState {
@@ -152,6 +165,11 @@ export function sanitizeRunnerProfile(profile: RunnerProfile): RunnerProfile {
     shoeName,
     shoeCurrentKm,
     shoeMaxKm,
+    pb5kSec: clampPbSeconds(profile.pb5kSec),
+    pb10kSec: clampPbSeconds(profile.pb10kSec),
+    pb21kSec: clampPbSeconds(profile.pb21kSec),
+    pb42kSec: clampPbSeconds(profile.pb42kSec),
+    onboardingCompleted: Boolean(profile.onboardingCompleted),
   };
 }
 
@@ -316,6 +334,10 @@ export function subscribeToUserWorkspace(
       const mergedProfile = sanitizeRunnerProfile({
         ...DEFAULT_RUNNER_PROFILE,
         ...rawProfile,
+        onboardingCompleted:
+          typeof rawProfile.onboardingCompleted === 'boolean'
+            ? rawProfile.onboardingCompleted
+            : true,
       });
 
       const language: AppLanguage = data.language === 'en' ? 'en' : 'id';
@@ -939,4 +961,184 @@ export async function adminUpsertAccessGrant(
       path
     );
   }
+}
+
+export function sanitizeBuyerNote(raw: string | undefined | null): string {
+  return (raw || '').trim().slice(0, 120);
+}
+
+function mapDocToAccessCode(
+  fallbackId: string,
+  d: Record<string, unknown>
+): AccessCodeRecord {
+  const validStatuses: AccessCodeStatus[] = ['unused', 'used', 'revoked'];
+  const validPlans: AccessPlanType[] = ['lifetime', 'pro'];
+  const rawCreated = d.createdAt as { toDate?: () => Date } | undefined;
+  const rawUsed = d.usedAt as { toDate?: () => Date } | undefined;
+
+  return {
+    codeId: String(d.codeId ?? fallbackId),
+    planType: validPlans.includes(d.planType as AccessPlanType)
+      ? (d.planType as AccessPlanType)
+      : 'lifetime',
+    status: validStatuses.includes(d.status as AccessCodeStatus)
+      ? (d.status as AccessCodeStatus)
+      : 'unused',
+    buyerNote: String(d.buyerNote ?? ''),
+    usedByUid:
+      typeof d.usedByUid === 'string' && d.usedByUid.length > 0
+        ? d.usedByUid
+        : null,
+    createdAtIso:
+      rawCreated && typeof rawCreated.toDate === 'function'
+        ? rawCreated.toDate().toISOString()
+        : undefined,
+    usedAtIso:
+      rawUsed && typeof rawUsed.toDate === 'function'
+        ? rawUsed.toDate().toISOString()
+        : undefined,
+  };
+}
+
+export async function adminCreateAccessCode(params: {
+  codeId: string;
+  planType: AccessPlanType;
+  buyerNote?: string;
+}): Promise<void> {
+  const safeCodeId = normalizeAccessCode(params.codeId).slice(0, 64);
+  if (!isValidAccessCodeFormat(safeCodeId)) {
+    throw new Error('Invalid access code format');
+  }
+
+  const path = `access-codes/${safeCodeId}`;
+  try {
+    await setDoc(doc(db, 'access-codes', safeCodeId), {
+      codeId: safeCodeId,
+      planType: params.planType === 'pro' ? 'pro' : 'lifetime',
+      status: 'unused',
+      buyerNote: sanitizeBuyerNote(params.buyerNote),
+      usedByUid: null,
+      usedAt: null,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    });
+  } catch (error) {
+    handleFirestoreError(error, OperationType.CREATE, path);
+  }
+}
+
+export function subscribeToAdminAccessCodes(
+  onData: (codes: AccessCodeRecord[]) => void
+): Unsubscribe {
+  const path = 'access-codes';
+  const q = query(
+    collection(db, 'access-codes'),
+    where('status', 'in', ['unused', 'used', 'revoked'])
+  );
+
+  return onSnapshot(
+    q,
+    (snapshot) => {
+      const codes = snapshot.docs.map((docSnap) =>
+        mapDocToAccessCode(
+          docSnap.id,
+          docSnap.data() as Record<string, unknown>
+        )
+      );
+      codes.sort((a, b) => {
+        if (a.status === 'unused' && b.status !== 'unused') return -1;
+        if (a.status !== 'unused' && b.status === 'unused') return 1;
+        return (b.createdAtIso ?? '').localeCompare(a.createdAtIso ?? '');
+      });
+      onData(codes);
+    },
+    (error) => {
+      handleFirestoreError(error, OperationType.LIST, path);
+    }
+  );
+}
+
+export async function adminRevokeAccessCode(
+  codeId: string,
+  buyerNote: string
+): Promise<void> {
+  const safeCodeId = normalizeAccessCode(codeId).slice(0, 64);
+  const path = `access-codes/${safeCodeId}`;
+  try {
+    await updateDoc(doc(db, 'access-codes', safeCodeId), {
+      status: 'revoked',
+      buyerNote: sanitizeBuyerNote(buyerNote),
+      updatedAt: serverTimestamp(),
+    });
+  } catch (error) {
+    handleFirestoreError(error, OperationType.UPDATE, path);
+  }
+}
+
+export async function redeemFirestoreAccessCode(params: {
+  uid: string;
+  grantExists: boolean;
+  rawCode: string;
+}): Promise<
+  | { ok: true; codeId: string; planType: AccessPlanType }
+  | { ok: false; reason: 'invalid_format' | 'already_used_or_invalid' }
+> {
+  const safeUid = sanitizeFirestoreId(params.uid);
+  const normalizedCode = normalizeAccessCode(params.rawCode).slice(0, 64);
+
+  if (!isValidAccessCodeFormat(normalizedCode)) {
+    return { ok: false, reason: 'invalid_format' };
+  }
+
+  const inferredPlan = inferPlanTypeFromAccessCode(normalizedCode);
+  const explicitPrefix =
+    normalizedCode.startsWith('PACE-LT-') ||
+    normalizedCode.startsWith('PACE-PRO-') ||
+    normalizedCode.startsWith('PRO-');
+
+  const candidatePlans: AccessPlanType[] = explicitPrefix
+    ? [inferredPlan]
+    : [inferredPlan, inferredPlan === 'lifetime' ? 'pro' : 'lifetime'];
+
+  for (const planType of candidatePlans) {
+    try {
+      const batch = writeBatch(db);
+      batch.update(doc(db, 'access-codes', normalizedCode), {
+        status: 'used',
+        usedByUid: safeUid,
+        usedAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      });
+
+      const grantRef = doc(db, 'accessGrants', safeUid);
+      if (!params.grantExists) {
+        batch.set(grantRef, {
+          uid: safeUid,
+          status: 'active',
+          planType,
+          provider: 'license',
+          orderRef: normalizedCode,
+          note: 'Single-use license key',
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
+        });
+      } else {
+        batch.update(grantRef, {
+          status: 'active',
+          planType,
+          provider: 'license',
+          orderRef: normalizedCode,
+          note: 'Single-use license key',
+          updatedAt: serverTimestamp(),
+        });
+      }
+
+      await batch.commit();
+      return { ok: true, codeId: normalizedCode, planType };
+    } catch {
+      // Retry next candidate plan only when custom key lacked an explicit plan prefix
+    }
+  }
+
+  return { ok: false, reason: 'already_used_or_invalid' };
 }

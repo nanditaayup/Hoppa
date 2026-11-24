@@ -1,12 +1,13 @@
 'use client';
 
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import Image from 'next/image';
 import { User } from 'firebase/auth';
 import { motion, useReducedMotion } from 'motion/react';
 import {
   Activity,
   ArrowRight,
+  Award,
   CalendarCheck2,
   CheckCircle2,
   ChevronRight,
@@ -21,6 +22,7 @@ import {
   X,
 } from 'lucide-react';
 import { SAMPLE_STRAVA_RUNS } from '@/lib/strava/config';
+import { buildDemoWorkspaceSnapshot } from '@/lib/strava/demo-data';
 import { mergeAndDeduplicateRuns } from '@/lib/strava/import-parser';
 import {
   buildProgressEntriesFromMatches,
@@ -48,6 +50,7 @@ import {
 } from '@/lib/strava/types';
 import { UI_COPY } from '@/lib/strava/i18n';
 import { buildBackupPayload } from '@/lib/strava/backup';
+import { getProfilePersonalBests } from '@/lib/strava/personal-bests';
 import {
   clearAllCloudRuns,
   clearLegacyLocalData,
@@ -72,19 +75,24 @@ import RaceCountdown from './RaceCountdown';
 import TrainingPlanSection from './TrainingPlanSection';
 import NutritionRecoverySection from './NutritionRecoverySection';
 import DailyProgressTracker from './DailyProgressTracker';
+import MonthlyIntensityCalendar from './MonthlyIntensityCalendar';
 import StravaDashboard from './StravaDashboard';
 import { ImportSourceKind } from './ImportActivitiesPanel';
 import ActivityDetailModal from './ActivityDetailModal';
 import DisconnectModal from './DisconnectModal';
+import OnboardingWizardModal from './OnboardingWizardModal';
 import PrivacyTermsModal from './PrivacyTermsModal';
+import { OfflineIndicator, PWAInstallButton } from './PWAInstallButton';
 import DeleteAccountModal from './DeleteAccountModal';
 import ThemeToggle from './ThemeToggle';
 
 interface PaceCraftAppProps {
-  user: User;
+  user: User | null;
   initialPreferredLang: AppLanguage;
   authBusy: boolean;
   isOwnerAdmin?: boolean;
+  isDemoMode?: boolean;
+  onExitDemo?: (goToSignIn?: boolean) => void;
   onSignOut: () => Promise<void>;
   onFinalizeAccountDeletion: () => Promise<void>;
 }
@@ -96,6 +104,15 @@ function getLocalTodayKeyAndDayIndex(): { dateKey: string; dayIndex: number } {
   const utcDay = wib.getUTCDay();
   const dayIndex = utcDay === 0 ? 6 : utcDay - 1;
   return { dateKey, dayIndex };
+}
+
+function noopSubscribe() {
+  return () => {};
+}
+
+function readAutostartParam(): boolean {
+  if (typeof window === 'undefined') return false;
+  return new URLSearchParams(window.location.search).get('autostart') === '1';
 }
 
 type ImportNoticeState =
@@ -125,22 +142,39 @@ export default function PaceCraftApp({
   initialPreferredLang,
   authBusy,
   isOwnerAdmin = false,
+  isDemoMode = false,
+  onExitDemo,
   onSignOut,
   onFinalizeAccountDeletion,
 }: PaceCraftAppProps) {
-  const [runs, setRuns] = useState<RunActivity[]>([]);
-  const [profile, setProfile] = useState<RunnerProfile>(DEFAULT_RUNNER_PROFILE);
+  const [initialDemoSnapshot] = useState(() =>
+    isDemoMode
+      ? buildDemoWorkspaceSnapshot(
+          getLocalTodayKeyAndDayIndex().dateKey,
+          initialPreferredLang
+        )
+      : null
+  );
+
+  const [runs, setRuns] = useState<RunActivity[]>(
+    () => initialDemoSnapshot?.runs ?? []
+  );
+  const [profile, setProfile] = useState<RunnerProfile>(
+    () => initialDemoSnapshot?.profile ?? DEFAULT_RUNNER_PROFILE
+  );
   const [progressEntries, setProgressEntries] = useState<DailyProgressEntry[]>(
-    []
+    () => initialDemoSnapshot?.progressEntries ?? []
   );
   const [lang, setLangState] = useState<AppLanguage>(initialPreferredLang);
   const [customRaceDate, setCustomRaceDateState] = useState<string | null>(
-    null
+    () => initialDemoSnapshot?.customRaceDate ?? null
   );
-  const [customRaceName, setCustomRaceNameState] = useState<string>('');
+  const [customRaceName, setCustomRaceNameState] = useState<string>(
+    () => initialDemoSnapshot?.customRaceName ?? ''
+  );
   const [migratedFromLocal, setMigratedFromLocal] = useState(false);
 
-  const [cloudWorkspaceReady, setCloudWorkspaceReady] = useState(false);
+  const [cloudWorkspaceReady, setCloudWorkspaceReady] = useState(isDemoMode);
   const [pendingMigration, setPendingMigration] =
     useState<LegacyLocalSnapshot | null>(null);
   const [isMigratingLocal, setIsMigratingLocal] = useState(false);
@@ -151,6 +185,14 @@ export default function PaceCraftApp({
   const [isDeletingAccount, setIsDeletingAccount] = useState(false);
   const [deleteAccountError, setDeleteAccountError] = useState<string | null>(
     null
+  );
+  const [wizardManuallyOpened, setWizardManuallyOpened] = useState(false);
+  const [wizardDismissedThisSession, setWizardDismissedThisSession] =
+    useState(false);
+  const hasAutostartParam = useSyncExternalStore(
+    noopSubscribe,
+    readAutostartParam,
+    () => false
   );
 
   const workspaceExistsRef = useRef(false);
@@ -200,8 +242,9 @@ export default function PaceCraftApp({
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [isMobileSidebarOpen]);
 
-  // Subscribe to per-user Firestore collections
+  // Subscribe to per-user Firestore collections (bypassed completely in Demo Mode)
   useEffect(() => {
+    if (isDemoMode || !user) return;
     const uid = user.uid;
     let initHandled = false;
 
@@ -270,7 +313,7 @@ export default function PaceCraftApp({
         clearTimeout(workspaceWriteTimerRef.current);
       }
     };
-  }, [user.uid, initialPreferredLang]);
+  }, [user, isDemoMode, initialPreferredLang]);
 
   const scheduleWorkspaceSave = useCallback(
     (
@@ -283,16 +326,18 @@ export default function PaceCraftApp({
       }>,
       immediate = false
     ) => {
+      if (isDemoMode || !user) return;
       lastWorkspaceWriteAtRef.current = Date.now();
       if (workspaceWriteTimerRef.current) {
         clearTimeout(workspaceWriteTimerRef.current);
       }
 
+      const uid = user.uid;
       const executeWrite = () => {
         const exists = workspaceExistsRef.current;
         workspaceExistsRef.current = true;
         void createOrUpdateUserWorkspace(
-          user.uid,
+          uid,
           exists,
           latestWorkspaceRef.current,
           changedFields
@@ -305,7 +350,7 @@ export default function PaceCraftApp({
         workspaceWriteTimerRef.current = setTimeout(executeWrite, 350);
       }
     },
-    [user.uid]
+    [user, isDemoMode]
   );
 
   const setProfileAndSync = useCallback(
@@ -361,7 +406,7 @@ export default function PaceCraftApp({
   );
 
   const handleImportLocalToCloud = async () => {
-    if (!pendingMigration || isMigratingLocal) return;
+    if (isDemoMode || !user || !pendingMigration || isMigratingLocal) return;
     setIsMigratingLocal(true);
     try {
       const legacy = pendingMigration;
@@ -411,6 +456,7 @@ export default function PaceCraftApp({
   };
 
   const handleConfirmDeleteAccount = async () => {
+    if (isDemoMode || !user) return;
     setDeleteAccountError(null);
     setIsDeletingAccount(true);
     try {
@@ -427,6 +473,7 @@ export default function PaceCraftApp({
   };
 
   const handleStartFreshWorkspace = async () => {
+    if (isDemoMode || !user) return;
     markLocalMigrationHandled(user.uid);
     setPendingMigration(null);
     const exists = workspaceExistsRef.current;
@@ -526,6 +573,14 @@ export default function PaceCraftApp({
   );
 
   const shouldReduceMotion = useReducedMotion();
+  const todaySession =
+    trainingPlan.weeklySchedule.find(
+      (s) => s.dayIndex === todayInfo.dayIndex
+    ) ?? trainingPlan.weeklySchedule[0];
+  const isTodayLogged = progressEntries.some(
+    (e) =>
+      e.dateKey === todayInfo.dateKey || e.dayIndex === todayInfo.dayIndex
+  );
   const volumeProgressRatio =
     trainingPlan.totalPlannedWeekKm > 0 && dailyProgressStats.totalLoggedKm > 0
       ? Math.min(
@@ -557,7 +612,9 @@ export default function PaceCraftApp({
 
   const handleLoadSampleData = () => {
     setRuns((prev) => mergeAndDeduplicateRuns(prev, SAMPLE_STRAVA_RUNS));
-    void saveCloudRunsBatch(user.uid, SAMPLE_STRAVA_RUNS);
+    if (!isDemoMode && user) {
+      void saveCloudRunsBatch(user.uid, SAMPLE_STRAVA_RUNS);
+    }
     setImportNoticeState({ type: 'sample' });
   };
 
@@ -573,7 +630,9 @@ export default function PaceCraftApp({
     }
 
     setRuns((prev) => mergeAndDeduplicateRuns(prev, incoming));
-    void saveCloudRunsBatch(user.uid, incoming);
+    if (!isDemoMode && user) {
+      void saveCloudRunsBatch(user.uid, incoming);
+    }
     setImportNoticeState({
       type: 'import',
       count: incoming.length,
@@ -585,7 +644,9 @@ export default function PaceCraftApp({
   const handleSyncStravaOAuthRuns = (incoming: RunActivity[]) => {
     setOauthConnectedOverride(true);
     setRuns((prev) => mergeAndDeduplicateRuns(prev, incoming));
-    void saveCloudRunsBatch(user.uid, incoming);
+    if (!isDemoMode && user) {
+      void saveCloudRunsBatch(user.uid, incoming);
+    }
     setImportNoticeState({ type: 'oauth', count: incoming.length });
   };
 
@@ -601,7 +662,9 @@ export default function PaceCraftApp({
     setOauthConnectedOverride(false);
     setIsDisconnectOpen(false);
     setImportNoticeState({ type: 'cleared' });
-    await clearAllCloudRuns(user.uid);
+    if (!isDemoMode && user) {
+      await clearAllCloudRuns(user.uid);
+    }
   };
 
   const handleAddDailyProgress = (entry: DailyProgressEntry) => {
@@ -612,7 +675,9 @@ export default function PaceCraftApp({
       );
       return [entry, ...filtered];
     });
-    void saveCloudDailyProgress(user.uid, entry);
+    if (!isDemoMode && user) {
+      void saveCloudDailyProgress(user.uid, entry);
+    }
   };
 
   const handleRemoveDailyProgress = (dateKey: string, dayIndex: number) => {
@@ -621,7 +686,9 @@ export default function PaceCraftApp({
         (item) => !(item.dateKey === dateKey && item.dayIndex === dayIndex)
       )
     );
-    void deleteCloudDailyProgress(user.uid, dateKey, dayIndex);
+    if (!isDemoMode && user) {
+      void deleteCloudDailyProgress(user.uid, dateKey, dayIndex);
+    }
   };
 
   const handleSelectTab = (tabId: WorkspaceTabId) => {
@@ -667,7 +734,9 @@ export default function PaceCraftApp({
 
     if (filteredNew.length > 0) {
       setProgressEntries((prev) => [...filteredNew, ...prev]);
-      void saveCloudDailyProgressBatch(user.uid, filteredNew);
+      if (!isDemoMode && user) {
+        void saveCloudDailyProgressBatch(user.uid, filteredNew);
+      }
     }
 
     setStravaSyncNoticeCount(syncedCount);
@@ -708,9 +777,11 @@ export default function PaceCraftApp({
     if (backup.runs.length > 0) {
       setRuns(backup.runs);
     }
-    const exists = workspaceExistsRef.current;
-    workspaceExistsRef.current = true;
-    await restoreCloudBackup(user.uid, exists, backup);
+    if (!isDemoMode && user) {
+      const exists = workspaceExistsRef.current;
+      workspaceExistsRef.current = true;
+      await restoreCloudBackup(user.uid, exists, backup);
+    }
   };
 
   const sidebarItems: Array<{
@@ -760,7 +831,9 @@ export default function PaceCraftApp({
   const activeNavMeta =
     sidebarItems.find((item) => item.id === activeTab) ?? sidebarItems[0];
 
-  const userInitials = getInitials(user.displayName, user.email);
+  const userInitials = isDemoMode
+    ? 'DM'
+    : getInitials(user?.displayName ?? null, user?.email ?? null);
 
   const renderSidebarNavContent = () => (
     <div className="flex flex-col h-full justify-between p-4 gap-6">
@@ -788,7 +861,7 @@ export default function PaceCraftApp({
           </button>
         </div>
 
-        <nav aria-label={t.sidebar.ariaLabel} className="space-y-1">
+        <nav aria-label={t.sidebar.ariaLabel} className="space-y-1.5">
           {sidebarItems.map((item) => {
             const Icon = item.icon;
             const isActive = activeTab === item.id;
@@ -799,22 +872,33 @@ export default function PaceCraftApp({
                 onClick={() => handleSelectTab(item.id)}
                 data-testid={`sidebar-nav-${item.id}`}
                 aria-current={isActive ? 'page' : undefined}
-                className={`w-full text-left px-3 py-2.5 rounded-xl flex items-center gap-3 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-700 dark:focus-visible:ring-teal-400 ${
+                className={`w-full text-left px-3 py-2.5 rounded-xl flex items-start gap-3 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-700 dark:focus-visible:ring-teal-400 ${
                   isActive
                     ? 'bg-teal-50/90 dark:bg-teal-950/60 text-teal-950 dark:text-teal-100 border border-teal-200/80 dark:border-teal-800/70'
                     : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100/80 dark:hover:bg-slate-800/70 hover:text-slate-900 dark:hover:text-slate-100 border border-transparent'
                 }`}
               >
                 <Icon
-                  className={`w-4 h-4 shrink-0 ${
+                  className={`w-4 h-4 shrink-0 mt-0.5 ${
                     isActive
                       ? 'text-teal-700 dark:text-teal-400'
                       : 'text-slate-400 dark:text-slate-500'
                   }`}
                   aria-hidden={true}
                 />
-                <span className="text-sm font-semibold truncate">
-                  {item.label}
+                <span className="min-w-0 flex-1">
+                  <span className="block text-sm font-semibold truncate">
+                    {item.label}
+                  </span>
+                  <span
+                    className={`block text-[11px] truncate mt-0.5 ${
+                      isActive
+                        ? 'text-teal-800/80 dark:text-teal-300/85'
+                        : 'text-slate-500 dark:text-slate-400'
+                    }`}
+                  >
+                    {item.hint}
+                  </span>
                 </span>
               </button>
             );
@@ -839,7 +923,7 @@ export default function PaceCraftApp({
           className="rounded-xl bg-slate-50/90 dark:bg-slate-800/70 border border-slate-200/80 dark:border-slate-700 p-3 space-y-2.5"
         >
           <div className="flex items-center gap-2.5 min-w-0">
-            {user.photoURL && !avatarLoadError ? (
+            {!isDemoMode && user?.photoURL && !avatarLoadError ? (
               <Image
                 src={user.photoURL}
                 alt={user.displayName || 'Runner avatar'}
@@ -859,29 +943,43 @@ export default function PaceCraftApp({
                 data-testid="account-display-name"
                 className="text-xs font-semibold text-slate-900 dark:text-slate-100 truncate"
               >
-                {user.displayName || t.auth.accountLabel}
+                {isDemoMode
+                  ? t.demoMode.sidebarName
+                  : user?.displayName || t.auth.accountLabel}
               </p>
-              {user.email && (
-                <p
-                  data-testid="account-email"
-                  className="text-[11px] text-slate-500 dark:text-slate-400 truncate"
-                >
-                  {user.email}
-                </p>
-              )}
+              <p
+                data-testid="account-email"
+                className="text-[11px] text-slate-500 dark:text-slate-400 truncate"
+              >
+                {isDemoMode
+                  ? t.demoMode.sidebarEmail
+                  : user?.email || ''}
+              </p>
             </div>
           </div>
 
-          <button
-            type="button"
-            onClick={() => void onSignOut()}
-            disabled={authBusy}
-            data-testid="sign-out-btn"
-            className="w-full min-h-[36px] px-3 py-1.5 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:border-rose-300 dark:hover:border-rose-700 hover:text-rose-700 dark:hover:text-rose-300 disabled:opacity-60 transition-colors inline-flex items-center justify-center gap-1.5 whitespace-nowrap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-700 dark:focus-visible:ring-teal-400"
-          >
-            <LogOut className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
-            <span>{authBusy ? t.auth.signingOutBtn : t.auth.signOutBtn}</span>
-          </button>
+          {isDemoMode ? (
+            <button
+              type="button"
+              onClick={() => onExitDemo?.(false)}
+              data-testid="exit-demo-btn"
+              className="w-full min-h-[36px] px-3 py-1.5 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:border-teal-400 hover:text-teal-800 dark:hover:text-teal-300 transition-colors inline-flex items-center justify-center gap-1.5 whitespace-nowrap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-700 dark:focus-visible:ring-teal-400"
+            >
+              <LogOut className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
+              <span>{t.demoMode.exitSidebarBtn}</span>
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => void onSignOut()}
+              disabled={authBusy}
+              data-testid="sign-out-btn"
+              className="w-full min-h-[36px] px-3 py-1.5 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:border-rose-300 dark:hover:border-rose-700 hover:text-rose-700 dark:hover:text-rose-300 disabled:opacity-60 transition-colors inline-flex items-center justify-center gap-1.5 whitespace-nowrap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-700 dark:focus-visible:ring-teal-400"
+            >
+              <LogOut className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
+              <span>{authBusy ? t.auth.signingOutBtn : t.auth.signOutBtn}</span>
+            </button>
+          )}
         </div>
       </div>
     </div>
@@ -931,12 +1029,12 @@ export default function PaceCraftApp({
               <button
                 type="button"
                 onClick={() => handleSelectTab('overview')}
-                className="font-semibold text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 whitespace-nowrap"
+                className="hidden sm:inline font-semibold text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 whitespace-nowrap"
               >
                 PaceCraft
               </button>
               <ChevronRight
-                className="w-4 h-4 text-slate-400 dark:text-slate-500 shrink-0"
+                className="hidden sm:inline w-4 h-4 text-slate-400 dark:text-slate-500 shrink-0"
                 aria-hidden="true"
               />
               <span
@@ -1003,7 +1101,77 @@ export default function PaceCraftApp({
         </header>
 
         {/* Focused Single-Feature Viewport */}
-        <main className="flex-1 max-w-5xl w-full mx-auto px-4 sm:px-8 py-6 sm:py-8 space-y-5">
+        <main className="flex-1 max-w-5xl w-full mx-auto px-4 sm:px-8 py-4 sm:py-8 space-y-5">
+          <OfflineIndicator lang={safeLang} />
+
+          {isDemoMode && (
+            <div
+              data-testid="demo-mode-banner"
+              className="rounded-2xl bg-amber-50/95 dark:bg-amber-950/60 border border-amber-200 dark:border-amber-800 px-4 sm:px-5 py-3.5 flex flex-col lg:flex-row lg:items-center justify-between gap-3"
+            >
+              <div className="space-y-1 min-w-0">
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-amber-100 dark:bg-amber-900/70 text-amber-900 dark:text-amber-200 text-[11px] font-bold">
+                  <Sparkles className="w-3 h-3 shrink-0" aria-hidden="true" />
+                  <span>{t.demoMode.badge}</span>
+                </span>
+                <p className="text-xs sm:text-sm font-bold text-slate-900 dark:text-slate-100">
+                  {t.demoMode.title}
+                </p>
+                <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+                  {t.demoMode.subtitle}
+                </p>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => onExitDemo?.(true)}
+                  data-testid="demo-signin-cta"
+                  className="min-h-[40px] px-4 py-2 rounded-xl bg-teal-700 dark:bg-teal-600 text-white text-xs font-semibold hover:bg-teal-800 dark:hover:bg-teal-500 whitespace-nowrap transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-700 dark:focus-visible:ring-teal-400"
+                >
+                  {t.demoMode.signInCta}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onExitDemo?.(false)}
+                  data-testid="demo-back-home-btn"
+                  className="min-h-[40px] px-3.5 py-2 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:border-teal-400 whitespace-nowrap transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-700 dark:focus-visible:ring-teal-400"
+                >
+                  {t.demoMode.backHomeBtn}
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Mobile 1-Tap Quick Tab Bar */}
+          <nav
+            aria-label={t.nav.mobileAriaLabel}
+            data-testid="mobile-quick-tabs"
+            className="lg:hidden flex items-center gap-1.5 overflow-x-auto pb-1 -mx-1 px-1"
+          >
+            {sidebarItems.map((item) => {
+              const Icon = item.icon;
+              const isActive = activeTab === item.id;
+              return (
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() => handleSelectTab(item.id)}
+                  data-testid={`mobile-tab-${item.id}`}
+                  aria-current={isActive ? 'page' : undefined}
+                  className={`min-h-[42px] px-3.5 py-2 rounded-xl border text-xs font-semibold inline-flex items-center gap-1.5 whitespace-nowrap shrink-0 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-700 dark:focus-visible:ring-teal-400 ${
+                    isActive
+                      ? 'bg-teal-700 dark:bg-teal-600 border-teal-700 dark:border-teal-500 text-white'
+                      : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-200 hover:border-teal-300 dark:hover:border-teal-600'
+                  }`}
+                >
+                  <Icon className="w-3.5 h-3.5 shrink-0" aria-hidden={true} />
+                  <span>{item.label}</span>
+                </button>
+              );
+            })}
+          </nav>
+
           {/* First-Login Local Data Migration Offer */}
           {cloudWorkspaceReady && pendingMigration && (
             <div
@@ -1084,8 +1252,8 @@ export default function PaceCraftApp({
           >
             {activeTab === 'overview' && (
               <div data-testid="overview-panel" className="space-y-6">
-                {/* Calm Pastel Hero Card */}
-                <section className="rounded-2xl bg-gradient-to-br from-[#EAF6F3] via-[#F4F8FB] to-[#EEF2FB] dark:from-teal-950/60 dark:via-slate-900 dark:to-indigo-950/50 border border-teal-100/90 dark:border-teal-800/60 p-6 sm:p-8 space-y-6">
+                {/* Calm Pastel Hero Card + Today's Focus */}
+                <section className="rounded-2xl bg-gradient-to-br from-[#EAF6F3] via-[#F4F8FB] to-[#EEF2FB] dark:from-teal-950/60 dark:via-slate-900 dark:to-indigo-950/50 border border-teal-100/90 dark:border-teal-800/60 p-5 sm:p-8 space-y-6">
                   <RaceCountdown
                     targetRace={profile.targetRace}
                     countdown={raceCountdown}
@@ -1102,19 +1270,65 @@ export default function PaceCraftApp({
                     }}
                   />
 
-                  <div className="pt-4 border-t border-teal-200/60 dark:border-teal-800/60 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                    <h1 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-slate-100 tracking-tight text-balance">
-                      {t.overview.greetingTitle}
-                    </h1>
+                  <div className="pt-5 border-t border-teal-200/60 dark:border-teal-800/60 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                    <div className="space-y-1.5 min-w-0">
+                      <div className="flex flex-wrap items-center gap-2 text-xs font-semibold text-teal-800 dark:text-teal-300">
+                        <span>{t.overview.todaySectionLabel}</span>
+                        <span aria-hidden="true">·</span>
+                        <span>{todaySession.dayName}</span>
+                        {isTodayLogged && (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-100/90 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-200">
+                            <CheckCircle2 className="w-3 h-3" aria-hidden="true" />
+                            {t.overview.todayDoneBadge}
+                          </span>
+                        )}
+                      </div>
 
-                    <button
-                      type="button"
-                      onClick={() => handleSelectTab('training')}
-                      className="min-h-[42px] px-4 py-2 rounded-xl bg-teal-700 dark:bg-teal-600 text-white text-sm font-semibold hover:bg-teal-800 dark:hover:bg-teal-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-700 dark:focus-visible:ring-teal-400 inline-flex items-center gap-2 transition-colors whitespace-nowrap shrink-0 self-start sm:self-center"
-                    >
-                      <CalendarCheck2 className="w-4 h-4" aria-hidden="true" />
-                      {t.overview.quickPlanBtn}
-                    </button>
+                      <h1 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-slate-100 tracking-tight text-balance">
+                        {todaySession.zone === 'rest'
+                          ? todaySession.title
+                          : `${todaySession.title} · ${formatDecimalComma(todaySession.targetDistanceKm, 1, safeLang)} km`}
+                      </h1>
+
+                      <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 leading-relaxed max-w-2xl">
+                        {todaySession.zone === 'rest'
+                          ? t.overview.todayRestDesc
+                          : `${t.training.zoneLabels[todaySession.zone]} (${todaySession.paceRange}) — ${todaySession.guidance}`}
+                      </p>
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-2.5 shrink-0">
+                      {!isTodayLogged && todaySession.zone !== 'rest' ? (
+                        <button
+                          type="button"
+                          onClick={() => handleQuickLogSession(todaySession)}
+                          data-testid="overview-today-quicklog-btn"
+                          className="min-h-[44px] px-4 py-2 rounded-xl bg-teal-700 dark:bg-teal-600 text-white text-sm font-semibold hover:bg-teal-800 dark:hover:bg-teal-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-700 dark:focus-visible:ring-teal-400 inline-flex items-center gap-2 transition-colors whitespace-nowrap"
+                        >
+                          <CheckCircle2 className="w-4 h-4" aria-hidden="true" />
+                          {t.overview.todayQuickLogBtn}
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => handleSelectTab('progress')}
+                          data-testid="overview-today-progress-btn"
+                          className="min-h-[44px] px-4 py-2 rounded-xl bg-teal-700 dark:bg-teal-600 text-white text-sm font-semibold hover:bg-teal-800 dark:hover:bg-teal-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-700 dark:focus-visible:ring-teal-400 inline-flex items-center gap-2 transition-colors whitespace-nowrap"
+                        >
+                          <Flame className="w-4 h-4" aria-hidden="true" />
+                          {t.overview.todayViewProgressBtn}
+                        </button>
+                      )}
+
+                      <button
+                        type="button"
+                        onClick={() => handleSelectTab('training')}
+                        className="min-h-[44px] px-4 py-2 rounded-xl bg-white/90 dark:bg-slate-800/90 border border-teal-200/80 dark:border-slate-700 text-teal-900 dark:text-slate-100 text-sm font-semibold hover:border-teal-400 dark:hover:border-teal-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-700 dark:focus-visible:ring-teal-400 inline-flex items-center gap-2 transition-colors whitespace-nowrap"
+                      >
+                        <CalendarCheck2 className="w-4 h-4" aria-hidden="true" />
+                        {t.overview.todayViewPlanBtn}
+                      </button>
+                    </div>
                   </div>
                 </section>
 
@@ -1302,6 +1516,50 @@ export default function PaceCraftApp({
                   </button>
                 </div>
 
+                {/* Quiet Personal Best Summary Strip (if any PB saved) */}
+                {(() => {
+                  const savedPbs = getProfilePersonalBests(profile).filter(
+                    (item) => item.seconds !== null
+                  );
+                  if (savedPbs.length === 0) return null;
+                  return (
+                    <div
+                      data-testid="overview-pb-summary"
+                      className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl px-5 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+                    >
+                      <div className="flex items-center gap-2.5 text-xs font-bold text-slate-800 dark:text-slate-100">
+                        <Award
+                          className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0"
+                          aria-hidden="true"
+                        />
+                        <span>{t.personalBests.overviewLabel}</span>
+                      </div>
+                      <div className="flex flex-wrap items-center gap-3">
+                        {savedPbs.map((pb) => (
+                          <span
+                            key={pb.key}
+                            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[#F7F9FA] dark:bg-slate-800 text-xs font-mono tabular-nums"
+                          >
+                            <span className="font-semibold text-slate-500 dark:text-slate-400">
+                              {pb.key}
+                            </span>
+                            <span className="font-bold text-slate-900 dark:text-slate-100">
+                              {pb.formatted}
+                            </span>
+                          </span>
+                        ))}
+                        <button
+                          type="button"
+                          onClick={() => handleSelectTab('profile')}
+                          className="text-xs font-semibold text-teal-700 dark:text-teal-400 hover:underline whitespace-nowrap"
+                        >
+                          {t.overview.cards.profileAction}
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })()}
+
                 {/* Quiet Strava quick-start banner if no runs yet */}
                 {runs.length === 0 && (
                   <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl px-5 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -1320,6 +1578,12 @@ export default function PaceCraftApp({
                     </div>
                   </div>
                 )}
+
+                <PWAInstallButton
+                  lang={safeLang}
+                  variant="banner"
+                  testId="overview-pwa-install-btn"
+                />
               </div>
             )}
 
@@ -1330,6 +1594,8 @@ export default function PaceCraftApp({
                 progressEntries={progressEntries}
                 countdownDaysRemaining={raceCountdown.daysRemaining}
                 raceEventLabel={raceEventLabel}
+                todayDateKey={todayInfo.dateKey}
+                todayDayIndex={todayInfo.dayIndex}
                 lang={safeLang}
                 onChangeProfile={setProfileAndSync}
                 onQuickLogSession={handleQuickLogSession}
@@ -1337,27 +1603,47 @@ export default function PaceCraftApp({
             )}
 
             {activeTab === 'progress' && (
-              <DailyProgressTracker
-                weeklySchedule={trainingPlan.weeklySchedule}
-                entries={progressEntries}
-                todayDateKey={todayInfo.dateKey}
-                selectedDayIndex={selectedDayIndex}
-                stravaMatches={stravaSyncMatches}
-                stravaSyncNotice={
-                  stravaSyncNoticeCount
-                    ? t.dailyProgress.stravaSyncSuccess(stravaSyncNoticeCount)
-                    : null
-                }
-                hrVo2={hrVo2Summary}
-                raceEventLabel={raceEventLabel}
-                lang={safeLang}
-                onSelectDayIndex={setSelectedDayIndex}
-                onAddEntry={handleAddDailyProgress}
-                onRemoveEntry={handleRemoveDailyProgress}
-                onSyncStravaProgress={() =>
-                  handleSyncStravaToDailyProgress(false)
-                }
-              />
+              <div className="space-y-6">
+                <DailyProgressTracker
+                  weeklySchedule={trainingPlan.weeklySchedule}
+                  entries={progressEntries}
+                  todayDateKey={todayInfo.dateKey}
+                  selectedDayIndex={selectedDayIndex}
+                  stravaMatches={stravaSyncMatches}
+                  stravaSyncNotice={
+                    stravaSyncNoticeCount
+                      ? t.dailyProgress.stravaSyncSuccess(stravaSyncNoticeCount)
+                      : null
+                  }
+                  hrVo2={hrVo2Summary}
+                  raceEventLabel={raceEventLabel}
+                  lang={safeLang}
+                  onSelectDayIndex={setSelectedDayIndex}
+                  onAddEntry={handleAddDailyProgress}
+                  onRemoveEntry={handleRemoveDailyProgress}
+                  onSyncStravaProgress={() =>
+                    handleSyncStravaToDailyProgress(false)
+                  }
+                />
+
+                <MonthlyIntensityCalendar
+                  entries={progressEntries}
+                  runs={runs}
+                  weeklySchedule={trainingPlan.weeklySchedule}
+                  paceZones={trainingPlan.paceZones}
+                  hrZones={hrVo2Summary.zones}
+                  todayDateKey={todayInfo.dateKey}
+                  lang={safeLang}
+                  onJumpToLogWeekday={(dayIndex) => {
+                    setSelectedDayIndex(dayIndex);
+                    if (typeof document !== 'undefined') {
+                      document
+                        .getElementById('progres-harian')
+                        ?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    }
+                  }}
+                />
+              </div>
             )}
 
             {activeTab === 'profile' && (
@@ -1365,22 +1651,28 @@ export default function PaceCraftApp({
                 profile={profile}
                 bmiResult={bmiResult}
                 hrVo2={hrVo2Summary}
+                runs={runs}
                 lang={safeLang}
                 latestRunKm={
                   runs[0]
                     ? Math.round((runs[0].distanceMeters / 1000) * 10) / 10
                     : 0
                 }
-                isOwnerAdmin={isOwnerAdmin}
-                firebaseUser={user}
+                isOwnerAdmin={isDemoMode ? false : isOwnerAdmin}
+                firebaseUser={isDemoMode ? null : user}
                 onChangeProfile={setProfileAndSync}
                 onExportBackup={handleExportBackup}
                 onRestoreBackup={handleRestoreBackup}
                 onOpenPrivacyModal={() => setIsPrivacyOpen(true)}
-                onOpenDeleteAccountModal={() => {
-                  setDeleteAccountError(null);
-                  setIsDeleteAccountOpen(true);
-                }}
+                onOpenDeleteAccountModal={
+                  isDemoMode
+                    ? undefined
+                    : () => {
+                        setDeleteAccountError(null);
+                        setIsDeleteAccountOpen(true);
+                      }
+                }
+                onReopenWizard={() => setWizardManuallyOpened(true)}
               />
             )}
 
@@ -1457,6 +1749,43 @@ export default function PaceCraftApp({
         }}
         onConfirmDelete={handleConfirmDeleteAccount}
       />
+
+      {(() => {
+        const shouldAutoOpen =
+          cloudWorkspaceReady &&
+          !profile.onboardingCompleted &&
+          !pendingMigration &&
+          runs.length === 0 &&
+          progressEntries.length === 0 &&
+          !wizardDismissedThisSession &&
+          !hasAutostartParam;
+        const isWizardOpen = wizardManuallyOpened || shouldAutoOpen;
+        if (!isWizardOpen) return null;
+        return (
+          <OnboardingWizardModal
+            key={`${profile.targetRace}-${wizardManuallyOpened ? 'manual' : 'auto'}`}
+            isOpen={isWizardOpen}
+            lang={safeLang}
+            initialProfile={profile}
+            initialRaceDate={customRaceDate}
+            initialRaceName={customRaceName}
+            todayDateKey={todayInfo.dateKey}
+            kpi={kpi}
+            onComplete={({ profile: updatedProfile, raceDate, raceName }) => {
+              setProfileAndSync(updatedProfile);
+              setRaceDateAndSync(raceDate);
+              setRaceNameAndSync(raceName);
+              setWizardManuallyOpened(false);
+              setWizardDismissedThisSession(true);
+            }}
+            onSkip={() => {
+              setProfileAndSync((p) => ({ ...p, onboardingCompleted: true }));
+              setWizardManuallyOpened(false);
+              setWizardDismissedThisSession(true);
+            }}
+          />
+        );
+      })()}
     </div>
   );
 }

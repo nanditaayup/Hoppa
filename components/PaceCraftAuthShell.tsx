@@ -8,11 +8,13 @@ import { UI_COPY } from '@/lib/strava/i18n';
 import { useAppTheme } from '@/lib/strava/theme';
 import {
   OWNER_ADMIN_EMAIL,
+  redeemFirestoreAccessCode,
   subscribeToAccessGrant,
 } from '@/lib/firebase/firestore-sync';
+import { PENDING_LICENSE_KEY_SESSION_KEY } from '@/lib/billing/license-format';
 import FirebaseErrorBoundary from './FirebaseErrorBoundary';
 import { AuthProvider, useAuth } from './AuthProvider';
-import LoginGateScreen from './LoginGateScreen';
+import LandingPage from './LandingPage';
 import PaymentAccessGate from './PaymentAccessGate';
 import PaceCraftApp from './PaceCraftApp';
 
@@ -63,6 +65,10 @@ function AuthenticatedWorkspaceGate({
   const [grantChecked, setGrantChecked] = useState(isOwnerAdmin);
   const [serverUnlocked, setServerUnlocked] = useState(isOwnerAdmin);
   const [serverStatusChecked, setServerStatusChecked] = useState(isOwnerAdmin);
+  const [autoRedeemingKey, setAutoRedeemingKey] = useState(false);
+  const [initialLicenseError, setInitialLicenseError] = useState<string | null>(
+    null
+  );
 
   const checkServerEntitlement = useCallback(async () => {
     try {
@@ -127,7 +133,112 @@ function AuthenticatedWorkspaceGate({
   const hasVerifiedAccess =
     isOwnerAdmin || accessGrant?.status === 'active' || serverUnlocked;
 
-  if (!hasVerifiedAccess && (!grantChecked || !serverStatusChecked)) {
+  useEffect(() => {
+    if (
+      isOwnerAdmin ||
+      hasVerifiedAccess ||
+      !grantChecked ||
+      !serverStatusChecked ||
+      typeof window === 'undefined'
+    ) {
+      return;
+    }
+
+    let pendingKey: string | null = null;
+    try {
+      pendingKey = window.sessionStorage.getItem(
+        PENDING_LICENSE_KEY_SESSION_KEY
+      );
+    } catch {
+      pendingKey = null;
+    }
+
+    if (!pendingKey || !pendingKey.trim()) return;
+
+    let active = true;
+    (async () => {
+      await Promise.resolve();
+      if (!active) return;
+
+      setAutoRedeemingKey(true);
+      setInitialLicenseError(null);
+
+      try {
+        const result = await redeemFirestoreAccessCode({
+          uid: user.uid,
+          grantExists: Boolean(accessGrant),
+          rawCode: pendingKey,
+        });
+
+        if (result.ok) {
+          try {
+            window.sessionStorage.removeItem(PENDING_LICENSE_KEY_SESSION_KEY);
+          } catch {
+            // Ignore storage cleanup error
+          }
+          if (active) {
+            await checkServerEntitlement();
+          }
+          return;
+        }
+
+        // Fallback to /api/access/verify for shared passcodes or legacy signed keys
+        try {
+          const idToken = await user.getIdToken();
+          const res = await fetch('/api/access/verify', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${idToken}`,
+            },
+            body: JSON.stringify({ accessCode: pendingKey }),
+          });
+          const data = (await res.json()) as { unlocked?: boolean };
+          if (res.ok && data.unlocked && active) {
+            setServerUnlocked(true);
+            return;
+          }
+        } catch {
+          // Ignore network error during fallback
+        } finally {
+          try {
+            window.sessionStorage.removeItem(PENDING_LICENSE_KEY_SESSION_KEY);
+          } catch {
+            // Ignore storage cleanup error
+          }
+        }
+
+        if (active) {
+          const copy = UI_COPY[preAuthLang].accessGate;
+          setInitialLicenseError(
+            result.reason === 'invalid_format'
+              ? copy.invalidCodeError
+              : copy.alreadyUsedCodeError
+          );
+        }
+      } finally {
+        if (active) setAutoRedeemingKey(false);
+      }
+    })();
+
+    return () => {
+      active = false;
+    };
+  }, [
+    isOwnerAdmin,
+    hasVerifiedAccess,
+    grantChecked,
+    serverStatusChecked,
+    user,
+    accessGrant,
+    preAuthLang,
+    checkServerEntitlement,
+  ]);
+
+  if (
+    !hasVerifiedAccess &&
+    (!grantChecked || !serverStatusChecked || autoRedeemingKey)
+  ) {
     const t = UI_COPY[preAuthLang];
     return (
       <div
@@ -151,6 +262,7 @@ function AuthenticatedWorkspaceGate({
         lang={preAuthLang}
         authBusy={authBusy}
         accessGrant={accessGrant}
+        initialLicenseError={initialLicenseError}
         onChangeLang={onChangeLang}
         onSignOut={onSignOut}
         onServerUnlocked={() => setServerUnlocked(true)}
@@ -183,6 +295,8 @@ function AuthGateRouter() {
     finalizeAccountDeletion,
   } = useAuth();
 
+  const [isDemoMode, setIsDemoMode] = useState(false);
+
   const preAuthLang = useSyncExternalStore<AppLanguage>(
     subscribePreAuthLang,
     readStoredPreAuthLang,
@@ -209,6 +323,20 @@ function AuthGateRouter() {
     }
   };
 
+  const handleExitDemo = useCallback((goToSignIn?: boolean) => {
+    setIsDemoMode(false);
+    if (typeof window !== 'undefined') {
+      window.scrollTo({ top: 0, behavior: 'auto' });
+    }
+    if (goToSignIn && typeof document !== 'undefined') {
+      setTimeout(() => {
+        document
+          .getElementById('masuk-aktivasi')
+          ?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 60);
+    }
+  }, []);
+
   if (!authReady) {
     const t = UI_COPY[preAuthLang];
     return (
@@ -226,14 +354,29 @@ function AuthGateRouter() {
     );
   }
 
+  if (!user && isDemoMode) {
+    return (
+      <PaceCraftApp
+        user={null}
+        initialPreferredLang={preAuthLang}
+        authBusy={authBusy}
+        isDemoMode={true}
+        onExitDemo={handleExitDemo}
+        onSignOut={async () => setIsDemoMode(false)}
+        onFinalizeAccountDeletion={async () => {}}
+      />
+    );
+  }
+
   if (!user) {
     return (
-      <LoginGateScreen
+      <LandingPage
         lang={preAuthLang}
         authBusy={authBusy}
         authErrorCode={authErrorCode}
         onChangeLang={handleChangePreAuthLang}
         onSignInGoogle={() => void signInWithGoogle()}
+        onOpenDemo={() => setIsDemoMode(true)}
       />
     );
   }

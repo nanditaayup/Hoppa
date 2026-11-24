@@ -69,6 +69,11 @@ export interface RunnerProfile {
   shoeName?: string;
   shoeCurrentKm?: number;
   shoeMaxKm?: number;
+  pb5kSec?: number | null;
+  pb10kSec?: number | null;
+  pb21kSec?: number | null;
+  pb42kSec?: number | null;
+  onboardingCompleted?: boolean;
 }
 
 export interface PaceZoneRange {
@@ -266,3 +271,86 @@ export interface AccessGrantRecord {
   note: string;
   updatedAtIso?: string;
 }
+
+export type AccessCodeStatus = 'unused' | 'used' | 'revoked';
+
+export interface AccessCodeRecord {
+  codeId: string;
+  planType: AccessPlanType;
+  status: AccessCodeStatus;
+  buyerNote: string;
+  usedByUid: string | null;
+  createdAtIso?: string;
+  usedAtIso?: string;
+}
+
+export type TrainingIntensityTier = 0 | 1 | 2 | 3 | 4;
+
+export type TrainingIntensityLevel =
+  | 'rest'
+  | 'light'
+  | 'moderate'
+  | 'high'
+  | 'peak';
+
+export type CalendarSessionSource =
+  | 'daily_log'
+  | 'strava_sample'
+  | 'strava_csv'
+  | 'strava_gpx'
+  | 'strava_oauth';
+
+export interface CalendarSessionItem {
+  id: string;
+  title: string;
+  source: CalendarSessionSource;
+  activityType?: RunActivityType;
+  zone: TrainingZoneType;
+  distanceKm: number;
+  movingTimeSeconds: number | null;
+  paceSecPerKm: number | null;
+  avgHeartRateBpm: number | null;
+  elevationGainMeters: number | null;
+  comfortRating: 1 | 2 | 3 | 4 | 5 | null;
+  note: string;
+  tier: TrainingIntensityTier;
+  dayIndex: number;
+  timestampIso: string;
+}
+
+export interface CalendarDayData {
+  dateKey: string;
+  dayNumber: number;
+  dayIndex: number; // 0 = Monday .. 6 = Sunday
+  isCurrentMonth: boolean;
+  isToday: boolean;
+  totalDistanceKm: number;
+  totalMovingTimeSeconds: number;
+  intensityTier: TrainingIntensityTier;
+  intensityLevel: TrainingIntensityLevel;
+  hasRestLog: boolean;
+  sessions: CalendarSessionItem[];
+  dominantZone: TrainingZoneType | null;
+}
+
+export interface MonthlyCalendarSummary {
+  monthKey: string;
+  year: number;
+  monthIndex: number; // 0..11
+  activeDaysCount: number;
+  restLoggedDaysCount: number;
+  totalSessionsCount: number;
+  totalDistanceKm: number;
+  highOrPeakDaysCount: number;
+  avgPaceSecPerKm: number | null;
+  avgHeartRateBpm: number | null;
+}
+
+export interface MonthlyCalendarGrid {
+  monthKey: string;
+  year: number;
+  monthIndex: number;
+  days: CalendarDayData[];
+  summary: MonthlyCalendarSummary;
+}
+

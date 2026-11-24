@@ -29,7 +29,12 @@
         "customTargetPaceSecPerKm": { "type": "number", "description": "Optional target race pace in sec/km (120-1800) applied from Pace Calculator or null." },
         "shoeName": { "type": "string", "maxLength": 60, "description": "Primary running shoe model name." },
         "shoeCurrentKm": { "type": "number", "description": "Accumulated mileage on primary running shoe (0-10000 km)." },
-        "shoeMaxKm": { "type": "number", "description": "Recommended lifespan limit for running shoe (200-2000 km)." }
+        "shoeMaxKm": { "type": "number", "description": "Recommended lifespan limit for running shoe (200-2000 km)." },
+        "pb5kSec": { "type": "number", "description": "Optional Personal Best 5K finish time in seconds (600-36000) or null." },
+        "pb10kSec": { "type": "number", "description": "Optional Personal Best 10K finish time in seconds (600-36000) or null." },
+        "pb21kSec": { "type": "number", "description": "Optional Personal Best 21.1K finish time in seconds (600-36000) or null." },
+        "pb42kSec": { "type": "number", "description": "Optional Personal Best 42.2K finish time in seconds (600-36000) or null." },
+        "onboardingCompleted": { "type": "boolean", "description": "Whether the runner completed or skipped the initial 30-second setup wizard." }
       },
       "required": [
         "weightKg",
@@ -239,6 +244,56 @@
         "createdAt",
         "updatedAt"
       ]
+    },
+    "AccessCode": {
+      "title": "AccessCode",
+      "description": "Single-use buyer license key stored in access-codes; marked 'used' and locked to one Google UID upon first redemption.",
+      "type": "object",
+      "properties": {
+        "codeId": {
+          "type": "string",
+          "maxLength": 64,
+          "pattern": "^[A-Z0-9][A-Z0-9_\\-]{7,63}$"
+        },
+        "planType": {
+          "type": "string",
+          "enum": ["lifetime", "pro"],
+          "maxLength": 16
+        },
+        "status": {
+          "type": "string",
+          "enum": ["unused", "used", "revoked"],
+          "maxLength": 16
+        },
+        "buyerNote": {
+          "type": "string",
+          "maxLength": 120
+        },
+        "usedByUid": {
+          "type": "string",
+          "maxLength": 128
+        },
+        "usedAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "codeId",
+        "planType",
+        "status",
+        "usedByUid",
+        "usedAt",
+        "updatedAt"
+      ]
     }
   },
   "firestore": {
@@ -256,7 +311,11 @@
     },
     "/accessGrants/{userId}": {
       "schema": { "$ref": "#/entities/AccessGrant" },
-      "description": "Paid buyer entitlement records and pending transfer confirmation requests; only verified Admin may approve/activate."
+      "description": "Paid buyer entitlement records and pending transfer confirmation requests; only verified Admin or atomic single-use access-codes redemption may activate."
+    },
+    "/access-codes/{codeId}": {
+      "schema": { "$ref": "#/entities/AccessCode" },
+      "description": "Single-use license keys created by Admin and marked 'used' atomically by the first verified buyer on login."
     }
   }
 }

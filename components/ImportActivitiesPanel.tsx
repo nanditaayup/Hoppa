@@ -7,6 +7,9 @@ import {
   Play,
   Trash2,
   Info,
+  ChevronDown,
+  ChevronUp,
+  HelpCircle,
 } from 'lucide-react';
 import { parseGpxFiles, parseStravaCsv } from '@/lib/strava/import-parser';
 import { AppLanguage, RunActivity } from '@/lib/strava/types';
@@ -51,6 +54,8 @@ export default function ImportActivitiesPanel({
     null
   );
   const [isConnectingOAuth, setIsConnectingOAuth] = useState(false);
+  const [showExportGuide, setShowExportGuide] = useState(false);
+  const [showAdvancedOAuth, setShowAdvancedOAuth] = useState(isOAuthConnected);
 
   const t = UI_COPY[lang].strava;
 
@@ -219,20 +224,6 @@ export default function ImportActivitiesPanel({
             {t.loadSampleBtn}
           </button>
 
-          <button
-            type="button"
-            onClick={handleConnectStrava}
-            disabled={isConnectingOAuth}
-            className="min-h-[44px] px-4 py-2 rounded-xl bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 text-sm font-medium hover:bg-slate-50 dark:hover:bg-slate-700/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-700 dark:focus-visible:ring-teal-400 inline-flex items-center gap-2 whitespace-nowrap shrink-0 transition-colors disabled:opacity-60"
-          >
-            <Link2 className="w-4 h-4" aria-hidden="true" />
-            {isOAuthConnected
-              ? t.resyncStravaBtn
-              : isConnectingOAuth
-                ? t.connectingStravaBtn
-                : t.oauthBtn}
-          </button>
-
           {runsCount > 0 && (
             <button
               type="button"
@@ -245,6 +236,64 @@ export default function ImportActivitiesPanel({
             </button>
           )}
         </div>
+      </div>
+
+      {/* Friendly Collapsible Guide & Optional Strava API Link */}
+      <div className="pt-3 border-t border-slate-100 dark:border-slate-800 space-y-3">
+        <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-xs">
+          <button
+            type="button"
+            onClick={() => setShowExportGuide((v) => !v)}
+            aria-expanded={showExportGuide}
+            className="inline-flex items-center gap-1.5 font-semibold text-teal-700 dark:text-teal-400 hover:underline"
+          >
+            <HelpCircle className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
+            <span>{t.howToExportToggle}</span>
+            {showExportGuide ? (
+              <ChevronUp className="w-3.5 h-3.5" aria-hidden="true" />
+            ) : (
+              <ChevronDown className="w-3.5 h-3.5" aria-hidden="true" />
+            )}
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setShowAdvancedOAuth((v) => !v)}
+            aria-expanded={showAdvancedOAuth}
+            className="inline-flex items-center gap-1.5 font-medium text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:underline"
+          >
+            <Link2 className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
+            <span>{t.advancedOAuthToggle}</span>
+          </button>
+        </div>
+
+        {showExportGuide && (
+          <ol className="rounded-xl bg-[#F7F9FA] dark:bg-slate-800/70 px-4 py-3 text-xs text-slate-700 dark:text-slate-200 space-y-1.5 list-decimal list-inside">
+            {t.howToExportSteps.map((step, idx) => (
+              <li key={idx} className="leading-relaxed">
+                {step}
+              </li>
+            ))}
+          </ol>
+        )}
+
+        {showAdvancedOAuth && (
+          <div className="flex flex-wrap items-center gap-3">
+            <button
+              type="button"
+              onClick={handleConnectStrava}
+              disabled={isConnectingOAuth}
+              className="min-h-[40px] px-4 py-1.5 rounded-xl bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 text-xs font-semibold hover:bg-slate-50 dark:hover:bg-slate-700/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-700 dark:focus-visible:ring-teal-400 inline-flex items-center gap-2 whitespace-nowrap shrink-0 transition-colors disabled:opacity-60"
+            >
+              <Link2 className="w-3.5 h-3.5" aria-hidden="true" />
+              {isOAuthConnected
+                ? t.resyncStravaBtn
+                : isConnectingOAuth
+                  ? t.connectingStravaBtn
+                  : t.oauthBtn}
+            </button>
+          </div>
+        )}
       </div>
 
       {resolvedOAuthNotice && (

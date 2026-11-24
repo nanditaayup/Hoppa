@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import firebaseConfig from '@/firebase-applet-config.json';
 import {
-  getServerSigningSecret,
-  signBuyerLicenseKey,
+  generateAccessCodeString,
   verifyFirebaseIdToken,
 } from '@/lib/billing/access-token';
 import { AccessPlanType } from '@/lib/strava/types';
@@ -49,11 +48,11 @@ export async function POST(req: NextRequest) {
     // Default to lifetime
   }
 
-  const secret = getServerSigningSecret();
-  const licenseKey = signBuyerLicenseKey(planType, secret);
+  const licenseKey = generateAccessCodeString(planType);
 
   return NextResponse.json({
     licenseKey,
+    codeId: licenseKey,
     planType,
   });
 }

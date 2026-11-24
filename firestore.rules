@@ -61,7 +61,12 @@ service cloud.firestore {
           'customTargetPaceSecPerKm',
           'shoeName',
           'shoeCurrentKm',
-          'shoeMaxKm'
+          'shoeMaxKm',
+          'pb5kSec',
+          'pb10kSec',
+          'pb21kSec',
+          'pb42kSec',
+          'onboardingCompleted'
         ])
         && p.weightKg is number && p.weightKg >= 30 && p.weightKg <= 200
         && p.heightCm is number && p.heightCm >= 120 && p.heightCm <= 230
@@ -76,7 +81,12 @@ service cloud.firestore {
         && (!('customTargetPaceSecPerKm' in p) || p.customTargetPaceSecPerKm == null || (p.customTargetPaceSecPerKm is number && p.customTargetPaceSecPerKm >= 120 && p.customTargetPaceSecPerKm <= 1800))
         && (!('shoeName' in p) || (p.shoeName is string && p.shoeName.size() <= 60))
         && (!('shoeCurrentKm' in p) || (p.shoeCurrentKm is number && p.shoeCurrentKm >= 0 && p.shoeCurrentKm <= 10000))
-        && (!('shoeMaxKm' in p) || (p.shoeMaxKm is number && p.shoeMaxKm >= 200 && p.shoeMaxKm <= 2000));
+        && (!('shoeMaxKm' in p) || (p.shoeMaxKm is number && p.shoeMaxKm >= 200 && p.shoeMaxKm <= 2000))
+        && (!('pb5kSec' in p) || p.pb5kSec == null || (p.pb5kSec is number && p.pb5kSec >= 600 && p.pb5kSec <= 36000))
+        && (!('pb10kSec' in p) || p.pb10kSec == null || (p.pb10kSec is number && p.pb10kSec >= 600 && p.pb10kSec <= 36000))
+        && (!('pb21kSec' in p) || p.pb21kSec == null || (p.pb21kSec is number && p.pb21kSec >= 600 && p.pb21kSec <= 36000))
+        && (!('pb42kSec' in p) || p.pb42kSec == null || (p.pb42kSec is number && p.pb42kSec >= 600 && p.pb42kSec <= 36000))
+        && (!('onboardingCompleted' in p) || p.onboardingCompleted is bool);
     }
 
     function isValidUserWorkspace(data, userId) {
@@ -334,6 +344,90 @@ service cloud.firestore {
         && data.updatedAt is timestamp;
     }
 
+    function isValidAccessCode(data, codeId) {
+      return data.keys().hasAll([
+          'codeId',
+          'planType',
+          'status',
+          'usedByUid',
+          'usedAt',
+          'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'codeId',
+          'planType',
+          'status',
+          'buyerNote',
+          'usedByUid',
+          'usedAt',
+          'createdAt',
+          'updatedAt'
+        ])
+        && isValidId(data.codeId)
+        && data.codeId == codeId
+        && data.codeId.size() >= 8 && data.codeId.size() <= 64
+        && data.planType is string && data.planType.size() <= 16 && data.planType in ['lifetime', 'pro']
+        && data.status is string && data.status.size() <= 16 && data.status in ['unused', 'used', 'revoked']
+        && (!('buyerNote' in data) || (data.buyerNote is string && data.buyerNote.size() <= 120))
+        && (data.usedByUid == null || (isValidId(data.usedByUid) && data.usedByUid.size() <= 128))
+        && (data.usedAt == null || data.usedAt is timestamp)
+        && (!('createdAt' in data) || data.createdAt is timestamp)
+        && data.updatedAt is timestamp;
+    }
+
+    function isAtomicLicenseRedemption(userId) {
+      return isOwner(userId)
+        && incoming().uid == request.auth.uid
+        && incoming().status == 'active'
+        && incoming().provider == 'license'
+        && isValidId(incoming().orderRef)
+        && exists(/databases/$(database)/documents/access-codes/$(incoming().orderRef))
+        && get(/databases/$(database)/documents/access-codes/$(incoming().orderRef)).data.status == 'unused'
+        && get(/databases/$(database)/documents/access-codes/$(incoming().orderRef)).data.planType == incoming().planType
+        && getAfter(/databases/$(database)/documents/access-codes/$(incoming().orderRef)).data.status == 'used'
+        && getAfter(/databases/$(database)/documents/access-codes/$(incoming().orderRef)).data.usedByUid == request.auth.uid;
+    }
+
+    match /access-codes/{codeId} {
+      allow get: if isValidId(codeId) && isAdmin();
+      allow list: if isAdmin() && existing().status in ['unused', 'used', 'revoked'];
+      allow create: if isValidId(codeId)
+        && isAdmin()
+        && isValidAccessCode(incoming(), codeId)
+        && incoming().status == 'unused'
+        && incoming().usedByUid == null
+        && incoming().usedAt == null
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+      allow update: if isValidId(codeId)
+        && isValidAccessCode(incoming(), codeId)
+        && incoming().codeId == existing().codeId
+        && incoming().planType == existing().planType
+        && (!('createdAt' in existing()) || incoming().createdAt == existing().createdAt)
+        && incoming().updatedAt == request.time
+        && (
+          (
+            isAdmin()
+            && incoming().usedByUid == existing().usedByUid
+            && incoming().usedAt == existing().usedAt
+            && incoming().diff(existing()).affectedKeys().hasOnly(['status', 'buyerNote', 'updatedAt'])
+          )
+          || (
+            isVerifiedUser()
+            && existing().status == 'unused'
+            && incoming().status == 'used'
+            && incoming().usedByUid == request.auth.uid
+            && incoming().usedAt == request.time
+            && (!('buyerNote' in existing()) || incoming().buyerNote == existing().buyerNote)
+            && incoming().diff(existing()).affectedKeys().hasOnly(['status', 'usedByUid', 'usedAt', 'updatedAt'])
+            && getAfter(/databases/$(database)/documents/accessGrants/$(request.auth.uid)).data.status == 'active'
+            && getAfter(/databases/$(database)/documents/accessGrants/$(request.auth.uid)).data.provider == 'license'
+            && getAfter(/databases/$(database)/documents/accessGrants/$(request.auth.uid)).data.orderRef == codeId
+          )
+        );
+      allow delete: if isValidId(codeId) && isAdmin();
+    }
+
     match /accessGrants/{userId} {
       allow get: if isValidId(userId) && (isOwner(userId) || isAdmin());
       allow list: if isAdmin() && existing().status in ['pending', 'active', 'revoked'];
@@ -343,6 +437,7 @@ service cloud.firestore {
         && incoming().updatedAt == request.time
         && (
           isAdmin()
+          || isAtomicLicenseRedemption(userId)
           || (
             isOwner(userId)
             && incoming().uid == request.auth.uid
@@ -363,6 +458,11 @@ service cloud.firestore {
             && incoming().status == 'pending'
             && incoming().provider == 'admin_manual'
             && incoming().diff(existing()).affectedKeys().hasOnly(['orderRef', 'note', 'status', 'provider', 'updatedAt'])
+          )
+          || (
+            existing().status != 'active'
+            && isAtomicLicenseRedemption(userId)
+            && incoming().diff(existing()).affectedKeys().hasOnly(['planType', 'provider', 'orderRef', 'note', 'status', 'updatedAt'])
           )
         );
       allow delete: if isValidId(userId) && (isAdmin() || isOwner(userId));

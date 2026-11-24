@@ -17,6 +17,11 @@ test('buildBackupPayload and parseAndValidateBackupJson round-trip valid workspa
       shoeCurrentKm: 245.5,
       shoeMaxKm: 750,
       customTargetPaceSecPerKm: 327,
+      pb5kSec: 1320,
+      pb10kSec: 2800,
+      pb21kSec: 6420,
+      pb42kSec: null,
+      onboardingCompleted: true,
     },
     progressEntries: [
       {
@@ -43,6 +48,11 @@ test('buildBackupPayload and parseAndValidateBackupJson round-trip valid workspa
     assert.equal(res.data.profile.shoeName, 'Novablast 5');
     assert.equal(res.data.profile.shoeCurrentKm, 245.5);
     assert.equal(res.data.profile.customTargetPaceSecPerKm, 327);
+    assert.equal(res.data.profile.pb5kSec, 1320);
+    assert.equal(res.data.profile.pb10kSec, 2800);
+    assert.equal(res.data.profile.pb21kSec, 6420);
+    assert.equal(res.data.profile.pb42kSec, null);
+    assert.equal(res.data.profile.onboardingCompleted, true);
     assert.equal(res.data.progressEntries.length, 1);
     assert.equal(res.data.runs.length, 2);
   }

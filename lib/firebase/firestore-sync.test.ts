@@ -6,6 +6,7 @@ import {
   buildRunActivityPayload,
   buildUserWorkspaceUpdatePayload,
   DEFAULT_RUNNER_PROFILE,
+  sanitizeBuyerNote,
   sanitizeFirestoreId,
   sanitizeRaceDateString,
   sanitizeRaceNameString,
@@ -37,6 +38,11 @@ test('sanitizeRunnerProfile clamps extreme inputs within Firestore rule bounds',
     shoeName: 'S'.repeat(120),
     shoeCurrentKm: -15,
     shoeMaxKm: 9000,
+    pb5kSec: 100, // out of range -> null
+    pb10kSec: 2740,
+    pb21kSec: 999999, // out of range -> null
+    pb42kSec: 13800,
+    onboardingCompleted: true,
   });
 
   assert.equal(sanitized.weightKg, 30);
@@ -52,6 +58,11 @@ test('sanitizeRunnerProfile clamps extreme inputs within Firestore rule bounds',
   assert.equal(sanitized.shoeName?.length, 60);
   assert.equal(sanitized.shoeCurrentKm, 0);
   assert.equal(sanitized.shoeMaxKm, 2000);
+  assert.equal(sanitized.pb5kSec, null);
+  assert.equal(sanitized.pb10kSec, 2740);
+  assert.equal(sanitized.pb21kSec, null);
+  assert.equal(sanitized.pb42kSec, 13800);
+  assert.equal(sanitized.onboardingCompleted, true);
 });
 
 test('sanitizeRaceDateString and sanitizeRaceNameString enforce schema regex and max length', () => {
@@ -136,4 +147,25 @@ test('buildUserWorkspaceUpdatePayload backfills legacy null customRaceDate and p
   assert.equal(payload.profile.weightKg, 66);
   assert.equal(payload.profile.shoeName, 'Sepatu Lari Utama');
   assert.equal(payload.profile.shoeMaxKm, 700);
+});
+
+test('sanitizeBuyerNote trims whitespace and enforces 120 char Firestore limit', () => {
+  assert.equal(sanitizeBuyerNote('  Budi - QRIS 21 Nov  '), 'Budi - QRIS 21 Nov');
+  assert.equal(sanitizeBuyerNote('x'.repeat(200)).length, 120);
+});
+
+test('license-format normalizes whitespace/casing and validates access-codes format without Node crypto', async () => {
+  const {
+    normalizeAccessCode,
+    isValidAccessCodeFormat,
+    inferPlanTypeFromAccessCode,
+  } = await import('@/lib/billing/license-format');
+
+  assert.equal(normalizeAccessCode(' pace-lt-ab12 cd34 '), 'PACE-LT-AB12CD34');
+  assert.equal(isValidAccessCodeFormat('PACE-LT-AB12-CD34-EF56'), true);
+  assert.equal(isValidAccessCodeFormat('VIP_RUNNER_2026'), true);
+  assert.equal(isValidAccessCodeFormat('short'), false);
+  assert.equal(isValidAccessCodeFormat('../bad/path'), false);
+  assert.equal(inferPlanTypeFromAccessCode('PACE-PRO-ABCD-1234-EFGH'), 'pro');
+  assert.equal(inferPlanTypeFromAccessCode('PACE-LT-ABCD-1234-EFGH'), 'lifetime');
 });

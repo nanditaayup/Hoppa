@@ -1,4 +1,4 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import { Plus_Jakarta_Sans, JetBrains_Mono } from 'next/font/google';
 import './globals.css';
 
@@ -30,12 +30,36 @@ function resolveMetadataBase(): URL {
 
 const APP_TITLE = 'PaceCraft — Kalkulator Menu Latihan Lari & Sinkronisasi Strava';
 const APP_DESCRIPTION =
-  'Kalkulator menu latihan lari ideal (5K, 10K, 21K, 42K) berbasis BMI, kalkulator pace target lomba, pelacak jarak sepatu, progres harian, serta impor riwayat aktivitas Strava (CSV/GPX gratis).';
+  'Kalkulator menu latihan lari ideal (5K, 10K, 21K, 42K) berbasis BMI, kalkulator pace target lomba, kalender intensitas bulanan, ekspor kalender .ics, pelacak jarak sepatu, serta impor riwayat aktivitas Strava (CSV/GPX gratis).';
+
+export const viewport: Viewport = {
+  themeColor: [
+    { media: '(prefers-color-scheme: light)', color: '#0F766E' },
+    { media: '(prefers-color-scheme: dark)', color: '#020617' },
+  ],
+  width: 'device-width',
+  initialScale: 1,
+};
 
 export const metadata: Metadata = {
   metadataBase: resolveMetadataBase(),
   title: APP_TITLE,
   description: APP_DESCRIPTION,
+  applicationName: 'PaceCraft',
+  manifest: '/manifest.webmanifest',
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'default',
+    title: 'PaceCraft',
+  },
+  icons: {
+    icon: [
+      { url: '/icon.svg', type: 'image/svg+xml' },
+      { url: '/pwa-192x192.png', sizes: '192x192', type: 'image/png' },
+      { url: '/pwa-512x512.png', sizes: '512x512', type: 'image/png' },
+    ],
+    apple: [{ url: '/apple-touch-icon.png', sizes: '180x180', type: 'image/png' }],
+  },
   keywords: [
     'PaceCraft',
     'kalkulator pace lari',
@@ -69,10 +93,11 @@ const JSON_LD_SCHEMA = {
   description: APP_DESCRIPTION,
   featureList: [
     'Kalkulator Pace Lomba 5K, 10K, 21K, dan 42K',
-    'Jadwal Latihan Lari Mingguan dengan Pengaman BMI',
+    'Jadwal Latihan Lari Mingguan dengan Pengaman BMI & Ekspor Kalender .ics',
+    'Kalender Intensitas Bulanan & Rekor Personal Best Lomba',
     'Pelacak Jarak Sepatu Lari (Shoe Mileage Tracker)',
     'Impor Riwayat Strava CSV dan GPX di Browser',
-    'Cadangan dan Pemulihan Data JSON',
+    'Kartu Progres Siap Share Instagram Story 9:16 & Cadangan JSON',
   ],
 };
 

@@ -1,7 +1,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
+  createSingleUseBuyerLicense,
+  generateAccessCodeString,
+  inferPlanTypeFromAccessCode,
   isOwnerEmail,
+  isValidAccessCodeFormat,
+  normalizeAccessCode,
   sanitizeExternalCheckoutUrl,
   signBuyerLicenseKey,
   signEntitlementToken,
@@ -53,17 +58,24 @@ test('signEntitlementToken & verifyEntitlementToken enforce UID binding and reje
 
 test('signBuyerLicenseKey & verifyBuyerCodeOrLicense validate HMAC keys and configured passcodes', () => {
   const now = 1_800_000_000;
+  const created = createSingleUseBuyerLicense('pro', TEST_SECRET, now, 3600);
   const license = signBuyerLicenseKey('pro', TEST_SECRET, now, 3600);
   assert.ok(license.startsWith('PC-'));
+  assert.ok(created.licenseKey.startsWith('PC-'));
+  assert.match(created.codeId, /^LIC-[A-F0-9]{12}$/);
+  assert.match(created.claimSecret, /^[a-f0-9]{24}$/);
 
   const okLicense = verifyBuyerCodeOrLicense(
-    license,
+    created.licenseKey,
     { signingSecret: TEST_SECRET },
     now + 60
   );
   assert.equal(okLicense.valid, true);
   assert.equal(okLicense.planType, 'pro');
   assert.equal(okLicense.provider, 'license');
+  assert.equal(okLicense.singleUse, true);
+  assert.equal(okLicense.codeId, created.codeId);
+  assert.equal(okLicense.claimSecret, created.claimSecret);
 
   // Expired license fails
   const expiredLicense = verifyBuyerCodeOrLicense(
@@ -112,4 +124,19 @@ test('sanitizeExternalCheckoutUrl only permits http/https protocols', () => {
   );
   assert.equal(sanitizeExternalCheckoutUrl('javascript:alert(1)'), null);
   assert.equal(sanitizeExternalCheckoutUrl(''), null);
+});
+
+test('generateAccessCodeString, normalizeAccessCode, isValidAccessCodeFormat, and inferPlanTypeFromAccessCode enforce access-codes invariants', () => {
+  const ltKey = generateAccessCodeString('lifetime');
+  const proKey = generateAccessCodeString('pro');
+
+  assert.match(ltKey, /^PACE-LT-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}$/);
+  assert.match(proKey, /^PACE-PRO-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}$/);
+  assert.equal(inferPlanTypeFromAccessCode(ltKey), 'lifetime');
+  assert.equal(inferPlanTypeFromAccessCode(proKey), 'pro');
+
+  assert.equal(normalizeAccessCode(`  ${ltKey.toLowerCase()}  `), ltKey);
+  assert.equal(isValidAccessCodeFormat(ltKey), true);
+  assert.equal(isValidAccessCodeFormat('short'), false);
+  assert.equal(isValidAccessCodeFormat('BAD/KEY!'), false);
 });

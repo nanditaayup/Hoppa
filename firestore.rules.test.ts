@@ -45,6 +45,7 @@ test('firestore.rules enforces Eight Pillars: isValidId, hasAll/hasOnly, request
 test('firebase-blueprint.json and firestore.rules cover every collection and forbid PII email fields', () => {
   const firestorePaths = Object.keys(blueprint.firestore ?? {});
   assert.deepEqual(firestorePaths.sort(), [
+    '/access-codes/{codeId}',
     '/accessGrants/{userId}',
     '/users/{userId}',
     '/users/{userId}/progress/{progressId}',
@@ -88,4 +89,16 @@ test('firestore.rules allows partial updates on legacy user docs missing newer o
   assert.match(rulesText, /!\('restingHrBpm' in p\)/);
   assert.match(rulesText, /!\('customRaceDate' in data\)/);
   assert.match(rulesText, /p\.keys\(\)\.hasOnly\(/);
+});
+
+test('firestore.rules enforces single-use atomic redemption on /access-codes/{codeId} and blocks replay or buyer reads', () => {
+  assert.match(rulesText, /function\s+isValidAccessCode\(data,\s*codeId\)/);
+  assert.match(rulesText, /function\s+isAtomicLicenseRedemption\(userId\)/);
+  assert.match(rulesText, /allow\s+get:\s*if\s*isValidId\(codeId\)\s*&&\s*isAdmin\(\);/);
+  assert.match(rulesText, /existing\(\)\.status\s*==\s*'unused'/);
+  assert.match(rulesText, /incoming\(\)\.status\s*==\s*'used'/);
+  assert.match(rulesText, /incoming\(\)\.usedByUid\s*==\s*request\.auth\.uid/);
+  assert.match(rulesText, /getAfter\(/);
+  assert.equal(blueprint.entities.AccessCode.properties.buyerNote.maxLength, 120);
+  assert.match(rulesText, /data\.buyerNote\.size\(\)\s*<=\s*120/);
 });
