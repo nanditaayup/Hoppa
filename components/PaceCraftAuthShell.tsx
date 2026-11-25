@@ -295,8 +295,6 @@ function AuthGateRouter() {
     finalizeAccountDeletion,
   } = useAuth();
 
-  const [isDemoMode, setIsDemoMode] = useState(false);
-
   const preAuthLang = useSyncExternalStore<AppLanguage>(
     subscribePreAuthLang,
     readStoredPreAuthLang,
@@ -323,20 +321,6 @@ function AuthGateRouter() {
     }
   };
 
-  const handleExitDemo = useCallback((goToSignIn?: boolean) => {
-    setIsDemoMode(false);
-    if (typeof window !== 'undefined') {
-      window.scrollTo({ top: 0, behavior: 'auto' });
-    }
-    if (goToSignIn && typeof document !== 'undefined') {
-      setTimeout(() => {
-        document
-          .getElementById('masuk-aktivasi')
-          ?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      }, 60);
-    }
-  }, []);
-
   if (!authReady) {
     const t = UI_COPY[preAuthLang];
     return (
@@ -354,20 +338,6 @@ function AuthGateRouter() {
     );
   }
 
-  if (!user && isDemoMode) {
-    return (
-      <PaceCraftApp
-        user={null}
-        initialPreferredLang={preAuthLang}
-        authBusy={authBusy}
-        isDemoMode={true}
-        onExitDemo={handleExitDemo}
-        onSignOut={async () => setIsDemoMode(false)}
-        onFinalizeAccountDeletion={async () => {}}
-      />
-    );
-  }
-
   if (!user) {
     return (
       <LandingPage
@@ -376,7 +346,6 @@ function AuthGateRouter() {
         authErrorCode={authErrorCode}
         onChangeLang={handleChangePreAuthLang}
         onSignInGoogle={() => void signInWithGoogle()}
-        onOpenDemo={() => setIsDemoMode(true)}
       />
     );
   }

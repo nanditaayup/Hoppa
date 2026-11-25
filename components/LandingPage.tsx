@@ -39,6 +39,7 @@ import PaceCalculator from './PaceCalculator';
 import PrivacyTermsModal from './PrivacyTermsModal';
 import { PWAInstallButton } from './PWAInstallButton';
 import ThemeToggle from './ThemeToggle';
+import VideoDemoShowcase from './VideoDemoShowcase';
 
 export interface LandingPageProps {
   lang: AppLanguage;
@@ -46,7 +47,6 @@ export interface LandingPageProps {
   authErrorCode: AuthErrorCode;
   onChangeLang: (lang: AppLanguage) => void;
   onSignInGoogle: () => void;
-  onOpenDemo?: () => void;
 }
 
 export default function LandingPage({
@@ -55,7 +55,6 @@ export default function LandingPage({
   authErrorCode,
   onChangeLang,
   onSignInGoogle,
-  onOpenDemo,
 }: LandingPageProps) {
   const t = UI_COPY[lang];
   const L = t.landing;
@@ -94,6 +93,20 @@ export default function LandingPage({
       ?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
 
+  const handleWatchVideoDemo = () => {
+    scrollToSection('video-demo');
+    if (typeof document !== 'undefined') {
+      const videoEl = document.querySelector(
+        '[data-testid="landing-video-demo"]'
+      ) as HTMLVideoElement | null;
+      if (videoEl) {
+        videoEl.play().catch(() => {
+          // Ignore autoplay block; native controls remain visible
+        });
+      }
+    }
+  };
+
   const handleSelectPricingPlan = (plan: AccessPlanType) => {
     setSelectedPlan(plan);
     if (typeof window !== 'undefined') {
@@ -123,42 +136,42 @@ export default function LandingPage({
   return (
     <div
       data-testid="login-gate-screen"
-      className="min-h-screen bg-[#F7F9FA] dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col"
+      className="min-h-screen bg-[#F7F6F2] dark:bg-slate-950 text-[#202A2A] dark:text-slate-100 flex flex-col"
     >
       {/* Clean Sticky Navigation Header (<=15% mobile height, zero wrap) */}
-      <header className="sticky top-0 z-30 h-14 sm:h-16 px-4 sm:px-8 border-b border-slate-200/80 dark:border-slate-800 bg-[#F7F9FA]/95 dark:bg-slate-950/90 backdrop-blur-sm flex items-center justify-between gap-2 sm:gap-3">
+      <header className="sticky top-0 z-30 h-14 sm:h-16 px-4 sm:px-8 border-b border-[#DFE7E2] dark:border-slate-800 bg-[#F7F6F2]/95 dark:bg-slate-950/90 backdrop-blur-sm flex items-center justify-between gap-2 sm:gap-3">
         <a
           href="#"
-          className="text-lg sm:text-xl font-bold tracking-tight text-slate-900 dark:text-slate-100 whitespace-nowrap shrink-0"
+          className="text-lg sm:text-xl font-bold tracking-tight text-[#202A2A] dark:text-slate-100 whitespace-nowrap shrink-0"
         >
           PaceCraft
         </a>
 
         <nav
           aria-label="Landing sections"
-          className="hidden md:flex items-center gap-5 text-xs font-semibold text-slate-600 dark:text-slate-300"
+          className="hidden md:flex items-center gap-6 text-xs font-semibold text-[#596866] dark:text-slate-300"
         >
           <a
             href="#fitur"
-            className="hover:text-teal-700 dark:hover:text-teal-400 whitespace-nowrap"
+            className="hover:text-[#087F73] dark:hover:text-teal-400 whitespace-nowrap"
           >
             {L.navFeatures}
           </a>
           <a
             href="#kalkulator-demo"
-            className="hover:text-teal-700 dark:hover:text-teal-400 whitespace-nowrap"
+            className="hover:text-[#087F73] dark:hover:text-teal-400 whitespace-nowrap"
           >
             {L.navDemo}
           </a>
           <a
             href="#harga"
-            className="hover:text-teal-700 dark:hover:text-teal-400 whitespace-nowrap"
+            className="hover:text-[#087F73] dark:hover:text-teal-400 whitespace-nowrap"
           >
             {L.navPricing}
           </a>
           <a
             href="#faq"
-            className="hover:text-teal-700 dark:hover:text-teal-400 whitespace-nowrap"
+            className="hover:text-[#087F73] dark:hover:text-teal-400 whitespace-nowrap"
           >
             {L.navFaq}
           </a>
@@ -171,7 +184,7 @@ export default function LandingPage({
             role="group"
             aria-label={t.nav.languageGroupLabel}
             data-testid="login-language-switcher"
-            className="inline-flex items-center gap-1 p-1 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 shrink-0"
+            className="inline-flex items-center gap-1 p-1 rounded-xl bg-white dark:bg-slate-900 border border-[#DFE7E2] dark:border-slate-700 shrink-0"
           >
             <Languages
               className="w-3.5 h-3.5 text-teal-700 dark:text-teal-400 ml-1.5 mr-0.5 shrink-0 hidden sm:inline"
@@ -205,22 +218,20 @@ export default function LandingPage({
             </button>
           </div>
 
-          {onOpenDemo && (
-            <button
-              type="button"
-              onClick={onOpenDemo}
-              data-testid="nav-open-demo-btn"
-              className="hidden sm:inline-flex items-center justify-center gap-1.5 min-h-[38px] px-3 py-1.5 rounded-xl bg-white dark:bg-slate-900 border border-teal-200 dark:border-teal-800 text-teal-800 dark:text-teal-300 text-xs font-semibold hover:border-teal-400 whitespace-nowrap shrink-0 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-700 dark:focus-visible:ring-teal-400"
-            >
-              <Play className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
-              <span>Demo</span>
-            </button>
-          )}
+          <button
+            type="button"
+            onClick={handleWatchVideoDemo}
+            data-testid="nav-watch-video-btn"
+            className="hidden sm:inline-flex items-center justify-center gap-1.5 min-h-[38px] px-3 py-1.5 rounded-xl bg-white dark:bg-slate-900 border border-[#DFE7E2] dark:border-teal-800 text-[#087F73] dark:text-teal-300 text-xs font-semibold hover:border-[#087F73] whitespace-nowrap shrink-0 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#087F73] dark:focus-visible:ring-teal-400"
+          >
+            <Play className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
+            <span>Video Demo</span>
+          </button>
 
           <button
             type="button"
             onClick={() => scrollToSection('masuk-aktivasi')}
-            className="hidden sm:inline-flex items-center justify-center min-h-[38px] px-3.5 py-1.5 rounded-xl bg-teal-700 dark:bg-teal-600 text-white text-xs font-semibold hover:bg-teal-800 dark:hover:bg-teal-500 whitespace-nowrap shrink-0 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-700 dark:focus-visible:ring-teal-400"
+            className="hidden sm:inline-flex items-center justify-center min-h-[38px] px-3.5 py-1.5 rounded-xl bg-[#087F73] dark:bg-teal-600 text-white text-xs font-semibold hover:bg-[#06685E] dark:hover:bg-teal-500 whitespace-nowrap shrink-0 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#087F73] dark:focus-visible:ring-teal-400"
           >
             {L.navLoginBtn}
           </button>
@@ -236,43 +247,37 @@ export default function LandingPage({
           className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch"
         >
           {/* Left Commercial Hero */}
-          <div className="lg:col-span-7 rounded-2xl bg-gradient-to-br from-[#EAF6F3] via-[#F4F8FB] to-[#EEF2FB] dark:from-teal-950/60 dark:via-slate-900 dark:to-indigo-950/50 border border-teal-100/90 dark:border-teal-800/60 p-6 sm:p-8 flex flex-col justify-between gap-6">
+          <div className="lg:col-span-7 rounded-2xl bg-[#E6F3EE] dark:bg-slate-900 border border-[#DFE7E2] dark:border-slate-800 p-6 sm:p-8 flex flex-col justify-between gap-6">
             <div className="space-y-4">
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-white/85 dark:bg-slate-800/90 border border-teal-200/80 dark:border-teal-800 text-xs font-semibold text-teal-800 dark:text-teal-300">
+              <p className="inline-flex items-center gap-2 text-xs font-semibold text-[#087F73] dark:text-teal-300">
                 <Sparkles className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
                 <span>{L.heroBadge}</span>
-              </span>
+              </p>
 
-              <h1 className="text-2xl sm:text-4xl font-bold text-slate-900 dark:text-slate-100 tracking-tight leading-tight text-balance">
+              <h1 className="text-2xl sm:text-4xl font-bold text-[#202A2A] dark:text-slate-100 tracking-tight leading-tight text-balance">
                 {L.heroTitle}
               </h1>
 
-              <p className="text-sm sm:text-base text-slate-600 dark:text-slate-300 leading-relaxed max-w-xl">
+              <p className="text-sm sm:text-base text-[#596866] dark:text-slate-300 leading-relaxed max-w-xl">
                 {L.heroSubtitle}
               </p>
 
               <div className="flex flex-wrap items-center gap-3 pt-1">
-                {onOpenDemo && (
-                  <button
-                    type="button"
-                    onClick={onOpenDemo}
-                    data-testid="landing-open-demo-btn"
-                    className="min-h-[46px] px-5 py-2.5 rounded-xl bg-teal-700 dark:bg-teal-600 text-white text-sm font-semibold hover:bg-teal-800 dark:hover:bg-teal-500 inline-flex items-center justify-center gap-2 whitespace-nowrap shrink-0 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-700 dark:focus-visible:ring-teal-400"
-                  >
-                    <Play className="w-4 h-4 shrink-0" aria-hidden="true" />
-                    <span>{L.heroOpenDemoCta}</span>
-                  </button>
-                )}
+                <button
+                  type="button"
+                  onClick={handleWatchVideoDemo}
+                  data-testid="landing-watch-video-btn"
+                  className="min-h-[46px] px-5 py-2.5 rounded-xl bg-[#087F73] dark:bg-teal-600 text-white text-sm font-semibold hover:bg-[#06685E] dark:hover:bg-teal-500 inline-flex items-center justify-center gap-2 whitespace-nowrap shrink-0 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#087F73] dark:focus-visible:ring-teal-400"
+                >
+                  <Play className="w-4 h-4 shrink-0" aria-hidden="true" />
+                  <span>{L.heroOpenDemoCta}</span>
+                </button>
 
                 <button
                   type="button"
                   onClick={() => scrollToSection('kalkulator-demo')}
                   data-testid="landing-try-demo-btn"
-                  className={`min-h-[46px] px-5 py-2.5 rounded-xl text-sm font-semibold inline-flex items-center justify-center gap-2 whitespace-nowrap shrink-0 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-700 dark:focus-visible:ring-teal-400 ${
-                    onOpenDemo
-                      ? 'bg-white dark:bg-slate-800 border border-teal-200 dark:border-slate-700 text-teal-900 dark:text-slate-100 hover:border-teal-400'
-                      : 'bg-teal-700 dark:bg-teal-600 text-white hover:bg-teal-800 dark:hover:bg-teal-500'
-                  }`}
+                  className="min-h-[46px] px-5 py-2.5 rounded-xl bg-white dark:bg-slate-800 border border-[#DFE7E2] dark:border-slate-700 text-[#202A2A] dark:text-slate-100 hover:border-[#087F73] text-sm font-semibold inline-flex items-center justify-center gap-2 whitespace-nowrap shrink-0 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#087F73] dark:focus-visible:ring-teal-400"
                 >
                   <span>{L.heroDemoCta}</span>
                   <ArrowDown className="w-4 h-4 shrink-0" aria-hidden="true" />
@@ -282,7 +287,7 @@ export default function LandingPage({
                   type="button"
                   onClick={() => scrollToSection('harga')}
                   data-testid="landing-view-pricing-btn"
-                  className="min-h-[46px] px-5 py-2.5 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-100 text-sm font-semibold hover:border-teal-400 inline-flex items-center justify-center gap-2 whitespace-nowrap shrink-0 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-700 dark:focus-visible:ring-teal-400"
+                  className="min-h-[46px] px-4 py-2.5 rounded-xl text-[#087F73] dark:text-teal-300 text-sm font-semibold hover:underline inline-flex items-center justify-center gap-2 whitespace-nowrap shrink-0 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#087F73] dark:focus-visible:ring-teal-400"
                 >
                   <span>{L.heroBuyCta}</span>
                 </button>
@@ -290,7 +295,7 @@ export default function LandingPage({
             </div>
 
             <div className="space-y-4">
-              <div className="overflow-hidden rounded-2xl border border-teal-200/70 dark:border-slate-800 bg-slate-100 dark:bg-slate-800">
+              <div className="overflow-hidden rounded-xl border border-[#DFE7E2] dark:border-slate-800 bg-white dark:bg-slate-800">
                 <Image
                   src={heroRunnerImg}
                   alt={L.heroImageAlt}
@@ -300,24 +305,24 @@ export default function LandingPage({
                 />
               </div>
 
-              <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-xs font-medium text-slate-700 dark:text-slate-300">
+              <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-xs font-medium text-[#202A2A] dark:text-slate-300">
                 <span className="inline-flex items-center gap-1.5">
                   <Activity
-                    className="w-3.5 h-3.5 text-teal-700 dark:text-teal-400"
+                    className="w-3.5 h-3.5 text-[#087F73] dark:text-teal-400"
                     aria-hidden="true"
                   />
                   {L.trust1}
                 </span>
                 <span className="inline-flex items-center gap-1.5">
                   <Smartphone
-                    className="w-3.5 h-3.5 text-teal-700 dark:text-teal-400"
+                    className="w-3.5 h-3.5 text-[#087F73] dark:text-teal-400"
                     aria-hidden="true"
                   />
                   {L.trust2}
                 </span>
                 <span className="inline-flex items-center gap-1.5">
                   <ShieldCheck
-                    className="w-3.5 h-3.5 text-teal-700 dark:text-teal-400"
+                    className="w-3.5 h-3.5 text-[#087F73] dark:text-teal-400"
                     aria-hidden="true"
                   />
                   {L.trust3}
@@ -329,13 +334,13 @@ export default function LandingPage({
           {/* Right Google Sign-In & Single-Use License Key Card */}
           <div
             id="masuk-aktivasi"
-            className="lg:col-span-5 lg:self-start bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 sm:p-8 flex flex-col gap-6 scroll-mt-20"
+            className="lg:col-span-5 lg:self-start bg-white dark:bg-slate-900 border border-[#DFE7E2] dark:border-slate-800 rounded-2xl p-6 sm:p-8 flex flex-col gap-6 scroll-mt-20"
           >
             <div className="space-y-2">
-              <h2 className="text-xl font-bold text-slate-900 dark:text-slate-100 tracking-tight">
+              <h2 className="text-xl font-bold text-[#202A2A] dark:text-slate-100 tracking-tight">
                 {t.auth.cardTitle}
               </h2>
-              <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
+              <p className="text-sm text-[#596866] dark:text-slate-300 leading-relaxed">
                 {t.auth.cardSubtitle}
               </p>
             </div>
@@ -344,7 +349,7 @@ export default function LandingPage({
               <div
                 role="status"
                 data-testid="landing-demo-applied-banner"
-                className="rounded-xl bg-teal-50 dark:bg-teal-950/60 border border-teal-200 dark:border-teal-800 px-3.5 py-2.5 text-xs text-teal-900 dark:text-teal-200 leading-relaxed"
+                className="rounded-xl bg-[#E6F3EE] dark:bg-teal-950/60 border border-[#DFE7E2] dark:border-teal-800 px-3.5 py-2.5 text-xs text-[#202A2A] dark:text-teal-200 leading-relaxed"
               >
                 {L.demoAppliedHint}
               </div>
@@ -354,10 +359,10 @@ export default function LandingPage({
               <div>
                 <label
                   htmlFor="login-license-key-input"
-                  className="flex items-center gap-1.5 text-xs font-medium text-slate-700 dark:text-slate-300 mb-1.5"
+                  className="flex items-center gap-1.5 text-xs font-medium text-[#202A2A] dark:text-slate-300 mb-1.5"
                 >
                   <KeyRound
-                    className="w-3.5 h-3.5 text-teal-700 dark:text-teal-400 shrink-0"
+                    className="w-3.5 h-3.5 text-[#087F73] dark:text-teal-400 shrink-0"
                     aria-hidden="true"
                   />
                   <span>{t.auth.licenseKeyLabel}</span>
@@ -372,9 +377,9 @@ export default function LandingPage({
                   placeholder={t.auth.licenseKeyPlaceholder}
                   autoComplete="off"
                   spellCheck={false}
-                  className="w-full min-h-[44px] px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/70 text-sm font-mono uppercase text-slate-900 dark:text-slate-100 placeholder:normal-case placeholder:font-sans placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:bg-white dark:focus:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-700 dark:focus:ring-teal-400"
+                  className="w-full min-h-[44px] px-3.5 py-2 rounded-xl border border-[#DFE7E2] dark:border-slate-700 bg-[#F7F6F2]/70 dark:bg-slate-800/70 text-sm font-mono uppercase text-[#202A2A] dark:text-slate-100 placeholder:normal-case placeholder:font-sans placeholder:text-[#596866]/70 dark:placeholder:text-slate-500 focus:bg-white dark:focus:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-[#087F73] dark:focus-visible:ring-teal-400"
                 />
-                <p className="mt-1.5 text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
+                <p className="mt-1.5 text-[11px] text-[#596866] dark:text-slate-400 leading-relaxed">
                   {t.auth.licenseKeyHint}
                 </p>
               </div>
@@ -384,7 +389,7 @@ export default function LandingPage({
                 onClick={handleStartGoogleSignIn}
                 disabled={authBusy}
                 data-testid="google-signin-btn"
-                className="w-full min-h-[48px] px-5 py-3 rounded-xl bg-teal-700 dark:bg-teal-600 text-white text-sm font-semibold hover:bg-teal-800 dark:hover:bg-teal-500 disabled:opacity-60 disabled:cursor-not-allowed transition-colors inline-flex items-center justify-center gap-2.5 whitespace-nowrap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-700 dark:focus-visible:ring-teal-400"
+                className="w-full min-h-[48px] px-5 py-3 rounded-xl bg-[#087F73] dark:bg-teal-600 text-white text-sm font-semibold hover:bg-[#06685E] dark:hover:bg-teal-500 disabled:opacity-60 disabled:cursor-not-allowed transition-colors inline-flex items-center justify-center gap-2.5 whitespace-nowrap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#087F73] dark:focus-visible:ring-teal-400"
               >
                 <LogIn className="w-4 h-4 shrink-0" aria-hidden="true" />
                 <span>
@@ -407,10 +412,10 @@ export default function LandingPage({
               )}
             </div>
 
-            <div className="pt-4 border-t border-slate-100 dark:border-slate-800 space-y-3">
-              <div className="flex items-start gap-2.5 text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+            <div className="pt-4 border-t border-[#DFE7E2] dark:border-slate-800 space-y-3">
+              <div className="flex items-start gap-2.5 text-xs text-[#596866] dark:text-slate-400 leading-relaxed">
                 <Lock
-                  className="w-4 h-4 text-teal-700 dark:text-teal-400 shrink-0 mt-0.5"
+                  className="w-4 h-4 text-[#087F73] dark:text-teal-400 shrink-0 mt-0.5"
                   aria-hidden="true"
                 />
                 <span>{t.auth.privacyNote}</span>
@@ -421,7 +426,7 @@ export default function LandingPage({
                   type="button"
                   onClick={() => setIsPrivacyOpen(true)}
                   data-testid="login-privacy-btn"
-                  className="text-xs font-semibold text-teal-700 dark:text-teal-400 hover:underline"
+                  className="text-xs font-semibold text-[#087F73] dark:text-teal-400 hover:underline"
                 >
                   {t.privacyModal.linkLabel}
                 </button>
@@ -431,7 +436,7 @@ export default function LandingPage({
           </div>
         </motion.section>
 
-        {/* 2. Visual Feature Showcase */}
+        {/* 2. Visual Feature Showcase (Single White Card with Clean Dividers) */}
         <section
           id="fitur"
           data-testid="landing-feature-showcase"
@@ -439,28 +444,26 @@ export default function LandingPage({
         >
           <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
             <div className="space-y-2 max-w-2xl">
-              <h2 className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-slate-100 tracking-tight text-balance">
+              <h2 className="text-2xl sm:text-3xl font-bold text-[#202A2A] dark:text-slate-100 tracking-tight text-balance">
                 {L.showcaseHeading}
               </h2>
-              <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
+              <p className="text-sm text-[#596866] dark:text-slate-300 leading-relaxed">
                 {L.showcaseSubtitle}
               </p>
             </div>
 
-            {onOpenDemo && (
-              <button
-                type="button"
-                onClick={onOpenDemo}
-                data-testid="showcase-open-demo-btn"
-                className="min-h-[44px] px-4 py-2 rounded-xl bg-white dark:bg-slate-900 border border-teal-200 dark:border-teal-800 text-teal-800 dark:text-teal-300 text-xs sm:text-sm font-semibold hover:border-teal-400 inline-flex items-center justify-center gap-2 whitespace-nowrap shrink-0 self-start md:self-auto transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-700 dark:focus-visible:ring-teal-400"
-              >
-                <Play className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
-                <span>{L.showcaseTryDemoBtn}</span>
-              </button>
-            )}
+            <button
+              type="button"
+              onClick={handleWatchVideoDemo}
+              data-testid="showcase-watch-video-btn"
+              className="min-h-[44px] px-4 py-2 rounded-xl bg-white dark:bg-slate-900 border border-[#DFE7E2] dark:border-teal-800 text-[#087F73] dark:text-teal-300 text-xs sm:text-sm font-semibold hover:border-[#087F73] inline-flex items-center justify-center gap-2 whitespace-nowrap shrink-0 self-start md:self-auto transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#087F73] dark:focus-visible:ring-teal-400"
+            >
+              <Play className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
+              <span>{L.showcaseTryDemoBtn}</span>
+            </button>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+          <div className="bg-white dark:bg-slate-900 border border-[#DFE7E2] dark:border-slate-800 rounded-2xl grid grid-cols-1 md:grid-cols-3 divide-y md:divide-y-0 md:divide-x divide-[#DFE7E2] dark:divide-slate-800">
             {L.showcaseCards.map((card, idx) => {
               const Icon =
                 idx === 0
@@ -471,31 +474,31 @@ export default function LandingPage({
               return (
                 <article
                   key={card.title}
-                  className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 flex flex-col justify-between gap-5"
+                  className="p-6 flex flex-col justify-between gap-5"
                 >
                   <div className="space-y-3">
                     <div className="flex items-center justify-between gap-2">
-                      <span className="px-2.5 py-1 rounded-lg bg-teal-50 dark:bg-teal-950/70 text-teal-800 dark:text-teal-300 text-xs font-semibold">
+                      <span className="text-xs font-semibold text-[#087F73] dark:text-teal-300">
                         {card.badge}
                       </span>
                       <Icon
-                        className="w-5 h-5 text-teal-700 dark:text-teal-400 shrink-0"
+                        className="w-5 h-5 text-[#087F73] dark:text-teal-400 shrink-0"
                         aria-hidden="true"
                       />
                     </div>
-                    <h3 className="text-base font-bold text-slate-900 dark:text-slate-100">
+                    <h3 className="text-base font-bold text-[#202A2A] dark:text-slate-100">
                       {card.title}
                     </h3>
-                    <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
+                    <p className="text-xs sm:text-sm text-[#596866] dark:text-slate-300 leading-relaxed">
                       {card.desc}
                     </p>
                   </div>
 
-                  <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between gap-2 text-xs">
-                    <span className="text-slate-500 dark:text-slate-400">
+                  <div className="pt-3 border-t border-[#DFE7E2] dark:border-slate-800 flex items-center justify-between gap-2 text-xs">
+                    <span className="text-[#596866] dark:text-slate-400">
                       {card.highlightLabel}
                     </span>
-                    <span className="font-mono tabular-nums font-semibold text-teal-800 dark:text-teal-300 text-right">
+                    <span className="font-semibold text-[#202A2A] dark:text-teal-300 text-right">
                       {card.highlightValue}
                     </span>
                   </div>
@@ -505,34 +508,22 @@ export default function LandingPage({
           </div>
         </section>
 
-        {/* 3. Free No-Login Interactive Pace Calculator & Full App Demo */}
+        {/* 3. Video Demo Walkthrough Component + Free No-Login Interactive Pace Calculator */}
         <section
           id="kalkulator-demo"
           data-testid="landing-pace-demo-section"
-          className="space-y-5 scroll-mt-20"
+          className="space-y-6 scroll-mt-20"
         >
-          <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
-            <div className="space-y-2 max-w-2xl">
-              <h2 className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-slate-100 tracking-tight text-balance">
-                {L.demoHeading}
-              </h2>
-              <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
-                {L.demoSubtitle}
-              </p>
-            </div>
-
-            {onOpenDemo && (
-              <button
-                type="button"
-                onClick={onOpenDemo}
-                data-testid="landing-demo-section-btn"
-                className="min-h-[46px] px-5 py-2.5 rounded-xl bg-teal-700 dark:bg-teal-600 text-white text-sm font-semibold hover:bg-teal-800 dark:hover:bg-teal-500 inline-flex items-center justify-center gap-2 whitespace-nowrap shrink-0 self-start md:self-auto transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-700 dark:focus-visible:ring-teal-400"
-              >
-                <Play className="w-4 h-4 shrink-0" aria-hidden="true" />
-                <span>{L.demoOpenFullBtn}</span>
-              </button>
-            )}
+          <div className="space-y-2 max-w-2xl">
+            <h2 className="text-2xl sm:text-3xl font-bold text-[#202A2A] dark:text-slate-100 tracking-tight text-balance">
+              {L.demoHeading}
+            </h2>
+            <p className="text-sm text-[#596866] dark:text-slate-300 leading-relaxed">
+              {L.demoSubtitle}
+            </p>
           </div>
+
+          <VideoDemoShowcase lang={lang} />
 
           <PaceCalculator
             initialRace="10K"
@@ -551,10 +542,10 @@ export default function LandingPage({
           className="space-y-8 scroll-mt-20"
         >
           <div className="space-y-2 max-w-2xl">
-            <h2 className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-slate-100 tracking-tight text-balance">
+            <h2 className="text-2xl sm:text-3xl font-bold text-[#202A2A] dark:text-slate-100 tracking-tight text-balance">
               {L.pricingHeading}
             </h2>
-            <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
+            <p className="text-sm text-[#596866] dark:text-slate-300 leading-relaxed">
               {L.pricingSubtitle}
             </p>
           </div>
@@ -569,17 +560,17 @@ export default function LandingPage({
                   data-testid={`pricing-card-${planKey}`}
                   className={`rounded-2xl border p-6 sm:p-7 flex flex-col justify-between gap-6 transition-colors ${
                     isSelected
-                      ? 'bg-gradient-to-br from-[#EAF6F3] via-white to-[#EEF2FB] dark:from-teal-950/60 dark:via-slate-900 dark:to-indigo-950/40 border-teal-500 dark:border-teal-500 ring-1 ring-teal-500/30'
-                      : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800'
+                      ? 'bg-[#E6F3EE] dark:bg-slate-900 border-[#087F73] dark:border-teal-500 ring-1 ring-[#087F73]/25'
+                      : 'bg-white dark:bg-slate-900 border-[#DFE7E2] dark:border-slate-800'
                   }`}
                 >
                   <div className="space-y-4">
                     <div className="flex items-center justify-between gap-2">
-                      <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100">
+                      <h3 className="text-lg font-bold text-[#202A2A] dark:text-slate-100">
                         {plan.title[lang]}
                       </h3>
                       {plan.badge && (
-                        <span className="px-2.5 py-1 rounded-lg bg-teal-700 dark:bg-teal-600 text-white text-xs font-semibold whitespace-nowrap shrink-0">
+                        <span className="px-2.5 py-1 rounded-lg bg-[#E9957D] text-[#202A2A] text-xs font-bold whitespace-nowrap shrink-0">
                           {plan.badge[lang]}
                         </span>
                       )}
@@ -587,19 +578,19 @@ export default function LandingPage({
 
                     <div className="space-y-1">
                       <div className="flex items-baseline gap-2.5">
-                        <span className="text-3xl font-bold font-mono tabular-nums text-slate-900 dark:text-slate-100">
+                        <span className="text-3xl font-bold tabular-nums text-[#202A2A] dark:text-slate-100">
                           {plan.priceLabel}
                         </span>
-                        <span className="text-sm font-mono tabular-nums line-through text-slate-400">
+                        <span className="text-sm tabular-nums line-through text-[#596866]/70 dark:text-slate-400">
                           {plan.originalPriceLabel}
                         </span>
                       </div>
-                      <p className="text-xs font-semibold text-teal-800 dark:text-teal-300">
+                      <p className="text-xs font-semibold text-[#087F73] dark:text-teal-300">
                         {plan.billingPeriod[lang]}
                       </p>
                     </div>
 
-                    <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
+                    <p className="text-xs sm:text-sm text-[#596866] dark:text-slate-300 leading-relaxed">
                       {plan.summary[lang]}
                     </p>
 
@@ -607,10 +598,10 @@ export default function LandingPage({
                       {plan.features[lang].map((feat) => (
                         <li
                           key={feat}
-                          className="flex items-start gap-2.5 text-xs sm:text-sm text-slate-700 dark:text-slate-200"
+                          className="flex items-start gap-2.5 text-xs sm:text-sm text-[#202A2A] dark:text-slate-200"
                         >
                           <Check
-                            className="w-4 h-4 text-teal-700 dark:text-teal-400 shrink-0 mt-0.5"
+                            className="w-4 h-4 text-[#087F73] dark:text-teal-400 shrink-0 mt-0.5"
                             aria-hidden="true"
                           />
                           <span>{feat}</span>
@@ -623,10 +614,10 @@ export default function LandingPage({
                     type="button"
                     onClick={() => handleSelectPricingPlan(planKey)}
                     data-testid={`select-plan-btn-${planKey}`}
-                    className={`w-full min-h-[46px] px-5 py-2.5 rounded-xl text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-700 dark:focus-visible:ring-teal-400 ${
+                    className={`w-full min-h-[46px] px-5 py-2.5 rounded-xl text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#087F73] dark:focus-visible:ring-teal-400 ${
                       isSelected
-                        ? 'bg-teal-700 dark:bg-teal-600 text-white hover:bg-teal-800'
-                        : 'bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-slate-100 hover:border-teal-400'
+                        ? 'bg-[#087F73] dark:bg-teal-600 text-white hover:bg-[#06685E]'
+                        : 'bg-white dark:bg-slate-800 border border-[#DFE7E2] dark:border-slate-700 text-[#202A2A] dark:text-slate-100 hover:border-[#087F73]'
                     }`}
                   >
                     {isSelected ? L.pricingSelectedBtn : L.pricingSelectBtn}
@@ -637,12 +628,12 @@ export default function LandingPage({
           </div>
 
           {/* Side-by-Side Plan Comparison Table */}
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden">
-            <div className="px-5 py-4 border-b border-slate-100 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-              <h3 className="text-base sm:text-lg font-bold text-slate-900 dark:text-slate-100">
+          <div className="bg-white dark:bg-slate-900 border border-[#DFE7E2] dark:border-slate-800 rounded-2xl overflow-hidden">
+            <div className="px-5 py-4 border-b border-[#DFE7E2] dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <h3 className="text-base sm:text-lg font-bold text-[#202A2A] dark:text-slate-100">
                 {L.comparisonTableHeading}
               </h3>
-              <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
+              <span className="text-xs font-medium text-[#596866] dark:text-slate-400 tabular-nums">
                 {COMMERCIAL_PLANS.lifetime.priceLabel} vs{' '}
                 {COMMERCIAL_PLANS.pro.priceLabel}
               </span>

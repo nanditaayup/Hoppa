@@ -1,5 +1,5 @@
 import { ACCEPTED_RUN_TYPES, encodePolyline } from './config';
-import { ParseImportResult, RunActivity, RunActivityType } from './types';
+import { ParseImportResult, RunActivity, RunActivityType, RunDataQuality } from './types';
 
 export function normalizeRunType(rawType: string): RunActivityType | null {
   const cleaned = rawType.trim().toLowerCase();
@@ -39,9 +39,12 @@ export function normalizeRunType(rawType: string): RunActivityType | null {
 /**
  * Parses numeric values supporting both dot and comma decimal formats.
  * Handles thousands separator like "8.100" when followed by 3 digits and no comma,
- * or Indonesian comma decimals like "8,10".
+ * or preserves 3-decimal floats like "1.833" m/s when preserveThreeDecimalAsFloat is true.
  */
-export function parseFlexibleNumber(raw: string | undefined): number {
+export function parseFlexibleNumber(
+  raw: string | undefined,
+  preserveThreeDecimalAsFloat = false
+): number {
   if (!raw) return 0;
   let cleaned = raw.trim().replace(/[^0-9.,-]/g, '');
   if (!cleaned) return 0;
@@ -61,8 +64,8 @@ export function parseFlexibleNumber(raw: string | undefined): number {
     // e.g. "3,3333" or "8,10"
     cleaned = cleaned.replace(',', '.');
   } else if (hasDot) {
-    // Check if dot is thousands separator like "8.100"
-    if (/^\d{1,3}(\.\d{3})+$/.test(cleaned)) {
+    // Check if dot is thousands separator like "8.100" (only when not a 3-decimal float column)
+    if (!preserveThreeDecimalAsFloat && /^\d{1,3}(\.\d{3})+$/.test(cleaned)) {
       cleaned = cleaned.replace(/\./g, '');
     }
   }
@@ -211,7 +214,7 @@ export function parseStravaCsv(csvText: string): ParseImportResult {
         ? Math.max(movingTimeSeconds, parseDurationInput(cols[colElapsedTime]))
         : movingTimeSeconds;
 
-    const rawDistance = parseFlexibleNumber(cols[colDistance]);
+    const rawDistance = parseFlexibleNumber(cols[colDistance], explicitKm);
     let distanceMeters = rawDistance;
     if (explicitMeters) {
       distanceMeters = rawDistance;
@@ -235,22 +238,49 @@ export function parseStravaCsv(csvText: string): ParseImportResult {
     if (distanceMeters <= 0) continue;
 
     const rawAvgSpeed =
-      colAvgSpeed !== -1 ? parseFlexibleNumber(cols[colAvgSpeed]) : 0;
-    const averageSpeedMps =
-      rawAvgSpeed > 0
-        ? rawAvgSpeed
-        : movingTimeSeconds > 0
-          ? distanceMeters / movingTimeSeconds
-          : 0;
+      colAvgSpeed !== -1 ? parseFlexibleNumber(cols[colAvgSpeed], true) : 0;
+    const derivedSpeedMps =
+      movingTimeSeconds > 0 && distanceMeters > 0
+        ? distanceMeters / movingTimeSeconds
+        : 0;
+
+    let averageSpeedMps = derivedSpeedMps > 0 ? derivedSpeedMps : rawAvgSpeed;
+    let dataWarningReason: RunDataQuality['reason'] = null;
+
+    if (rawAvgSpeed > 0) {
+      if (derivedSpeedMps > 0) {
+        const diffMps = Math.abs(rawAvgSpeed - derivedSpeedMps) / derivedSpeedMps;
+        const asKmhToMps = rawAvgSpeed / 3.6;
+        const diffKmh = Math.abs(asKmhToMps - derivedSpeedMps) / derivedSpeedMps;
+        if (diffMps <= 0.25 && rawAvgSpeed <= 8.5) {
+          averageSpeedMps = rawAvgSpeed;
+        } else if (rawAvgSpeed > 5 && diffKmh <= 0.15) {
+          averageSpeedMps = asKmhToMps;
+        } else {
+          // Corrupted or mismatched speed column; fall back safely to distance / movingTime
+          averageSpeedMps = derivedSpeedMps;
+          dataWarningReason = 'speed_distance_mismatch';
+        }
+      } else {
+        averageSpeedMps = rawAvgSpeed > 10 ? rawAvgSpeed / 3.6 : rawAvgSpeed;
+      }
+    }
 
     const rawMaxSpeed =
-      colMaxSpeed !== -1 ? parseFlexibleNumber(cols[colMaxSpeed]) : 0;
-    const maxSpeedMps = rawMaxSpeed > 0 ? rawMaxSpeed : averageSpeedMps * 1.18;
+      colMaxSpeed !== -1 ? parseFlexibleNumber(cols[colMaxSpeed], true) : 0;
+    const normalizedMaxSpeed =
+      rawMaxSpeed > 12 && averageSpeedMps > 0 && Math.abs(rawMaxSpeed / 3.6 - averageSpeedMps) < averageSpeedMps * 2
+        ? rawMaxSpeed / 3.6
+        : rawMaxSpeed;
+    const maxSpeedMps =
+      normalizedMaxSpeed > 0 && normalizedMaxSpeed <= 12
+        ? normalizedMaxSpeed
+        : averageSpeedMps * 1.18;
 
     const elevationGainMeters =
-      colElevation !== -1 ? Math.round(parseFlexibleNumber(cols[colElevation])) : 0;
+      colElevation !== -1 ? Math.round(parseFlexibleNumber(cols[colElevation], true)) : 0;
 
-    const rawHr = colHr !== -1 ? parseFlexibleNumber(cols[colHr]) : 0;
+    const rawHr = colHr !== -1 ? parseFlexibleNumber(cols[colHr], true) : 0;
     const averageHeartRate = rawHr > 30 ? Math.round(rawHr) : null;
 
     const startDate = parseDateIso(colDate !== -1 ? cols[colDate] : undefined);
@@ -277,6 +307,7 @@ export function parseStravaCsv(csvText: string): ParseImportResult {
       maxSpeedMps,
       summaryPolyline: null,
       source: 'csv',
+      ...(dataWarningReason ? { dataWarningReason } : {}),
     });
   }
 
@@ -493,16 +524,98 @@ export function parseGpxFiles(
   };
 }
 
+export function assessRunDataQuality(run: RunActivity): RunDataQuality {
+  const distanceKm = run.distanceMeters / 1000;
+  const computedPaceSecPerKm =
+    distanceKm > 0 && run.movingTimeSeconds > 0
+      ? Math.round(run.movingTimeSeconds / distanceKm)
+      : 0;
+  const reportedPaceSecPerKm =
+    run.averageSpeedMps > 0.2 ? Math.round(1000 / run.averageSpeedMps) : null;
+
+  const effectivePace = computedPaceSecPerKm || reportedPaceSecPerKm || 0;
+  if (effectivePace > 0 && effectivePace < 140) {
+    return {
+      hasAnomaly: true,
+      reason: 'implausible_fast',
+      computedPaceSecPerKm: effectivePace,
+      reportedPaceSecPerKm,
+    };
+  }
+  if (effectivePace > 1800) {
+    return {
+      hasAnomaly: true,
+      reason: 'implausible_slow',
+      computedPaceSecPerKm: effectivePace,
+      reportedPaceSecPerKm,
+    };
+  }
+  if (
+    computedPaceSecPerKm > 0 &&
+    reportedPaceSecPerKm !== null &&
+    Math.abs(reportedPaceSecPerKm - computedPaceSecPerKm) / computedPaceSecPerKm > 0.25
+  ) {
+    return {
+      hasAnomaly: true,
+      reason: 'speed_distance_mismatch',
+      computedPaceSecPerKm,
+      reportedPaceSecPerKm,
+    };
+  }
+  if (run.dataWarningReason) {
+    return {
+      hasAnomaly: true,
+      reason: run.dataWarningReason,
+      computedPaceSecPerKm: effectivePace,
+      reportedPaceSecPerKm,
+    };
+  }
+  return {
+    hasAnomaly: false,
+    reason: null,
+    computedPaceSecPerKm: effectivePace,
+    reportedPaceSecPerKm,
+  };
+}
+
 export function mergeAndDeduplicateRuns(
   existing: RunActivity[],
   incoming: RunActivity[]
 ): RunActivity[] {
   const byId = new Map<string, RunActivity>();
+  const fingerprintToId = new Map<string, string>();
+
+  const upsert = (run: RunActivity) => {
+    const t = new Date(run.startDate).getTime();
+    const minuteBucket = Number.isFinite(t) ? Math.round(t / 60000) : 0;
+    const distBucket = Math.round(run.distanceMeters / 25);
+    const fingerprint = `${minuteBucket}:${distBucket}`;
+
+    const matchedId = byId.has(run.id) ? run.id : fingerprintToId.get(fingerprint);
+    if (matchedId && matchedId !== run.id) {
+      const prev = byId.get(matchedId);
+      if (prev) {
+        byId.delete(matchedId);
+        byId.set(run.id, {
+          ...prev,
+          ...run,
+          summaryPolyline: run.summaryPolyline ?? prev.summaryPolyline,
+          averageHeartRate: run.averageHeartRate ?? prev.averageHeartRate,
+        });
+      } else {
+        byId.set(run.id, run);
+      }
+    } else {
+      byId.set(run.id, run);
+    }
+    fingerprintToId.set(fingerprint, run.id);
+  };
+
   for (const run of existing) {
-    byId.set(run.id, run);
+    upsert(run);
   }
   for (const run of incoming) {
-    byId.set(run.id, run);
+    upsert(run);
   }
   return Array.from(byId.values()).sort(
     (a, b) => new Date(b.startDate).getTime() - new Date(a.startDate).getTime()

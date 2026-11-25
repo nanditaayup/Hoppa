@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {
   buildProgressEntriesFromMatches,
   calculateBmi,
+  computeAdaptivePlanAdjustment,
   computeDailyProgressStats,
   computeHeartRateAndVo2Max,
   computeKpiSummary,
@@ -12,6 +13,7 @@ import {
   computeRaceCountdown,
   computeWeeklyChartBuckets,
   decodePolyline,
+  evaluateTargetPaceReadiness,
   findStravaProgressMatches,
   formatDistanceKm,
   formatDuration,
@@ -607,6 +609,264 @@ test('generateTrainingPlan honors customTargetPaceSecPerKm and enforces <=10% we
     }
   }
 });
+
+test('computePaceSecPerKm prioritizes distance/movingTime over corrupted averageSpeedMps and KPI excludes implausible runs', () => {
+  // MAF Training day 6: 5.03 km in 45:44 (2744s) should always be 09:06/km, even if averageSpeedMps=30.3
+  const pace = computePaceSecPerKm(5030, 2744, 30.3);
+  assert.equal(formatPace(pace), '09:06/km');
+
+  const kpi = computeKpiSummary(
+    [
+      {
+        id: 'corrupt-fast',
+        name: 'Corrupted Fast',
+        type: 'Run',
+        startDate: '2026-11-19T06:00:00+07:00',
+        distanceMeters: 5000,
+        movingTimeSeconds: 300, // 01:00/km implausible
+        elapsedTimeSeconds: 300,
+        elevationGainMeters: 0,
+        averageHeartRate: 140,
+        maxSpeedMps: 16,
+        averageSpeedMps: 16.6,
+        summaryPolyline: null,
+        source: 'csv',
+      },
+      {
+        id: 'valid-run',
+        name: 'MAF Training day 6',
+        type: 'Run',
+        startDate: '2026-11-18T06:00:00+07:00',
+        distanceMeters: 5030,
+        movingTimeSeconds: 2744,
+        elapsedTimeSeconds: 2744,
+        elevationGainMeters: 20,
+        averageHeartRate: 142,
+        maxSpeedMps: 2.3,
+        averageSpeedMps: 30.3, // corrupted stored speed
+        summaryPolyline: null,
+        source: 'csv',
+      },
+    ],
+    new Date('2026-11-20T12:00:00+07:00')
+  );
+
+  assert.equal(kpi.flaggedAnomalyCount, 2);
+  assert.equal(formatPace(kpi.thirtyDayAvgPaceSecPerKm), '09:06/km');
+});
+
+test('computePaceZones with race_goal basis aligns 10K 52:30 (05:15/km) with PaceCalculator', () => {
+  const zones = computePaceZones(315, 'id', {
+    basis: 'race_goal',
+    targetRace: '10K',
+  });
+  assert.equal(zones.find((z) => z.key === 'easy')?.formattedRange, '06:00–06:30/km');
+  assert.equal(zones.find((z) => z.key === 'tempo')?.formattedRange, '05:25–05:35/km');
+  assert.equal(zones.find((z) => z.key === 'interval')?.formattedRange, '04:50–05:03/km');
+});
+
+test('computeDailyProgressStats scopes to current Mon-Sun week, bridges rest days in streak, and flags >115% volume overload', () => {
+  const kpi = computeKpiSummary(SAMPLE_STRAVA_RUNS, new Date('2026-11-19T12:00:00+07:00'));
+  const plan = generateTrainingPlan(
+    {
+      weightKg: 68,
+      heightCm: 170,
+      directBmi: null,
+      useDirectBmi: false,
+      age: 30,
+      injuryStatus: 'none',
+      targetRace: '10K',
+      trainingDaysPerWeek: 4, // Active: Tue(1), Wed(2), Fri(4), Sun(6); Rest/Strength: Mon(0), Thu(3), Sat(5)
+    },
+    kpi
+  );
+
+  const stats = computeDailyProgressStats(
+    [
+      // Previous week entry (should NOT inflate this week's km)
+      {
+        dateKey: '2026-11-12',
+        dayIndex: 3,
+        sessionTitle: 'Old Run',
+        zone: 'easy',
+        plannedKm: 5,
+        actualKm: 30,
+        comfortRating: 4,
+        note: '',
+        completedAt: '2026-11-12T06:00:00Z',
+      },
+      // Cross-train check-in on Mon (rest day, should not count as running session)
+      {
+        dateKey: '2026-11-16',
+        dayIndex: 0,
+        sessionTitle: 'Cross-Train',
+        zone: 'rest',
+        plannedKm: 0,
+        actualKm: 0,
+        comfortRating: 4,
+        note: '',
+        completedAt: '2026-11-16T06:00:00Z',
+      },
+      // Wed active run
+      {
+        dateKey: '2026-11-18',
+        dayIndex: 2,
+        sessionTitle: 'Tempo',
+        zone: 'tempo',
+        plannedKm: 6,
+        actualKm: 18,
+        comfortRating: 4,
+        note: '',
+        completedAt: '2026-11-18T06:00:00Z',
+      },
+      // Thu is scheduled rest (skipped log), Fri active run -> streak should bridge Thu!
+      {
+        dateKey: '2026-11-20',
+        dayIndex: 4,
+        sessionTitle: 'Easy',
+        zone: 'easy',
+        plannedKm: 6,
+        actualKm: 20,
+        comfortRating: 4,
+        note: '',
+        completedAt: '2026-11-20T06:00:00Z',
+      },
+    ],
+    plan.weeklySchedule,
+    '2026-11-21' // Saturday (rest day)
+  );
+
+  assert.equal(stats.totalLoggedKm, 38); // Excludes 30 km from prior week!
+  assert.equal(stats.completedThisWeekCount, 2);
+  assert.equal(stats.completedCrossTrainCount, 1);
+  assert.equal(stats.currentStreakDays, 2); // Fri + Wed bridged over Thu & Sat rest days!
+  assert.equal(stats.isVolumeSignificantlyOverPlan, true);
+  assert.ok(stats.actualVsPlannedPct > 115);
+});
+
+test('findStravaProgressMatches labels runs on planned rest/strength days as Extra Run instead of Cross-Train', () => {
+  const kpi = computeKpiSummary(SAMPLE_STRAVA_RUNS, new Date('2026-11-19T12:00:00+07:00'));
+  const plan = generateTrainingPlan(
+    {
+      weightKg: 68,
+      heightCm: 170,
+      directBmi: null,
+      useDirectBmi: false,
+      age: 30,
+      injuryStatus: 'none',
+      targetRace: '10K',
+      trainingDaysPerWeek: 4, // Monday (dayIndex 0) is planned Cross-Train: Strength & Mobility (zone: 'rest')
+    },
+    kpi,
+    'id'
+  );
+
+  const matches = findStravaProgressMatches(
+    [
+      {
+        id: 'mon-run',
+        name: 'Monday Morning Jog',
+        type: 'Run',
+        startDate: '2026-11-16T06:00:00+07:00', // Monday
+        distanceMeters: 4300,
+        movingTimeSeconds: 1650,
+        elapsedTimeSeconds: 1650,
+        elevationGainMeters: 15,
+        averageHeartRate: 140,
+        maxSpeedMps: 3.1,
+        averageSpeedMps: 2.6,
+        summaryPolyline: null,
+        source: 'csv',
+      },
+    ],
+    plan.weeklySchedule,
+    [],
+    '2026-11-19',
+    'id'
+  );
+
+  assert.equal(matches.length, 1);
+  assert.equal(matches[0].zone, 'easy');
+  assert.equal(matches[0].sessionTitle, 'Lari Ekstra (Hari Istirahat)');
+});
+
+test('evaluateTargetPaceReadiness and computeAdaptivePlanAdjustment produce conservative guardrails', () => {
+  const slowKpi = {
+    fourWeekAvgKm: 18,
+    thirtyDayTotalKm: 72,
+    thirtyDayAvgPaceSecPerKm: 420, // 07:00/km
+    longestRunKm: 10,
+    runCount30Days: 8,
+    totalActivitiesCount: 8,
+    flaggedAnomalyCount: 0,
+  };
+
+  const ambitious = evaluateTargetPaceReadiness({
+    goalRace: '10K',
+    goalPaceSecPerKm: 315, // 05:15/km -> 25% faster than 07:00/km
+    kpi: slowKpi,
+    daysToRace: 30,
+    lang: 'id',
+  });
+  assert.equal(ambitious.status, 'ambitious_caution');
+  assert.ok(ambitious.recommendedTrainingPaceSecPerKm > ambitious.goalPaceSecPerKm);
+
+  const noHistory = evaluateTargetPaceReadiness({
+    goalRace: '10K',
+    goalPaceSecPerKm: 315,
+    kpi: { ...slowKpi, runCount30Days: 0, thirtyDayAvgPaceSecPerKm: 0 },
+    daysToRace: 60,
+    lang: 'en',
+  });
+  assert.equal(noHistory.status, 'no_history_caution');
+
+  const plan = generateTrainingPlan(
+    {
+      weightKg: 68,
+      heightCm: 170,
+      directBmi: null,
+      useDirectBmi: false,
+      age: 30,
+      injuryStatus: 'none',
+      targetRace: '10K',
+      trainingDaysPerWeek: 4,
+    },
+    slowKpi,
+    'id'
+  );
+  const heavyEntries = [
+    {
+      dateKey: '2026-11-18',
+      dayIndex: 2,
+      sessionTitle: 'Tempo',
+      zone: 'tempo' as const,
+      plannedKm: 6,
+      actualKm: 6,
+      comfortRating: 2 as const,
+      note: 'Kaki berat',
+      completedAt: '2026-11-18T06:00:00Z',
+    },
+  ];
+  const dailyStats = computeDailyProgressStats(
+    heavyEntries,
+    plan.weeklySchedule,
+    '2026-11-19'
+  );
+  const adjustment = computeAdaptivePlanAdjustment({
+    weeklySchedule: plan.weeklySchedule,
+    progressEntries: heavyEntries,
+    dailyStats,
+    todayDateKey: '2026-11-19',
+    todayDayIndex: 3,
+    manualFatigueMode: false,
+    lang: 'id',
+  });
+  assert.equal(adjustment.triggered, true);
+  assert.equal(adjustment.downgradeQualityToEasy, true);
+  assert.ok(adjustment.volumeMultiplier < 1);
+  assert.ok(adjustment.reasons.includes('heavy_fatigue'));
+});
+
 
 
 

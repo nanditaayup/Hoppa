@@ -34,7 +34,7 @@ const APP_DESCRIPTION =
 
 export const viewport: Viewport = {
   themeColor: [
-    { media: '(prefers-color-scheme: light)', color: '#0F766E' },
+    { media: '(prefers-color-scheme: light)', color: '#087F73' },
     { media: '(prefers-color-scheme: dark)', color: '#020617' },
   ],
   width: 'device-width',
@@ -119,7 +119,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
       <body
         suppressHydrationWarning
-        className="min-h-screen bg-[#F7F9FA] dark:bg-slate-950 text-slate-800 dark:text-slate-100 font-sans antialiased selection:bg-teal-100 selection:text-teal-900 dark:selection:bg-teal-900 dark:selection:text-teal-100"
+        className="min-h-screen bg-[#F7F6F2] dark:bg-slate-950 text-[#202A2A] dark:text-slate-100 font-sans antialiased selection:bg-[#E6F3EE] selection:text-[#087F73] dark:selection:bg-teal-900 dark:selection:text-teal-100"
       >
         {children}
       </body>

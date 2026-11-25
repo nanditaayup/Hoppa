@@ -6,6 +6,7 @@ import { User } from 'firebase/auth';
 import { motion, useReducedMotion } from 'motion/react';
 import {
   Activity,
+  AlertTriangle,
   ArrowRight,
   Award,
   CalendarCheck2,
@@ -13,11 +14,15 @@ import {
   ChevronRight,
   CloudDownload,
   Flame,
+  Gauge,
   HeartPulse,
   Languages,
   LayoutDashboard,
+  Leaf,
   LogOut,
   Menu,
+  Sparkles,
+  Timer,
   Utensils,
   X,
 } from 'lucide-react';
@@ -27,6 +32,7 @@ import { mergeAndDeduplicateRuns } from '@/lib/strava/import-parser';
 import {
   buildProgressEntriesFromMatches,
   calculateBmi,
+  computeAdaptivePlanAdjustment,
   computeDailyProgressStats,
   computeHeartRateAndVo2Max,
   computeKpiSummary,
@@ -104,6 +110,20 @@ function getLocalTodayKeyAndDayIndex(): { dateKey: string; dayIndex: number } {
   const utcDay = wib.getUTCDay();
   const dayIndex = utcDay === 0 ? 6 : utcDay - 1;
   return { dateKey, dayIndex };
+}
+
+function formatReadableTodayDate(dateKey: string, lang: AppLanguage): string {
+  const parts = dateKey.split('-').map(Number);
+  if (parts.length !== 3 || parts.some((n) => !Number.isFinite(n))) {
+    return dateKey;
+  }
+  const utcDate = new Date(Date.UTC(parts[0], parts[1] - 1, parts[2], 12, 0, 0));
+  return new Intl.DateTimeFormat(lang === 'id' ? 'id-ID' : 'en-US', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    timeZone: 'UTC',
+  }).format(utcDate);
 }
 
 function noopSubscribe() {
@@ -223,6 +243,7 @@ export default function PaceCraftApp({
   const [stravaSyncNoticeCount, setStravaSyncNoticeCount] = useState<
     number | null
   >(null);
+  const [manualFatigueMode, setManualFatigueMode] = useState(false);
 
   const safeLang: AppLanguage = lang === 'en' ? 'en' : 'id';
   const t = UI_COPY[safeLang];
@@ -559,9 +580,31 @@ export default function PaceCraftApp({
         runs,
         trainingPlan.weeklySchedule,
         progressEntries,
-        todayInfo.dateKey
+        todayInfo.dateKey,
+        safeLang
       ),
-    [runs, trainingPlan.weeklySchedule, progressEntries, todayInfo.dateKey]
+    [runs, trainingPlan.weeklySchedule, progressEntries, todayInfo.dateKey, safeLang]
+  );
+  const adaptiveAdjustment = useMemo(
+    () =>
+      computeAdaptivePlanAdjustment({
+        weeklySchedule: trainingPlan.weeklySchedule,
+        progressEntries,
+        dailyStats: dailyProgressStats,
+        todayDateKey: todayInfo.dateKey,
+        todayDayIndex: todayInfo.dayIndex,
+        manualFatigueMode,
+        lang: safeLang,
+      }),
+    [
+      trainingPlan.weeklySchedule,
+      progressEntries,
+      dailyProgressStats,
+      todayInfo.dateKey,
+      todayInfo.dayIndex,
+      manualFatigueMode,
+      safeLang,
+    ]
   );
   const nutritionRecommendation = useMemo(
     () => computeNutritionRecommendation(profile, bmiResult, safeLang),
@@ -578,8 +621,7 @@ export default function PaceCraftApp({
       (s) => s.dayIndex === todayInfo.dayIndex
     ) ?? trainingPlan.weeklySchedule[0];
   const isTodayLogged = progressEntries.some(
-    (e) =>
-      e.dateKey === todayInfo.dateKey || e.dayIndex === todayInfo.dayIndex
+    (e) => e.dateKey === todayInfo.dateKey
   );
   const volumeProgressRatio =
     trainingPlan.totalPlannedWeekKm > 0 && dailyProgressStats.totalLoggedKm > 0
@@ -588,7 +630,7 @@ export default function PaceCraftApp({
           dailyProgressStats.totalLoggedKm / trainingPlan.totalPlannedWeekKm
         )
       : Math.min(1, dailyProgressStats.completionPct / 100);
-  const volumeProgressPct = Math.round(volumeProgressRatio * 100);
+  const volumeProgressPct = dailyProgressStats.actualVsPlannedPct;
 
   const resolvedImportNotice = useMemo(() => {
     if (!importNoticeState) return null;
@@ -843,11 +885,11 @@ export default function PaceCraftApp({
             <button
               type="button"
               onClick={() => handleSelectTab('overview')}
-              className="text-xl font-bold tracking-tight text-slate-900 dark:text-slate-100 whitespace-nowrap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-700 dark:focus-visible:ring-teal-400 rounded-md"
+              className="text-xl font-bold tracking-tight text-[#202A2A] dark:text-slate-100 whitespace-nowrap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#087F73] dark:focus-visible:ring-teal-400 rounded-md"
             >
               PaceCraft
             </button>
-            <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+            <p className="text-[11px] text-[#596866] dark:text-slate-400 mt-0.5">
               {t.sidebar.workspaceCaption}
             </p>
           </div>
@@ -855,13 +897,13 @@ export default function PaceCraftApp({
             type="button"
             onClick={() => setIsMobileSidebarOpen(false)}
             aria-label={t.sidebar.closeMenuAria}
-            className="lg:hidden min-h-[40px] min-w-[40px] inline-flex items-center justify-center rounded-xl text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
+            className="lg:hidden min-h-[40px] min-w-[40px] inline-flex items-center justify-center rounded-xl text-[#596866] dark:text-slate-400 hover:bg-[#F7F6F2] dark:hover:bg-slate-800"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
-        <nav aria-label={t.sidebar.ariaLabel} className="space-y-1.5">
+        <nav aria-label={t.sidebar.ariaLabel} className="space-y-1">
           {sidebarItems.map((item) => {
             const Icon = item.icon;
             const isActive = activeTab === item.id;
@@ -872,17 +914,17 @@ export default function PaceCraftApp({
                 onClick={() => handleSelectTab(item.id)}
                 data-testid={`sidebar-nav-${item.id}`}
                 aria-current={isActive ? 'page' : undefined}
-                className={`w-full text-left px-3 py-2.5 rounded-xl flex items-start gap-3 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-700 dark:focus-visible:ring-teal-400 ${
+                className={`w-full text-left px-3 py-2.5 rounded-xl flex items-start gap-3 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#087F73] dark:focus-visible:ring-teal-400 ${
                   isActive
-                    ? 'bg-teal-50/90 dark:bg-teal-950/60 text-teal-950 dark:text-teal-100 border border-teal-200/80 dark:border-teal-800/70'
-                    : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100/80 dark:hover:bg-slate-800/70 hover:text-slate-900 dark:hover:text-slate-100 border border-transparent'
+                    ? 'bg-[#E6F3EE] dark:bg-teal-950/60 text-[#202A2A] dark:text-teal-100'
+                    : 'text-[#596866] dark:text-slate-300 hover:bg-[#F7F6F2] dark:hover:bg-slate-800/70 hover:text-[#202A2A] dark:hover:text-slate-100'
                 }`}
               >
                 <Icon
                   className={`w-4 h-4 shrink-0 mt-0.5 ${
                     isActive
-                      ? 'text-teal-700 dark:text-teal-400'
-                      : 'text-slate-400 dark:text-slate-500'
+                      ? 'text-[#087F73] dark:text-teal-400'
+                      : 'text-[#596866] dark:text-slate-500'
                   }`}
                   aria-hidden={true}
                 />
@@ -893,8 +935,8 @@ export default function PaceCraftApp({
                   <span
                     className={`block text-[11px] truncate mt-0.5 ${
                       isActive
-                        ? 'text-teal-800/80 dark:text-teal-300/85'
-                        : 'text-slate-500 dark:text-slate-400'
+                        ? 'text-[#087F73] dark:text-teal-300/85'
+                        : 'text-[#596866] dark:text-slate-400'
                     }`}
                   >
                     {item.hint}
@@ -907,12 +949,12 @@ export default function PaceCraftApp({
       </div>
 
       {/* Bottom Target & Authenticated Account Block */}
-      <div className="space-y-3 pt-4 border-t border-slate-100 dark:border-slate-800">
+      <div className="space-y-3 pt-4 border-t border-[#DFE7E2] dark:border-slate-800">
         <div className="px-2 flex items-center justify-between text-xs">
-          <span className="text-slate-500 dark:text-slate-400">
+          <span className="text-[#596866] dark:text-slate-400">
             {t.hero.raceTargetLabel}
           </span>
-          <span className="font-mono tabular-nums font-bold text-teal-800 dark:text-teal-300">
+          <span className="font-semibold text-[#087F73] dark:text-teal-300">
             {profile.targetRace} · {profile.trainingDaysPerWeek}{' '}
             {t.hero.daysPerWeekUnit}
           </span>
@@ -920,7 +962,7 @@ export default function PaceCraftApp({
 
         <div
           data-testid="sidebar-account-card"
-          className="rounded-xl bg-slate-50/90 dark:bg-slate-800/70 border border-slate-200/80 dark:border-slate-700 p-3 space-y-2.5"
+          className="rounded-xl bg-[#F7F6F2] dark:bg-slate-800/70 border border-[#DFE7E2] dark:border-slate-700 p-3 space-y-2.5"
         >
           <div className="flex items-center gap-2.5 min-w-0">
             {!isDemoMode && user?.photoURL && !avatarLoadError ? (
@@ -931,17 +973,17 @@ export default function PaceCraftApp({
                 height={32}
                 referrerPolicy="no-referrer"
                 onError={() => setAvatarLoadError(true)}
-                className="w-8 h-8 rounded-full object-cover border border-slate-200 dark:border-slate-700 shrink-0"
+                className="w-8 h-8 rounded-full object-cover border border-[#DFE7E2] dark:border-slate-700 shrink-0"
               />
             ) : (
-              <div className="w-8 h-8 rounded-full bg-teal-100 dark:bg-teal-900/60 text-teal-800 dark:text-teal-200 text-xs font-bold flex items-center justify-center shrink-0">
+              <div className="w-8 h-8 rounded-full bg-[#E6F3EE] dark:bg-teal-900/60 text-[#087F73] dark:text-teal-200 text-xs font-bold flex items-center justify-center shrink-0">
                 {userInitials}
               </div>
             )}
             <div className="min-w-0 flex-1">
               <p
                 data-testid="account-display-name"
-                className="text-xs font-semibold text-slate-900 dark:text-slate-100 truncate"
+                className="text-xs font-semibold text-[#202A2A] dark:text-slate-100 truncate"
               >
                 {isDemoMode
                   ? t.demoMode.sidebarName
@@ -949,7 +991,7 @@ export default function PaceCraftApp({
               </p>
               <p
                 data-testid="account-email"
-                className="text-[11px] text-slate-500 dark:text-slate-400 truncate"
+                className="text-[11px] text-[#596866] dark:text-slate-400 truncate"
               >
                 {isDemoMode
                   ? t.demoMode.sidebarEmail
@@ -963,7 +1005,7 @@ export default function PaceCraftApp({
               type="button"
               onClick={() => onExitDemo?.(false)}
               data-testid="exit-demo-btn"
-              className="w-full min-h-[36px] px-3 py-1.5 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:border-teal-400 hover:text-teal-800 dark:hover:text-teal-300 transition-colors inline-flex items-center justify-center gap-1.5 whitespace-nowrap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-700 dark:focus-visible:ring-teal-400"
+              className="w-full min-h-[36px] px-3 py-1.5 rounded-lg bg-white dark:bg-slate-800 border border-[#DFE7E2] dark:border-slate-700 text-xs font-semibold text-[#202A2A] dark:text-slate-200 hover:border-[#087F73] hover:text-[#087F73] dark:hover:text-teal-300 transition-colors inline-flex items-center justify-center gap-1.5 whitespace-nowrap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#087F73] dark:focus-visible:ring-teal-400"
             >
               <LogOut className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
               <span>{t.demoMode.exitSidebarBtn}</span>
@@ -974,7 +1016,7 @@ export default function PaceCraftApp({
               onClick={() => void onSignOut()}
               disabled={authBusy}
               data-testid="sign-out-btn"
-              className="w-full min-h-[36px] px-3 py-1.5 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:border-rose-300 dark:hover:border-rose-700 hover:text-rose-700 dark:hover:text-rose-300 disabled:opacity-60 transition-colors inline-flex items-center justify-center gap-1.5 whitespace-nowrap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-700 dark:focus-visible:ring-teal-400"
+              className="w-full min-h-[36px] px-3 py-1.5 rounded-lg bg-white dark:bg-slate-800 border border-[#DFE7E2] dark:border-slate-700 text-xs font-semibold text-[#202A2A] dark:text-slate-200 hover:border-rose-300 dark:hover:border-rose-700 hover:text-rose-700 dark:hover:text-rose-300 disabled:opacity-60 transition-colors inline-flex items-center justify-center gap-1.5 whitespace-nowrap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#087F73] dark:focus-visible:ring-teal-400"
             >
               <LogOut className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
               <span>{authBusy ? t.auth.signingOutBtn : t.auth.signOutBtn}</span>
@@ -986,23 +1028,23 @@ export default function PaceCraftApp({
   );
 
   return (
-    <div className="min-h-screen flex bg-[#F7F9FA] dark:bg-slate-950 text-slate-900 dark:text-slate-100">
+    <div className="min-h-screen flex bg-[#F7F6F2] dark:bg-slate-950 text-[#202A2A] dark:text-slate-100">
       {/* Desktop Sticky Sidebar */}
-      <aside className="hidden lg:block w-64 shrink-0 bg-white dark:bg-slate-900 border-r border-slate-200/80 dark:border-slate-800 sticky top-0 h-screen overflow-y-auto">
+      <aside className="hidden lg:block w-64 shrink-0 bg-white dark:bg-slate-900 border-r border-[#DFE7E2] dark:border-slate-800 sticky top-0 h-screen overflow-y-auto">
         {renderSidebarNavContent()}
       </aside>
 
       {/* Mobile Slide-Over Sidebar Drawer */}
       {isMobileSidebarOpen && (
         <div
-          className="fixed inset-0 z-50 lg:hidden flex bg-slate-900/35 dark:bg-black/70 backdrop-blur-[1px]"
+          className="fixed inset-0 z-50 lg:hidden flex bg-[#202A2A]/35 dark:bg-black/70 backdrop-blur-[1px]"
           onClick={() => setIsMobileSidebarOpen(false)}
         >
           <aside
             role="dialog"
             aria-modal="true"
             aria-label={t.sidebar.ariaLabel}
-            className="w-72 max-w-[85vw] bg-white dark:bg-slate-900 h-full border-r border-slate-200 dark:border-slate-800 shadow-xl overflow-y-auto"
+            className="w-72 max-w-[85vw] bg-white dark:bg-slate-900 h-full border-r border-[#DFE7E2] dark:border-slate-800 shadow-xl overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
             {renderSidebarNavContent()}
@@ -1013,50 +1055,50 @@ export default function PaceCraftApp({
       {/* Main Workspace Column */}
       <div className="flex-1 min-w-0 flex flex-col">
         {/* Clean Contextual Top Workspace Header */}
-        <header className="sticky top-0 z-30 h-14 sm:h-16 bg-[#F7F9FA]/95 dark:bg-slate-950/90 backdrop-blur-sm border-b border-slate-200/80 dark:border-slate-800 px-4 sm:px-8 flex items-center justify-between gap-4">
-          <div className="flex items-center gap-3 min-w-0">
+        <header className="sticky top-0 z-30 h-14 sm:h-16 bg-[#F7F6F2]/95 dark:bg-slate-950/90 backdrop-blur-sm border-b border-[#DFE7E2] dark:border-slate-800 px-3 sm:px-8 flex items-center justify-between gap-2 sm:gap-4">
+          <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
             <button
               type="button"
               onClick={() => setIsMobileSidebarOpen(true)}
               aria-label={t.sidebar.openMenuAria}
               data-testid="mobile-menu-btn"
-              className="lg:hidden min-h-[40px] min-w-[40px] inline-flex items-center justify-center rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 hover:border-teal-300 dark:hover:border-teal-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-700 dark:focus-visible:ring-teal-400 shrink-0"
+              className="lg:hidden min-h-[40px] min-w-[40px] inline-flex items-center justify-center rounded-xl border border-[#DFE7E2] dark:border-slate-700 bg-white dark:bg-slate-900 text-[#202A2A] dark:text-slate-200 hover:border-[#087F73] dark:hover:border-teal-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#087F73] dark:focus-visible:ring-teal-400 shrink-0"
             >
               <Menu className="w-5 h-5" aria-hidden="true" />
             </button>
 
-            <div className="flex items-center gap-2 text-sm min-w-0">
+            <div className="flex items-center gap-1.5 sm:gap-2 text-sm min-w-0 flex-1">
               <button
                 type="button"
                 onClick={() => handleSelectTab('overview')}
-                className="hidden sm:inline font-semibold text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 whitespace-nowrap"
+                className="hidden sm:inline font-semibold text-[#596866] dark:text-slate-400 hover:text-[#202A2A] dark:hover:text-slate-100 whitespace-nowrap"
               >
                 PaceCraft
               </button>
               <ChevronRight
-                className="hidden sm:inline w-4 h-4 text-slate-400 dark:text-slate-500 shrink-0"
+                className="hidden sm:inline w-4 h-4 text-[#596866] dark:text-slate-500 shrink-0"
                 aria-hidden="true"
               />
               <span
                 data-testid="active-tab-heading"
-                className="font-bold text-slate-900 dark:text-slate-100 truncate"
+                className="font-bold text-[#202A2A] dark:text-slate-100 truncate"
               >
                 {activeNavMeta.label}
               </span>
             </div>
           </div>
 
-          <div className="flex items-center gap-2.5 shrink-0">
+          <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
             <ThemeToggle lang={safeLang} testId="workspace-theme-toggle" />
 
             <div
               role="group"
               aria-label={t.nav.languageGroupLabel}
               data-testid="language-switcher"
-              className="inline-flex items-center gap-1 p-1 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700"
+              className="inline-flex items-center gap-0.5 sm:gap-1 p-1 rounded-xl bg-white dark:bg-slate-900 border border-[#DFE7E2] dark:border-slate-700"
             >
               <Languages
-                className="w-3.5 h-3.5 text-teal-700 dark:text-teal-400 ml-1.5 mr-0.5 shrink-0"
+                className="hidden sm:inline w-3.5 h-3.5 text-[#087F73] dark:text-teal-400 ml-1.5 mr-0.5 shrink-0"
                 aria-hidden="true"
               />
               <button
@@ -1064,10 +1106,10 @@ export default function PaceCraftApp({
                 onClick={() => setLangAndSync('id')}
                 data-testid="lang-btn-id"
                 aria-pressed={safeLang === 'id'}
-                className={`min-h-[30px] px-2.5 py-1 rounded-lg text-xs font-semibold whitespace-nowrap shrink-0 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-700 dark:focus-visible:ring-teal-400 ${
+                className={`min-h-[30px] px-2.5 py-1 rounded-lg text-xs font-semibold whitespace-nowrap shrink-0 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#087F73] dark:focus-visible:ring-teal-400 ${
                   safeLang === 'id'
-                    ? 'bg-teal-700 dark:bg-teal-600 text-white'
-                    : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-slate-100'
+                    ? 'bg-[#087F73] dark:bg-teal-600 text-white'
+                    : 'text-[#596866] dark:text-slate-300 hover:text-[#202A2A] dark:hover:text-slate-100'
                 }`}
               >
                 {t.nav.idButton}
@@ -1077,10 +1119,10 @@ export default function PaceCraftApp({
                 onClick={() => setLangAndSync('en')}
                 data-testid="lang-btn-en"
                 aria-pressed={safeLang === 'en'}
-                className={`min-h-[30px] px-2.5 py-1 rounded-lg text-xs font-semibold whitespace-nowrap shrink-0 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-700 dark:focus-visible:ring-teal-400 ${
+                className={`min-h-[30px] px-2.5 py-1 rounded-lg text-xs font-semibold whitespace-nowrap shrink-0 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#087F73] dark:focus-visible:ring-teal-400 ${
                   safeLang === 'en'
-                    ? 'bg-teal-700 dark:bg-teal-600 text-white'
-                    : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-slate-100'
+                    ? 'bg-[#087F73] dark:bg-teal-600 text-white'
+                    : 'text-[#596866] dark:text-slate-300 hover:text-[#202A2A] dark:hover:text-slate-100'
                 }`}
               >
                 {t.nav.enButton}
@@ -1091,7 +1133,7 @@ export default function PaceCraftApp({
               <button
                 type="button"
                 onClick={() => handleSelectTab('progress')}
-                className="hidden sm:inline-flex min-h-[40px] px-4 py-2 rounded-xl bg-teal-700 dark:bg-teal-600 text-white text-xs font-semibold hover:bg-teal-800 dark:hover:bg-teal-500 transition-colors whitespace-nowrap shrink-0 items-center gap-1.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-700 dark:focus-visible:ring-teal-400"
+                className="hidden sm:inline-flex min-h-[40px] px-4 py-2 rounded-xl bg-[#087F73] dark:bg-teal-600 text-white text-xs font-semibold hover:bg-[#06685E] dark:hover:bg-teal-500 transition-colors whitespace-nowrap shrink-0 items-center gap-1.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#087F73] dark:focus-visible:ring-teal-400"
               >
                 {t.overview.quickLogBtn}
                 <ArrowRight className="w-3.5 h-3.5" aria-hidden="true" />
@@ -1101,23 +1143,23 @@ export default function PaceCraftApp({
         </header>
 
         {/* Focused Single-Feature Viewport */}
-        <main className="flex-1 max-w-5xl w-full mx-auto px-4 sm:px-8 py-4 sm:py-8 space-y-5">
+        <main className="flex-1 max-w-5xl w-full mx-auto px-4 sm:px-8 py-5 sm:py-8 space-y-6">
           <OfflineIndicator lang={safeLang} />
 
           {isDemoMode && (
             <div
               data-testid="demo-mode-banner"
-              className="rounded-2xl bg-amber-50/95 dark:bg-amber-950/60 border border-amber-200 dark:border-amber-800 px-4 sm:px-5 py-3.5 flex flex-col lg:flex-row lg:items-center justify-between gap-3"
+              className="rounded-2xl bg-[#E6F3EE] dark:bg-teal-950/60 border border-[#DFE7E2] dark:border-teal-800 px-4 sm:px-5 py-3.5 flex flex-col lg:flex-row lg:items-center justify-between gap-3"
             >
               <div className="space-y-1 min-w-0">
-                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-amber-100 dark:bg-amber-900/70 text-amber-900 dark:text-amber-200 text-[11px] font-bold">
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-[#E9957D] text-[#202A2A] text-[11px] font-bold">
                   <Sparkles className="w-3 h-3 shrink-0" aria-hidden="true" />
                   <span>{t.demoMode.badge}</span>
                 </span>
-                <p className="text-xs sm:text-sm font-bold text-slate-900 dark:text-slate-100">
+                <p className="text-xs sm:text-sm font-bold text-[#202A2A] dark:text-slate-100">
                   {t.demoMode.title}
                 </p>
-                <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+                <p className="text-xs text-[#596866] dark:text-slate-300 leading-relaxed">
                   {t.demoMode.subtitle}
                 </p>
               </div>
@@ -1127,7 +1169,7 @@ export default function PaceCraftApp({
                   type="button"
                   onClick={() => onExitDemo?.(true)}
                   data-testid="demo-signin-cta"
-                  className="min-h-[40px] px-4 py-2 rounded-xl bg-teal-700 dark:bg-teal-600 text-white text-xs font-semibold hover:bg-teal-800 dark:hover:bg-teal-500 whitespace-nowrap transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-700 dark:focus-visible:ring-teal-400"
+                  className="min-h-[40px] px-4 py-2 rounded-xl bg-[#087F73] dark:bg-teal-600 text-white text-xs font-semibold hover:bg-[#06685E] dark:hover:bg-teal-500 whitespace-nowrap transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#087F73] dark:focus-visible:ring-teal-400"
                 >
                   {t.demoMode.signInCta}
                 </button>
@@ -1135,7 +1177,7 @@ export default function PaceCraftApp({
                   type="button"
                   onClick={() => onExitDemo?.(false)}
                   data-testid="demo-back-home-btn"
-                  className="min-h-[40px] px-3.5 py-2 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:border-teal-400 whitespace-nowrap transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-700 dark:focus-visible:ring-teal-400"
+                  className="min-h-[40px] px-3.5 py-2 rounded-xl bg-white dark:bg-slate-800 border border-[#DFE7E2] dark:border-slate-700 text-xs font-semibold text-[#202A2A] dark:text-slate-200 hover:border-[#087F73] whitespace-nowrap transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#087F73] dark:focus-visible:ring-teal-400"
                 >
                   {t.demoMode.backHomeBtn}
                 </button>
@@ -1159,10 +1201,10 @@ export default function PaceCraftApp({
                   onClick={() => handleSelectTab(item.id)}
                   data-testid={`mobile-tab-${item.id}`}
                   aria-current={isActive ? 'page' : undefined}
-                  className={`min-h-[42px] px-3.5 py-2 rounded-xl border text-xs font-semibold inline-flex items-center gap-1.5 whitespace-nowrap shrink-0 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-700 dark:focus-visible:ring-teal-400 ${
+                  className={`min-h-[42px] px-3.5 py-2 rounded-xl border text-xs font-semibold inline-flex items-center gap-1.5 whitespace-nowrap shrink-0 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#087F73] dark:focus-visible:ring-teal-400 ${
                     isActive
-                      ? 'bg-teal-700 dark:bg-teal-600 border-teal-700 dark:border-teal-500 text-white'
-                      : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-200 hover:border-teal-300 dark:hover:border-teal-600'
+                      ? 'bg-[#087F73] dark:bg-teal-600 border-[#087F73] dark:border-teal-500 text-white'
+                      : 'bg-white dark:bg-slate-900 border-[#DFE7E2] dark:border-slate-800 text-[#202A2A] dark:text-slate-200 hover:border-[#087F73] dark:hover:border-teal-600'
                   }`}
                 >
                   <Icon className="w-3.5 h-3.5 shrink-0" aria-hidden={true} />
@@ -1176,18 +1218,18 @@ export default function PaceCraftApp({
           {cloudWorkspaceReady && pendingMigration && (
             <div
               data-testid="local-migration-banner"
-              className="rounded-2xl bg-[#EEF2FB] dark:bg-indigo-950/50 border border-indigo-200/80 dark:border-indigo-800/70 p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4"
+              className="rounded-2xl bg-[#E6F3EE] dark:bg-teal-950/50 border border-[#DFE7E2] dark:border-teal-800/70 p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4"
             >
               <div className="flex items-start gap-3">
                 <CloudDownload
-                  className="w-5 h-5 text-indigo-700 dark:text-indigo-400 shrink-0 mt-0.5"
+                  className="w-5 h-5 text-[#087F73] dark:text-teal-400 shrink-0 mt-0.5"
                   aria-hidden="true"
                 />
                 <div className="space-y-1">
-                  <p className="text-sm font-bold text-slate-900 dark:text-slate-100">
+                  <p className="text-sm font-bold text-[#202A2A] dark:text-slate-100">
                     {t.migration.title}
                   </p>
-                  <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
+                  <p className="text-xs sm:text-sm text-[#596866] dark:text-slate-300 leading-relaxed">
                     {t.migration.desc(
                       pendingMigration.runs.length,
                       pendingMigration.progressEntries.length
@@ -1201,7 +1243,7 @@ export default function PaceCraftApp({
                   onClick={() => void handleImportLocalToCloud()}
                   disabled={isMigratingLocal}
                   data-testid="migration-import-btn"
-                  className="min-h-[40px] px-4 py-2 rounded-xl bg-teal-700 dark:bg-teal-600 text-white text-xs font-semibold hover:bg-teal-800 dark:hover:bg-teal-500 disabled:opacity-60 transition-colors whitespace-nowrap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-700 dark:focus-visible:ring-teal-400"
+                  className="min-h-[40px] px-4 py-2 rounded-xl bg-[#087F73] dark:bg-teal-600 text-white text-xs font-semibold hover:bg-[#06685E] dark:hover:bg-teal-500 disabled:opacity-60 transition-colors whitespace-nowrap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#087F73] dark:focus-visible:ring-teal-400"
                 >
                   {isMigratingLocal
                     ? t.migration.importingBtn
@@ -1212,7 +1254,7 @@ export default function PaceCraftApp({
                   onClick={() => void handleStartFreshWorkspace()}
                   disabled={isMigratingLocal}
                   data-testid="migration-fresh-btn"
-                  className="min-h-[40px] px-3.5 py-2 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-60 transition-colors whitespace-nowrap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-700 dark:focus-visible:ring-teal-400"
+                  className="min-h-[40px] px-3.5 py-2 rounded-xl bg-white dark:bg-slate-800 border border-[#DFE7E2] dark:border-slate-700 text-xs font-semibold text-[#202A2A] dark:text-slate-200 hover:bg-[#F7F6F2] dark:hover:bg-slate-700 disabled:opacity-60 transition-colors whitespace-nowrap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#087F73] dark:focus-visible:ring-teal-400"
                 >
                   {t.migration.startFreshBtn}
                 </button>
@@ -1223,11 +1265,11 @@ export default function PaceCraftApp({
           {migrationSuccessNotice && (
             <div
               data-testid="migration-success-notice"
-              className="rounded-xl bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800/70 px-4 py-3 flex items-center justify-between gap-3 text-xs sm:text-sm text-emerald-900 dark:text-emerald-200"
+              className="rounded-xl bg-[#E6F3EE] dark:bg-emerald-950/50 border border-[#DFE7E2] dark:border-emerald-800/70 px-4 py-3 flex items-center justify-between gap-3 text-xs sm:text-sm text-[#202A2A] dark:text-emerald-200"
             >
               <div className="flex items-center gap-2">
                 <CheckCircle2
-                  className="w-4 h-4 text-emerald-700 dark:text-emerald-400 shrink-0"
+                  className="w-4 h-4 text-[#087F73] dark:text-emerald-400 shrink-0"
                   aria-hidden="true"
                 />
                 <span>{t.migration.importedNotice}</span>
@@ -1235,7 +1277,7 @@ export default function PaceCraftApp({
               <button
                 type="button"
                 onClick={() => setMigrationSuccessNotice(false)}
-                className="text-emerald-700 dark:text-emerald-400 hover:text-emerald-950 dark:hover:text-emerald-100 p-1 rounded-lg"
+                className="text-[#087F73] dark:text-emerald-400 hover:text-[#202A2A] dark:hover:text-emerald-100 p-1 rounded-lg"
                 aria-label={t.detailModal.closeAria}
               >
                 <X className="w-4 h-4" />
@@ -1252,8 +1294,280 @@ export default function PaceCraftApp({
           >
             {activeTab === 'overview' && (
               <div data-testid="overview-panel" className="space-y-6">
-                {/* Calm Pastel Hero Card + Today's Focus */}
-                <section className="rounded-2xl bg-gradient-to-br from-[#EAF6F3] via-[#F4F8FB] to-[#EEF2FB] dark:from-teal-950/60 dark:via-slate-900 dark:to-indigo-950/50 border border-teal-100/90 dark:border-teal-800/60 p-5 sm:p-8 space-y-6">
+                {/* 1. Primary Hero: Warm Sport Today's Workout Centerpiece */}
+                {(() => {
+                  const formattedTodayDate = formatReadableTodayDate(
+                    todayInfo.dateKey,
+                    safeLang
+                  );
+                  const warmHeadline =
+                    todaySession.zone === 'easy'
+                      ? t.overview.todayWarmHeadlines.easy
+                      : todaySession.zone === 'tempo'
+                        ? t.overview.todayWarmHeadlines.tempo
+                        : todaySession.zone === 'interval'
+                          ? t.overview.todayWarmHeadlines.interval
+                          : todaySession.zone === 'long_run'
+                            ? t.overview.todayWarmHeadlines.long
+                            : t.overview.todayWarmHeadlines.rest;
+
+                  const ZoneWarmIcon =
+                    todaySession.zone === 'easy' || todaySession.zone === 'rest'
+                      ? Leaf
+                      : todaySession.zone === 'tempo' ||
+                          todaySession.zone === 'interval'
+                        ? Gauge
+                        : Timer;
+
+                  return (
+                    <section
+                      data-testid="overview-today-hero"
+                      className="rounded-2xl bg-white dark:bg-slate-900 border border-[#DFE7E2] dark:border-slate-800 p-6 sm:p-8 space-y-5"
+                    >
+                      <div className="space-y-2.5">
+                        <div className="flex flex-wrap items-center gap-2 text-xs text-[#596866] dark:text-slate-300">
+                          <span className="font-semibold text-[#202A2A] dark:text-slate-100">
+                            {formattedTodayDate}
+                          </span>
+                          {todaySession.zone !== 'rest' && (
+                            <>
+                              <span aria-hidden="true">·</span>
+                              <span className="px-2 py-0.5 rounded-md bg-[#E6F3EE] dark:bg-teal-950/70 text-[#202A2A] dark:text-teal-200 font-medium">
+                                {t.training.zoneLabels[todaySession.zone]}
+                              </span>
+                            </>
+                          )}
+                          {isTodayLogged && (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-[#E9957D] text-[#202A2A] font-semibold">
+                              <CheckCircle2 className="w-3 h-3" aria-hidden="true" />
+                              {t.overview.todayDoneBadge}
+                            </span>
+                          )}
+                        </div>
+
+                        <h1 className="text-2xl sm:text-3xl font-bold text-[#202A2A] dark:text-slate-100 tracking-tight flex items-center gap-2.5 flex-wrap">
+                          <span>{warmHeadline}</span>
+                          <ZoneWarmIcon
+                            className="w-6 h-6 text-[#087F73] dark:text-teal-400 shrink-0"
+                            aria-hidden="true"
+                          />
+                        </h1>
+
+                        {todaySession.zone === 'rest' ? (
+                          <p className="text-sm sm:text-base text-[#596866] dark:text-slate-300 leading-relaxed max-w-2xl">
+                            {t.overview.todayRestDesc}
+                          </p>
+                        ) : (
+                          <div className="space-y-1.5">
+                            <p className="text-base sm:text-lg font-semibold text-[#202A2A] dark:text-slate-100">
+                              {formatDecimalComma(todaySession.targetDistanceKm, 1, safeLang)}{' '}
+                              km · {t.overview.paceGuidePrefix}{' '}
+                              <span className="font-mono tabular-nums font-bold text-[#087F73] dark:text-teal-300">
+                                {todaySession.paceRange}
+                              </span>
+                            </p>
+                            <p className="text-sm text-[#596866] dark:text-slate-300 leading-relaxed max-w-2xl">
+                              {todaySession.guidance}
+                            </p>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="flex flex-wrap items-center gap-2.5">
+                        <button
+                          type="button"
+                          onClick={() => handleSelectTab('training')}
+                          data-testid="overview-today-view-workout-btn"
+                          className="min-h-[44px] px-5 py-2.5 rounded-xl bg-[#087F73] dark:bg-teal-600 text-white text-sm font-semibold hover:bg-[#06685E] dark:hover:bg-teal-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#087F73] dark:focus-visible:ring-teal-400 inline-flex items-center gap-2 transition-colors whitespace-nowrap"
+                        >
+                          <CalendarCheck2 className="w-4 h-4" aria-hidden="true" />
+                          {t.overview.todayLookWorkoutBtn}
+                        </button>
+
+                        {!isTodayLogged && todaySession.zone !== 'rest' ? (
+                          <button
+                            type="button"
+                            onClick={() => handleQuickLogSession(todaySession)}
+                            data-testid="overview-today-quicklog-btn"
+                            className="min-h-[44px] px-4 py-2.5 rounded-xl bg-white dark:bg-slate-800 border border-[#DFE7E2] dark:border-slate-700 text-[#202A2A] dark:text-slate-100 text-sm font-semibold hover:bg-[#E6F3EE] hover:border-[#087F73] dark:hover:border-teal-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#087F73] dark:focus-visible:ring-teal-400 inline-flex items-center gap-2 transition-colors whitespace-nowrap"
+                          >
+                            <CheckCircle2 className="w-4 h-4 text-[#087F73]" aria-hidden="true" />
+                            {t.overview.todayQuickLogBtn}
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => handleSelectTab('progress')}
+                            data-testid="overview-today-progress-btn"
+                            className="min-h-[44px] px-4 py-2.5 rounded-xl bg-white dark:bg-slate-800 border border-[#DFE7E2] dark:border-slate-700 text-[#202A2A] dark:text-slate-100 text-sm font-semibold hover:bg-[#E6F3EE] hover:border-[#087F73] dark:hover:border-teal-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#087F73] dark:focus-visible:ring-teal-400 inline-flex items-center gap-2 transition-colors whitespace-nowrap"
+                          >
+                            <Flame className="w-4 h-4 text-[#087F73]" aria-hidden="true" />
+                            {t.overview.todayViewProgressBtn}
+                          </button>
+                        )}
+                      </div>
+
+                      {adaptiveAdjustment.triggered && (
+                        <div
+                          role="status"
+                          data-testid="overview-adaptive-notice"
+                          className="pt-4 border-t border-[#DFE7E2] dark:border-slate-800 flex items-start gap-2.5 text-xs text-[#202A2A] dark:text-amber-100"
+                        >
+                          <AlertTriangle
+                            className="w-4 h-4 text-rose-700 dark:text-amber-400 shrink-0 mt-0.5"
+                            aria-hidden="true"
+                          />
+                          <div className="space-y-0.5 min-w-0">
+                            <p className="font-bold">{adaptiveAdjustment.headline}</p>
+                            <p className="leading-relaxed text-[#596866] dark:text-slate-300">
+                              {adaptiveAdjustment.nextSessionAction}
+                            </p>
+                          </div>
+                        </div>
+                      )}
+
+                      <div className="pt-4 border-t border-[#DFE7E2] dark:border-slate-800 flex flex-wrap items-center justify-between gap-2 text-xs text-[#596866] dark:text-slate-400">
+                        <span>
+                          {t.overview.activePlanLabel}:{' '}
+                          <strong className="font-semibold text-[#202A2A] dark:text-slate-100">
+                            {profile.targetRace} · {profile.trainingDaysPerWeek}{' '}
+                            {t.hero.daysPerWeekUnit}
+                          </strong>
+                        </span>
+                        <span>
+                          {todaySession.title}
+                        </span>
+                      </div>
+                    </section>
+                  );
+                })()}
+
+                {/* 2. Weekly Progress Summary (Single White Card, Hairline Dividers, Zero Nested Boxes) */}
+                <section
+                  data-testid="overview-card-progress"
+                  className="bg-white dark:bg-slate-900 border border-[#DFE7E2] dark:border-slate-800 rounded-2xl p-5 sm:p-6 space-y-5"
+                >
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      <Flame
+                        className="w-4 h-4 text-[#087F73] dark:text-teal-400 shrink-0"
+                        aria-hidden="true"
+                      />
+                      <h2 className="text-sm font-bold text-[#202A2A] dark:text-slate-100">
+                        {t.overview.cards.progressTitle}
+                      </h2>
+                      {volumeProgressPct >= 100 && (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-[#E9957D] text-[#202A2A] text-[11px] font-bold">
+                          100%+
+                        </span>
+                      )}
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => handleSelectTab('progress')}
+                      className="text-xs font-semibold text-[#087F73] dark:text-teal-400 hover:underline inline-flex items-center gap-1 whitespace-nowrap"
+                    >
+                      {t.overview.cards.progressAction}
+                      <ArrowRight className="w-3.5 h-3.5" aria-hidden="true" />
+                    </button>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-3 divide-y sm:divide-y-0 sm:divide-x divide-[#DFE7E2] dark:divide-slate-800">
+                    <div className="pb-3 sm:pb-0 sm:pr-5 space-y-1">
+                      <p className="text-xs text-[#596866] dark:text-slate-400">
+                        {t.overview.weeklyProgressRunSessions}
+                      </p>
+                      <p className="text-xl font-bold text-[#202A2A] dark:text-slate-100">
+                        {dailyProgressStats.completedThisWeekCount}/
+                        {dailyProgressStats.plannedRunSessionsCount}{' '}
+                        <span className="text-xs font-semibold text-[#087F73] dark:text-teal-400">
+                          ({dailyProgressStats.completionPct}%)
+                        </span>
+                      </p>
+                    </div>
+
+                    <div className="py-3 sm:py-0 sm:px-5 space-y-1">
+                      <p className="text-xs text-[#596866] dark:text-slate-400">
+                        {t.overview.weeklyProgressDistance}
+                      </p>
+                      <p
+                        data-testid="hero-volume-progress-text"
+                        className="text-xl font-bold text-[#087F73] dark:text-teal-400"
+                      >
+                        {formatDecimalComma(
+                          dailyProgressStats.totalLoggedKm,
+                          1,
+                          safeLang
+                        )}{' '}
+                        / {formatDecimalComma(dailyProgressStats.plannedWeekKm, 1, safeLang)}{' '}
+                        km ({volumeProgressPct}%)
+                      </p>
+                    </div>
+
+                    <div className="pt-3 sm:pt-0 sm:pl-5 space-y-1">
+                      <p className="text-xs text-[#596866] dark:text-slate-400">
+                        {t.overview.weeklyProgressCrossTrain}
+                      </p>
+                      <p className="text-sm font-semibold text-[#202A2A] dark:text-slate-100 mt-1">
+                        {dailyProgressStats.completedCrossTrainCount} strength ·{' '}
+                        {dailyProgressStats.loggedRestDaysCount} rest ·{' '}
+                        {dailyProgressStats.currentStreakDays} {t.dailyProgress.daysUnit}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div
+                    role="progressbar"
+                    aria-label={t.hero.progressBarAria}
+                    aria-valuenow={Math.min(100, volumeProgressPct)}
+                    aria-valuemin={0}
+                    aria-valuemax={100}
+                    data-testid="hero-volume-progress-bar"
+                    className="h-2 w-full rounded-full bg-[#E6F3EE] dark:bg-teal-950 overflow-hidden"
+                  >
+                    <motion.div
+                      initial={{ scaleX: 0 }}
+                      animate={{ scaleX: volumeProgressRatio }}
+                      transition={{
+                        duration: shouldReduceMotion ? 0 : 0.55,
+                        ease: [0.16, 1, 0.3, 1],
+                      }}
+                      style={{ transformOrigin: 'left' }}
+                      data-testid="hero-volume-progress-fill"
+                      className="h-full w-full rounded-full bg-[#087F73]"
+                    />
+                  </div>
+
+                  {dailyProgressStats.isVolumeSignificantlyOverPlan && (
+                    <div
+                      role="status"
+                      data-testid="overview-overload-caution"
+                      className="pt-3 border-t border-[#DFE7E2] dark:border-slate-800 flex items-start gap-2 text-xs text-[#202A2A] dark:text-amber-100"
+                    >
+                      <AlertTriangle
+                        className="w-4 h-4 text-rose-700 dark:text-amber-400 shrink-0 mt-0.5"
+                        aria-hidden="true"
+                      />
+                      <div>
+                        <span className="font-bold">
+                          {t.overview.overloadAlertTitle}:{' '}
+                        </span>
+                        <span className="text-[#596866] dark:text-slate-200">
+                          {t.overview.overloadAlertBody(
+                            dailyProgressStats.actualVsPlannedPct
+                          )}
+                        </span>
+                      </div>
+                    </div>
+                  )}
+                </section>
+
+                {/* 3. Race Target & Countdown (Calm Secondary Section) */}
+                <section
+                  data-testid="overview-countdown-section"
+                  className="bg-white dark:bg-slate-900 border border-[#DFE7E2] dark:border-slate-800 rounded-2xl p-5 sm:p-6"
+                >
                   <RaceCountdown
                     targetRace={profile.targetRace}
                     countdown={raceCountdown}
@@ -1269,251 +1583,136 @@ export default function PaceCraftApp({
                       setRaceNameAndSync('');
                     }}
                   />
-
-                  <div className="pt-5 border-t border-teal-200/60 dark:border-teal-800/60 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-                    <div className="space-y-1.5 min-w-0">
-                      <div className="flex flex-wrap items-center gap-2 text-xs font-semibold text-teal-800 dark:text-teal-300">
-                        <span>{t.overview.todaySectionLabel}</span>
-                        <span aria-hidden="true">·</span>
-                        <span>{todaySession.dayName}</span>
-                        {isTodayLogged && (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-100/90 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-200">
-                            <CheckCircle2 className="w-3 h-3" aria-hidden="true" />
-                            {t.overview.todayDoneBadge}
-                          </span>
-                        )}
-                      </div>
-
-                      <h1 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-slate-100 tracking-tight text-balance">
-                        {todaySession.zone === 'rest'
-                          ? todaySession.title
-                          : `${todaySession.title} · ${formatDecimalComma(todaySession.targetDistanceKm, 1, safeLang)} km`}
-                      </h1>
-
-                      <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 leading-relaxed max-w-2xl">
-                        {todaySession.zone === 'rest'
-                          ? t.overview.todayRestDesc
-                          : `${t.training.zoneLabels[todaySession.zone]} (${todaySession.paceRange}) — ${todaySession.guidance}`}
-                      </p>
-                    </div>
-
-                    <div className="flex flex-wrap items-center gap-2.5 shrink-0">
-                      {!isTodayLogged && todaySession.zone !== 'rest' ? (
-                        <button
-                          type="button"
-                          onClick={() => handleQuickLogSession(todaySession)}
-                          data-testid="overview-today-quicklog-btn"
-                          className="min-h-[44px] px-4 py-2 rounded-xl bg-teal-700 dark:bg-teal-600 text-white text-sm font-semibold hover:bg-teal-800 dark:hover:bg-teal-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-700 dark:focus-visible:ring-teal-400 inline-flex items-center gap-2 transition-colors whitespace-nowrap"
-                        >
-                          <CheckCircle2 className="w-4 h-4" aria-hidden="true" />
-                          {t.overview.todayQuickLogBtn}
-                        </button>
-                      ) : (
-                        <button
-                          type="button"
-                          onClick={() => handleSelectTab('progress')}
-                          data-testid="overview-today-progress-btn"
-                          className="min-h-[44px] px-4 py-2 rounded-xl bg-teal-700 dark:bg-teal-600 text-white text-sm font-semibold hover:bg-teal-800 dark:hover:bg-teal-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-700 dark:focus-visible:ring-teal-400 inline-flex items-center gap-2 transition-colors whitespace-nowrap"
-                        >
-                          <Flame className="w-4 h-4" aria-hidden="true" />
-                          {t.overview.todayViewProgressBtn}
-                        </button>
-                      )}
-
-                      <button
-                        type="button"
-                        onClick={() => handleSelectTab('training')}
-                        className="min-h-[44px] px-4 py-2 rounded-xl bg-white/90 dark:bg-slate-800/90 border border-teal-200/80 dark:border-slate-700 text-teal-900 dark:text-slate-100 text-sm font-semibold hover:border-teal-400 dark:hover:border-teal-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-700 dark:focus-visible:ring-teal-400 inline-flex items-center gap-2 transition-colors whitespace-nowrap"
-                      >
-                        <CalendarCheck2 className="w-4 h-4" aria-hidden="true" />
-                        {t.overview.todayViewPlanBtn}
-                      </button>
-                    </div>
-                  </div>
                 </section>
 
-                {/* 4 Clean Summary Cards Linking Into Sidebar Features */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  {/* Card 1: Training Plan */}
-                  <button
-                    type="button"
-                    onClick={() => handleSelectTab('training')}
-                    data-testid="overview-card-training"
-                    className="text-left bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 hover:border-teal-300 dark:hover:border-teal-600 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-700 dark:focus-visible:ring-teal-400 flex flex-col justify-between gap-4"
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <p className="text-xs font-medium text-slate-500 dark:text-slate-400">
-                          {t.overview.cards.trainingTitle}
-                        </p>
-                        <p className="text-xl font-bold text-slate-900 dark:text-slate-100 font-mono tabular-nums mt-1">
-                          {profile.targetRace} · {profile.trainingDaysPerWeek}{' '}
-                          {t.hero.daysPerWeekUnit}
-                        </p>
-                      </div>
-                      <CalendarCheck2
-                        className="w-5 h-5 text-teal-700 dark:text-teal-400 shrink-0"
-                        aria-hidden="true"
-                      />
-                    </div>
-                    <div className="flex items-center justify-between gap-2 text-xs">
-                      <span className="font-mono tabular-nums text-slate-600 dark:text-slate-300">
-                        {formatDecimalComma(
-                          trainingPlan.totalPlannedWeekKm,
-                          1,
-                          safeLang
-                        )}{' '}
-                        km · {formatPace(trainingPlan.baselinePaceSecPerKm)}
-                      </span>
-                      <span className="font-semibold text-teal-700 dark:text-teal-400 inline-flex items-center gap-1 whitespace-nowrap">
-                        {t.overview.cards.trainingAction}
-                        <ArrowRight className="w-3.5 h-3.5" aria-hidden="true" />
-                      </span>
-                    </div>
-                  </button>
+                {/* 4. Additional Metrics (Unified Single White Card with Hairline Dividers) */}
+                <div className="space-y-3">
+                  <h2 className="text-xs font-bold uppercase tracking-wide text-[#596866] dark:text-slate-400 px-1">
+                    {t.overview.extraMetricsHeading}
+                  </h2>
 
-                  {/* Card 2: Weekly Progress */}
-                  <button
-                    type="button"
-                    onClick={() => handleSelectTab('progress')}
-                    data-testid="overview-card-progress"
-                    className="text-left bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 hover:border-teal-300 dark:hover:border-teal-600 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-700 dark:focus-visible:ring-teal-400 flex flex-col justify-between gap-3"
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <p className="text-xs font-medium text-slate-500 dark:text-slate-400">
-                          {t.overview.cards.progressTitle}
-                        </p>
-                        <p
-                          data-testid="hero-volume-progress-text"
-                          className="text-xl font-bold text-teal-700 dark:text-teal-400 font-mono tabular-nums mt-1"
-                        >
+                  <div className="bg-white dark:bg-slate-900 border border-[#DFE7E2] dark:border-slate-800 rounded-2xl grid grid-cols-1 md:grid-cols-3 divide-y md:divide-y-0 md:divide-x divide-[#DFE7E2] dark:divide-slate-800 overflow-hidden">
+                    {/* Cell 1: Training Plan */}
+                    <button
+                      type="button"
+                      onClick={() => handleSelectTab('training')}
+                      data-testid="overview-card-training"
+                      className="text-left p-5 hover:bg-[#F7F6F2]/70 dark:hover:bg-slate-800/40 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#087F73] dark:focus-visible:ring-teal-400 flex flex-col justify-between gap-4"
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <p className="text-xs font-medium text-[#596866] dark:text-slate-400">
+                            {t.overview.cards.trainingTitle}
+                          </p>
+                          <p className="text-lg font-bold text-[#202A2A] dark:text-slate-100 mt-1">
+                            {profile.targetRace} · {profile.trainingDaysPerWeek}{' '}
+                            {t.hero.daysPerWeekUnit}
+                          </p>
+                        </div>
+                        <CalendarCheck2
+                          className="w-5 h-5 text-[#087F73] dark:text-teal-400 shrink-0"
+                          aria-hidden="true"
+                        />
+                      </div>
+                      <div className="flex items-center justify-between gap-2 text-xs">
+                        <span className="text-[#596866] dark:text-slate-300">
                           {formatDecimalComma(
-                            dailyProgressStats.totalLoggedKm,
+                            trainingPlan.totalPlannedWeekKm,
                             1,
                             safeLang
                           )}{' '}
-                          km ({volumeProgressPct}%)
-                        </p>
+                          km ·{' '}
+                          <span className="font-mono tabular-nums text-[#202A2A] dark:text-slate-200">
+                            {formatPace(trainingPlan.baselinePaceSecPerKm)}
+                          </span>
+                        </span>
+                        <span className="font-semibold text-[#087F73] dark:text-teal-400 inline-flex items-center gap-1 whitespace-nowrap">
+                          {t.overview.cards.trainingAction}
+                          <ArrowRight className="w-3.5 h-3.5" aria-hidden="true" />
+                        </span>
                       </div>
-                      <Flame
-                        className="w-5 h-5 text-indigo-600 dark:text-indigo-400 shrink-0"
-                        aria-hidden="true"
-                      />
-                    </div>
-                    <div
-                      role="progressbar"
-                      aria-label={t.hero.progressBarAria}
-                      aria-valuenow={volumeProgressPct}
-                      aria-valuemin={0}
-                      aria-valuemax={100}
-                      data-testid="hero-volume-progress-bar"
-                      className="h-2 w-full rounded-full bg-teal-100/90 dark:bg-teal-950 overflow-hidden"
+                    </button>
+
+                    {/* Cell 2: Profile, BMI & Est. VO2max */}
+                    <button
+                      type="button"
+                      onClick={() => handleSelectTab('profile')}
+                      data-testid="overview-card-profile"
+                      className="text-left p-5 hover:bg-[#F7F6F2]/70 dark:hover:bg-slate-800/40 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#087F73] dark:focus-visible:ring-teal-400 flex flex-col justify-between gap-4"
                     >
-                      <motion.div
-                        initial={{ scaleX: 0 }}
-                        animate={{ scaleX: volumeProgressRatio }}
-                        transition={{
-                          duration: shouldReduceMotion ? 0 : 0.55,
-                          ease: [0.16, 1, 0.3, 1],
-                        }}
-                        style={{ transformOrigin: 'left' }}
-                        data-testid="hero-volume-progress-fill"
-                        className="h-full w-full rounded-full bg-gradient-to-r from-teal-500 to-indigo-400"
-                      />
-                    </div>
-                    <div className="flex items-center justify-between gap-2 text-xs">
-                      <span className="font-mono tabular-nums text-slate-600 dark:text-slate-300">
-                        {dailyProgressStats.completedThisWeekCount}/
-                        {dailyProgressStats.plannedRunSessionsCount}{' '}
-                        {t.hero.sessionsUnit} · {dailyProgressStats.currentStreakDays}{' '}
-                        {t.dailyProgress.daysUnit}
-                      </span>
-                      <span className="font-semibold text-teal-700 dark:text-teal-400 inline-flex items-center gap-1 whitespace-nowrap">
-                        {t.overview.cards.progressAction}
-                        <ArrowRight className="w-3.5 h-3.5" aria-hidden="true" />
-                      </span>
-                    </div>
-                  </button>
-
-                  {/* Card 3: Profile, BMI & VO2max */}
-                  <button
-                    type="button"
-                    onClick={() => handleSelectTab('profile')}
-                    data-testid="overview-card-profile"
-                    className="text-left bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 hover:border-teal-300 dark:hover:border-teal-600 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-700 dark:focus-visible:ring-teal-400 flex flex-col justify-between gap-4"
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <p className="text-xs font-medium text-slate-500 dark:text-slate-400">
-                          {t.overview.cards.profileTitle}
-                        </p>
-                        <p className="text-xl font-bold text-slate-900 dark:text-slate-100 font-mono tabular-nums mt-1">
-                          BMI {bmiResult.formattedBmi} · VO2{' '}
-                          {formatDecimalComma(hrVo2Summary.vo2Max, 1, safeLang)}
-                        </p>
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <p className="text-xs font-medium text-[#596866] dark:text-slate-400">
+                            {t.overview.cards.profileTitle}
+                          </p>
+                          <p className="text-lg font-bold text-[#202A2A] dark:text-slate-100 mt-1">
+                            BMI {bmiResult.formattedBmi} · {t.overview.estVo2Short}{' '}
+                            {formatDecimalComma(hrVo2Summary.vo2Max, 1, safeLang)}
+                          </p>
+                        </div>
+                        <HeartPulse
+                          className="w-5 h-5 text-[#087F73] dark:text-teal-400 shrink-0"
+                          aria-hidden="true"
+                        />
                       </div>
-                      <HeartPulse
-                        className="w-5 h-5 text-rose-600 dark:text-rose-400 shrink-0"
-                        aria-hidden="true"
-                      />
-                    </div>
-                    <div className="flex items-center justify-between gap-2 text-xs">
-                      <span className="text-slate-600 dark:text-slate-300">
-                        {bmiResult.categoryLabel} · {hrVo2Summary.vo2MaxCategory}
-                      </span>
-                      <span className="font-semibold text-teal-700 dark:text-teal-400 inline-flex items-center gap-1 whitespace-nowrap">
-                        {t.overview.cards.profileAction}
-                        <ArrowRight className="w-3.5 h-3.5" aria-hidden="true" />
-                      </span>
-                    </div>
-                  </button>
-
-                  {/* Card 4: Nutrition */}
-                  <button
-                    type="button"
-                    onClick={() => handleSelectTab('nutrition')}
-                    data-testid="overview-card-nutrition"
-                    className="text-left bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 hover:border-teal-300 dark:hover:border-teal-600 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-700 dark:focus-visible:ring-teal-400 flex flex-col justify-between gap-4"
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <p className="text-xs font-medium text-slate-500 dark:text-slate-400">
-                          {t.overview.cards.nutritionTitle}
-                        </p>
-                        <p className="text-xl font-bold text-slate-900 dark:text-slate-100 font-mono tabular-nums mt-1">
-                          {nutritionRecommendation.carbsMinG}–
-                          {nutritionRecommendation.carbsMaxG} g ·{' '}
-                          {nutritionRecommendation.proteinMinG}–
-                          {nutritionRecommendation.proteinMaxG} g
-                        </p>
+                      <div className="flex items-center justify-between gap-2 text-xs">
+                        <span className="text-[#596866] dark:text-slate-300 truncate">
+                          {bmiResult.categoryLabel} · {hrVo2Summary.vo2MaxCategory}
+                        </span>
+                        <span className="font-semibold text-[#087F73] dark:text-teal-400 inline-flex items-center gap-1 whitespace-nowrap shrink-0">
+                          {t.overview.cards.profileAction}
+                          <ArrowRight className="w-3.5 h-3.5" aria-hidden="true" />
+                        </span>
                       </div>
-                      <Utensils
-                        className="w-5 h-5 text-sky-700 dark:text-sky-400 shrink-0"
-                        aria-hidden="true"
-                      />
-                    </div>
-                    <div className="flex items-center justify-between gap-2 text-xs">
-                      <span className="font-mono tabular-nums text-slate-600 dark:text-slate-300">
-                        {formatDecimalComma(
-                          nutritionRecommendation.hydrationLitersMin,
-                          1,
-                          safeLang
-                        )}
-                        –
-                        {formatDecimalComma(
-                          nutritionRecommendation.hydrationLitersMax,
-                          1,
-                          safeLang
-                        )}{' '}
-                        L {t.nutrition.hydrationLabel}
-                      </span>
-                      <span className="font-semibold text-teal-700 dark:text-teal-400 inline-flex items-center gap-1 whitespace-nowrap">
-                        {t.overview.cards.nutritionAction}
-                        <ArrowRight className="w-3.5 h-3.5" aria-hidden="true" />
-                      </span>
-                    </div>
-                  </button>
+                    </button>
+
+                    {/* Cell 3: Nutrition with Explicit Carbs/Protein Labels */}
+                    <button
+                      type="button"
+                      onClick={() => handleSelectTab('nutrition')}
+                      data-testid="overview-card-nutrition"
+                      className="text-left p-5 hover:bg-[#F7F6F2]/70 dark:hover:bg-slate-800/40 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#087F73] dark:focus-visible:ring-teal-400 flex flex-col justify-between gap-4"
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <p className="text-xs font-medium text-[#596866] dark:text-slate-400">
+                            {t.overview.cards.nutritionTitle}
+                          </p>
+                          <p className="text-sm sm:text-base font-bold text-[#202A2A] dark:text-slate-100 mt-1">
+                            {t.overview.carbsShort}: {nutritionRecommendation.carbsMinG}–
+                            {nutritionRecommendation.carbsMaxG} g · {t.overview.proteinShort}:{' '}
+                            {nutritionRecommendation.proteinMinG}–
+                            {nutritionRecommendation.proteinMaxG} g
+                          </p>
+                        </div>
+                        <Utensils
+                          className="w-5 h-5 text-[#087F73] dark:text-teal-400 shrink-0"
+                          aria-hidden="true"
+                        />
+                      </div>
+                      <div className="flex items-center justify-between gap-2 text-xs">
+                        <span className="text-[#596866] dark:text-slate-300 truncate">
+                          {t.overview.hydrationEstPrefix}:{' '}
+                          {formatDecimalComma(
+                            nutritionRecommendation.hydrationLitersMin,
+                            1,
+                            safeLang
+                          )}
+                          –
+                          {formatDecimalComma(
+                            nutritionRecommendation.hydrationLitersMax,
+                            1,
+                            safeLang
+                          )}{' '}
+                          L
+                        </span>
+                        <span className="font-semibold text-[#087F73] dark:text-teal-400 inline-flex items-center gap-1 whitespace-nowrap shrink-0">
+                          {t.overview.cards.nutritionAction}
+                          <ArrowRight className="w-3.5 h-3.5" aria-hidden="true" />
+                        </span>
+                      </div>
+                    </button>
+                  </div>
                 </div>
 
                 {/* Quiet Personal Best Summary Strip (if any PB saved) */}
@@ -1525,25 +1724,24 @@ export default function PaceCraftApp({
                   return (
                     <div
                       data-testid="overview-pb-summary"
-                      className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl px-5 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+                      className="bg-white dark:bg-slate-900 border border-[#DFE7E2] dark:border-slate-800 rounded-2xl px-5 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3"
                     >
-                      <div className="flex items-center gap-2.5 text-xs font-bold text-slate-800 dark:text-slate-100">
-                        <Award
-                          className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0"
-                          aria-hidden="true"
-                        />
+                      <div className="flex items-center gap-2.5 text-xs font-bold text-[#202A2A] dark:text-slate-100">
+                        <span className="w-6 h-6 rounded-full bg-[#E9957D] text-[#202A2A] inline-flex items-center justify-center shrink-0">
+                          <Award className="w-3.5 h-3.5" aria-hidden="true" />
+                        </span>
                         <span>{t.personalBests.overviewLabel}</span>
                       </div>
-                      <div className="flex flex-wrap items-center gap-3">
+                      <div className="flex flex-wrap items-center gap-2.5">
                         {savedPbs.map((pb) => (
                           <span
                             key={pb.key}
-                            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[#F7F9FA] dark:bg-slate-800 text-xs font-mono tabular-nums"
+                            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[#E6F3EE] dark:bg-slate-800 text-xs"
                           >
-                            <span className="font-semibold text-slate-500 dark:text-slate-400">
+                            <span className="font-semibold text-[#596866] dark:text-slate-400">
                               {pb.key}
                             </span>
-                            <span className="font-bold text-slate-900 dark:text-slate-100">
+                            <span className="font-mono tabular-nums font-bold text-[#202A2A] dark:text-slate-100">
                               {pb.formatted}
                             </span>
                           </span>
@@ -1551,7 +1749,7 @@ export default function PaceCraftApp({
                         <button
                           type="button"
                           onClick={() => handleSelectTab('profile')}
-                          className="text-xs font-semibold text-teal-700 dark:text-teal-400 hover:underline whitespace-nowrap"
+                          className="text-xs font-semibold text-[#087F73] dark:text-teal-400 hover:underline whitespace-nowrap"
                         >
                           {t.overview.cards.profileAction}
                         </button>
@@ -1562,15 +1760,15 @@ export default function PaceCraftApp({
 
                 {/* Quiet Strava quick-start banner if no runs yet */}
                 {runs.length === 0 && (
-                  <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl px-5 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                    <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300">
+                  <div className="bg-[#E6F3EE] dark:bg-slate-900 border border-[#DFE7E2] dark:border-slate-800 rounded-2xl px-5 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <p className="text-xs sm:text-sm text-[#202A2A] dark:text-slate-300">
                       {t.overview.stravaEmptyBanner}
                     </p>
                     <div className="flex items-center gap-2 shrink-0">
                       <button
                         type="button"
                         onClick={handleLoadSampleData}
-                        className="min-h-[40px] px-3.5 py-2 rounded-xl bg-teal-50 dark:bg-teal-950/60 border border-teal-200 dark:border-teal-800/70 text-teal-900 dark:text-teal-200 text-xs font-semibold hover:bg-teal-100 dark:hover:bg-teal-900/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-700 dark:focus-visible:ring-teal-400 inline-flex items-center gap-1.5 whitespace-nowrap"
+                        className="min-h-[40px] px-4 py-2 rounded-xl bg-[#087F73] dark:bg-teal-600 text-white text-xs font-semibold hover:bg-[#06685E] dark:hover:bg-teal-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#087F73] dark:focus-visible:ring-teal-400 inline-flex items-center gap-1.5 whitespace-nowrap"
                       >
                         <Activity className="w-3.5 h-3.5" aria-hidden="true" />
                         {t.overview.stravaLoadSampleShort}
@@ -1591,6 +1789,12 @@ export default function PaceCraftApp({
               <TrainingPlanSection
                 profile={profile}
                 plan={trainingPlan}
+                kpi={kpi}
+                adaptiveAdjustment={adaptiveAdjustment}
+                manualFatigueMode={manualFatigueMode}
+                onToggleManualFatigue={() =>
+                  setManualFatigueMode((prev) => !prev)
+                }
                 progressEntries={progressEntries}
                 countdownDaysRemaining={raceCountdown.daysRemaining}
                 raceEventLabel={raceEventLabel}

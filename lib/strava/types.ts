@@ -41,6 +41,7 @@ export interface RunActivity {
   averageSpeedMps: number;
   summaryPolyline: string | null;
   source: DataSource;
+  dataWarningReason?: RunDataQuality['reason'];
 }
 
 export interface BmiResult {
@@ -74,6 +75,13 @@ export interface RunnerProfile {
   pb21kSec?: number | null;
   pb42kSec?: number | null;
   onboardingCompleted?: boolean;
+}
+
+export interface RunDataQuality {
+  hasAnomaly: boolean;
+  reason: 'implausible_fast' | 'implausible_slow' | 'speed_distance_mismatch' | null;
+  computedPaceSecPerKm: number;
+  reportedPaceSecPerKm: number | null;
 }
 
 export interface PaceZoneRange {
@@ -115,6 +123,7 @@ export interface TrainingPlanSummary {
   baselinePaceSecPerKm: number;
   isUsingDefaultBaseline: boolean;
   isUsingCustomTargetPace: boolean;
+  paceZoneBasis: 'default' | 'strava_baseline' | 'race_goal';
   bmiResult: BmiResult;
   paceZones: PaceZoneRange[];
   weeklySchedule: DailySessionPlan[];
@@ -131,6 +140,7 @@ export interface KpiSummary {
   longestRunKm: number;
   runCount30Days: number;
   totalActivitiesCount: number;
+  flaggedAnomalyCount?: number;
 }
 
 export interface WeeklyChartBucket {
@@ -138,6 +148,45 @@ export interface WeeklyChartBucket {
   weekLabel: string;
   totalKm: number;
   runCount: number;
+}
+
+export interface DailyProgressStats {
+  currentStreakDays: number;
+  completedThisWeekCount: number;
+  plannedRunSessionsCount: number;
+  completedCrossTrainCount: number;
+  loggedRestDaysCount: number;
+  totalLoggedKm: number;
+  plannedWeekKm: number;
+  completionPct: number;
+  actualVsPlannedPct: number;
+  isVolumeSignificantlyOverPlan: boolean;
+  avgPaceSecPerKm: number | null;
+  avgHeartRateBpm: number | null;
+}
+
+export interface TargetPaceReadinessAssessment {
+  status: 'aligned' | 'ambitious_caution' | 'no_history_caution';
+  goalRace: RaceDistanceKey;
+  goalPaceSecPerKm: number;
+  currentBaselinePaceSecPerKm: number | null;
+  recommendedTrainingPaceSecPerKm: number;
+  gapPct: number | null;
+  daysToRace: number;
+  headline: string;
+  explanation: string;
+  suggestedTrainingNote: string;
+}
+
+export interface AdaptivePlanAdjustment {
+  triggered: boolean;
+  reasons: Array<'heavy_fatigue' | 'missed_sessions' | 'volume_overload' | 'manual_fatigue'>;
+  volumeMultiplier: number;
+  downgradeQualityToEasy: boolean;
+  headline: string;
+  summary: string;
+  nextSessionAction: string;
+  adjustedTotalWeekKm: number;
 }
 
 export interface DailyProgressEntry {

@@ -55,6 +55,7 @@ export default function ImportActivitiesPanel({
   );
   const [isConnectingOAuth, setIsConnectingOAuth] = useState(false);
   const [showExportGuide, setShowExportGuide] = useState(false);
+  const [showProvenance, setShowProvenance] = useState(false);
   const [showAdvancedOAuth, setShowAdvancedOAuth] = useState(isOAuthConnected);
 
   const t = UI_COPY[lang].strava;
@@ -258,6 +259,22 @@ export default function ImportActivitiesPanel({
 
           <button
             type="button"
+            onClick={() => setShowProvenance((v) => !v)}
+            aria-expanded={showProvenance}
+            data-testid="toggle-strava-provenance"
+            className="inline-flex items-center gap-1.5 font-semibold text-slate-700 dark:text-slate-200 hover:text-teal-700 dark:hover:text-teal-300 hover:underline"
+          >
+            <Info className="w-3.5 h-3.5 shrink-0 text-teal-700 dark:text-teal-400" aria-hidden="true" />
+            <span>{t.provenanceToggle}</span>
+            {showProvenance ? (
+              <ChevronUp className="w-3.5 h-3.5" aria-hidden="true" />
+            ) : (
+              <ChevronDown className="w-3.5 h-3.5" aria-hidden="true" />
+            )}
+          </button>
+
+          <button
+            type="button"
             onClick={() => setShowAdvancedOAuth((v) => !v)}
             aria-expanded={showAdvancedOAuth}
             className="inline-flex items-center gap-1.5 font-medium text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:underline"
@@ -275,6 +292,24 @@ export default function ImportActivitiesPanel({
               </li>
             ))}
           </ol>
+        )}
+
+        {showProvenance && (
+          <div
+            data-testid="strava-provenance-panel"
+            className="rounded-xl bg-slate-50 dark:bg-slate-800/70 border border-slate-200/80 dark:border-slate-700/70 px-4 py-3.5 space-y-2.5 text-xs"
+          >
+            {t.provenanceItems.map((item, idx) => (
+              <div key={idx} className="space-y-0.5">
+                <p className="font-semibold text-slate-800 dark:text-slate-100">
+                  {item.title}
+                </p>
+                <p className="text-slate-600 dark:text-slate-300 leading-relaxed">
+                  {item.body}
+                </p>
+              </div>
+            ))}
+          </div>
         )}
 
         {showAdvancedOAuth && (

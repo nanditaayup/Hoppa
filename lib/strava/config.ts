@@ -114,7 +114,7 @@ export const BMI_ZONES: Record<BmiCategoryKey, BmiZoneConfig> = {
     label: 'Kurus',
     rangeLabel: '< 18,5',
     safetyNote:
-      'Jaga asupan energi dan protein harian, serta tingkatkan volume secara moderat (maks +8%/minggu).',
+      'Saran progres awal hingga +8%/minggu disertai asupan energi & protein cukup. Sesuaikan dengan riwayat latihan, pemulihan, rasa sakit, dan respons tubuh.',
     maxWeeklyIncreasePct: 8,
     extraEasyRatioPct: 5,
     requireLowImpactPhase: false,
@@ -123,7 +123,7 @@ export const BMI_ZONES: Record<BmiCategoryKey, BmiZoneConfig> = {
     label: 'Ideal',
     rangeLabel: '18,5 – 24,9',
     safetyNote:
-      'Komposisi tubuh seimbang. Progresi standar aman hingga maksimal 10% volume per minggu.',
+      'Saran progres awal hingga +10%/minggu. Sesuaikan dengan riwayat latihan, pemulihan, rasa sakit, dan respons tubuh.',
     maxWeeklyIncreasePct: 10,
     extraEasyRatioPct: 0,
     requireLowImpactPhase: false,
@@ -132,7 +132,7 @@ export const BMI_ZONES: Record<BmiCategoryKey, BmiZoneConfig> = {
     label: 'Berlebih',
     rangeLabel: '25,0 – 29,9',
     safetyNote:
-      'Tambahkan proporsi sesi Easy / Walk-Run +15% dan batasi lonjakan volume agar persendian tetap nyaman.',
+      'Saran progres awal lebih konservatif (+7%/minggu) dengan tambahan porsi Easy / Walk-Run +15%. Sesuaikan dengan pemulihan, rasa sakit, dan respons tubuh.',
     maxWeeklyIncreasePct: 7,
     extraEasyRatioPct: 15,
     requireLowImpactPhase: false,
@@ -141,7 +141,7 @@ export const BMI_ZONES: Record<BmiCategoryKey, BmiZoneConfig> = {
     label: 'Obesitas',
     rangeLabel: '≥ 30,0',
     safetyNote:
-      'Wajib fase dasar Low-Impact & Easy Pace terlebih dahulu sebelum memasukkan menu tempo atau interval.',
+      'Saran progres awal berfokus pada fase dasar Low-Impact & Easy Pace (maks +5%/minggu). Sesuaikan dengan riwayat latihan, pemulihan, rasa sakit, dan respons tubuh.',
     maxWeeklyIncreasePct: 5,
     extraEasyRatioPct: 30,
     requireLowImpactPhase: true,
@@ -158,7 +158,7 @@ export const BMI_ZONES_BY_LANG: Record<
       label: 'Underweight',
       rangeLabel: '< 18.5',
       safetyNote:
-        'Maintain daily energy and protein intake, and increase weekly mileage moderately (max +8%/week).',
+        'Initial progression suggestion up to +8%/week alongside adequate energy and protein intake. Adjust based on training history, recovery, soreness, and body response.',
       maxWeeklyIncreasePct: 8,
       extraEasyRatioPct: 5,
       requireLowImpactPhase: false,
@@ -167,7 +167,7 @@ export const BMI_ZONES_BY_LANG: Record<
       label: 'Ideal',
       rangeLabel: '18.5 – 24.9',
       safetyNote:
-        'Balanced body composition. Safe standard progression up to +10% weekly mileage.',
+        'Initial progression suggestion up to +10%/week. Adjust based on your training history, recovery, soreness, and how your body responds.',
       maxWeeklyIncreasePct: 10,
       extraEasyRatioPct: 0,
       requireLowImpactPhase: false,
@@ -176,7 +176,7 @@ export const BMI_ZONES_BY_LANG: Record<
       label: 'Overweight',
       rangeLabel: '25.0 – 29.9',
       safetyNote:
-        'Add +15% Easy / Walk-Run sessions and limit weekly mileage jumps to protect your joints.',
+        'Conservative initial suggestion (+7%/week) with +15% Easy / Walk-Run focus. Adjust based on recovery, joint comfort, and body response.',
       maxWeeklyIncreasePct: 7,
       extraEasyRatioPct: 15,
       requireLowImpactPhase: false,
@@ -185,7 +185,7 @@ export const BMI_ZONES_BY_LANG: Record<
       label: 'Obesity',
       rangeLabel: '≥ 30.0',
       safetyNote:
-        'Start with a Low-Impact & Easy Pace foundation phase before adding tempo or interval workouts.',
+        'Initial progression suggestion starts with a Low-Impact & Easy Pace base (up to +5%/week). Adjust based on training history, recovery, soreness, and body response.',
       maxWeeklyIncreasePct: 5,
       extraEasyRatioPct: 30,
       requireLowImpactPhase: true,

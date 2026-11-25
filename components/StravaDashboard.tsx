@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useMemo, useState } from 'react';
-import { Search, RotateCcw, Footprints, RefreshCw } from 'lucide-react';
+import { Search, RotateCcw, Footprints, RefreshCw, AlertTriangle } from 'lucide-react';
 import {
   AppLanguage,
   KpiSummary,
@@ -127,6 +127,20 @@ export default function StravaDashboard({
               {t.syncToProgressBtn(stravaSyncCount)}
             </button>
           )}
+        </div>
+      )}
+
+      {(kpi.flaggedAnomalyCount ?? 0) > 0 && (
+        <div
+          role="status"
+          data-testid="strava-flagged-anomaly-banner"
+          className="rounded-xl bg-amber-50 dark:bg-amber-950/50 border border-amber-200 dark:border-amber-800/70 px-4 py-3 text-xs sm:text-sm text-amber-900 dark:text-amber-200 flex items-start gap-2.5"
+        >
+          <AlertTriangle
+            className="w-4 h-4 text-amber-700 dark:text-amber-400 shrink-0 mt-0.5"
+            aria-hidden="true"
+          />
+          <span>{t.flaggedAnomalyBanner(kpi.flaggedAnomalyCount ?? 0)}</span>
         </div>
       )}
 

@@ -1,9 +1,10 @@
 'use client';
 
 import React, { useEffect } from 'react';
-import { X, Clock, Gauge, Heart, Mountain } from 'lucide-react';
+import { X, Clock, Gauge, Heart, Mountain, AlertTriangle } from 'lucide-react';
 import { AppLanguage, RunActivity } from '@/lib/strava/types';
 import { UI_COPY } from '@/lib/strava/i18n';
+import { assessRunDataQuality } from '@/lib/strava/import-parser';
 import {
   computePaceSecPerKm,
   formatDistanceKm,
@@ -43,6 +44,7 @@ export default function ActivityDetailModal({
     activity.movingTimeSeconds,
     activity.averageSpeedMps
   );
+  const quality = assessRunDataQuality(activity);
 
   return (
     <div
@@ -80,6 +82,32 @@ export default function ActivityDetailModal({
             <X className="w-5 h-5" />
           </button>
         </div>
+
+        {quality.hasAnomaly && (
+          <div
+            role="status"
+            data-testid="activity-detail-anomaly-notice"
+            className="rounded-xl bg-amber-50 dark:bg-amber-950/50 border border-amber-200 dark:border-amber-800/70 px-4 py-3 text-xs text-amber-900 dark:text-amber-200 flex items-start gap-2.5"
+          >
+            <AlertTriangle
+              className="w-4 h-4 text-amber-700 dark:text-amber-400 shrink-0 mt-0.5"
+              aria-hidden="true"
+            />
+            <div className="space-y-0.5">
+              <p className="font-semibold">{t.anomalyTitle}</p>
+              <p className="leading-relaxed">
+                {t.anomalyBody(
+                  formatPace(quality.computedPaceSecPerKm),
+                  quality.reportedPaceSecPerKm &&
+                    quality.reportedPaceSecPerKm !== quality.computedPaceSecPerKm
+                    ? formatPace(quality.reportedPaceSecPerKm)
+                    : null,
+                  quality.reason
+                )}
+              </p>
+            </div>
+          </div>
+        )}
 
         <div className="space-y-2">
           <RoutePreview

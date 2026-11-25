@@ -6,7 +6,7 @@ import {
   DailySessionPlan,
   HeartRateZone,
   MonthlyCalendarGrid,
-  PaceZoneSummary,
+  PaceZoneRange,
   RunActivity,
   TrainingIntensityLevel,
   TrainingIntensityTier,
@@ -97,7 +97,7 @@ function inferZoneFromMetrics(
   distanceKm: number,
   paceSecPerKm: number | null,
   avgHr: number | null,
-  paceZones: PaceZoneSummary[],
+  paceZones: PaceZoneRange[],
   hrZones: HeartRateZone[],
   title: string
 ): TrainingZoneType {
@@ -116,8 +116,8 @@ function inferZoneFromMetrics(
   if (avgHr && avgHr >= z5Min) return 'interval';
   if (avgHr && avgHr >= z4Min) return 'tempo';
 
-  const intervalZone = paceZones.find((p) => p.zone === 'interval');
-  const tempoZone = paceZones.find((p) => p.zone === 'tempo');
+  const intervalZone = paceZones.find((p) => p.key === 'interval');
+  const tempoZone = paceZones.find((p) => p.key === 'tempo');
   if (paceSecPerKm && intervalZone && paceSecPerKm <= intervalZone.maxPaceSecPerKm) {
     return 'interval';
   }
@@ -184,7 +184,7 @@ export function buildMonthlyIntensityGrid(params: {
   entries: DailyProgressEntry[];
   runs: RunActivity[];
   weeklySchedule: DailySessionPlan[];
-  paceZones: PaceZoneSummary[];
+  paceZones: PaceZoneRange[];
   hrZones: HeartRateZone[];
 }): MonthlyCalendarGrid {
   const {

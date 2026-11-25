@@ -1,9 +1,10 @@
 'use client';
 
 import React from 'react';
-import { ChevronRight, Heart, Mountain } from 'lucide-react';
+import { ChevronRight, Heart, Mountain, AlertTriangle } from 'lucide-react';
 import { AppLanguage, RunActivity } from '@/lib/strava/types';
 import { UI_COPY } from '@/lib/strava/i18n';
+import { assessRunDataQuality } from '@/lib/strava/import-parser';
 import {
   computePaceSecPerKm,
   formatDistanceKm,
@@ -31,6 +32,7 @@ export default function RunActivityCard({
     activity.movingTimeSeconds,
     activity.averageSpeedMps
   );
+  const quality = assessRunDataQuality(activity);
 
   return (
     <button
@@ -47,10 +49,21 @@ export default function RunActivityCard({
             <span aria-hidden="true"> · </span>
             {formatIndonesianDate(activity.startDate, true, lang)}
           </span>
-          <ChevronRight
-            className="w-4 h-4 text-slate-400 dark:text-slate-500 group-hover:text-teal-700 dark:group-hover:text-teal-400 shrink-0 transition-transform group-hover:translate-x-0.5"
-            aria-hidden="true"
-          />
+          <div className="flex items-center gap-1.5 shrink-0">
+            {quality.hasAnomaly && (
+              <span
+                data-testid="run-card-anomaly-badge"
+                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-950/70 text-amber-800 dark:text-amber-200 border border-amber-200 dark:border-amber-800/70 text-[11px] font-semibold whitespace-nowrap"
+              >
+                <AlertTriangle className="w-3 h-3 shrink-0" aria-hidden="true" />
+                {t.anomalyBadge}
+              </span>
+            )}
+            <ChevronRight
+              className="w-4 h-4 text-slate-400 dark:text-slate-500 group-hover:text-teal-700 dark:group-hover:text-teal-400 shrink-0 transition-transform group-hover:translate-x-0.5"
+              aria-hidden="true"
+            />
+          </div>
         </div>
 
         <h3 className="text-base font-semibold text-slate-900 dark:text-slate-100 leading-snug line-clamp-2">

@@ -28,8 +28,9 @@ function getDayIndexForDateKey(dateKey: string): number {
 function shiftIsoTimestamp(iso: string, deltaDays: number): string {
   const parsed = new Date(iso);
   if (Number.isNaN(parsed.getTime())) return iso;
-  const shifted = new Date(parsed.getTime() + deltaDays * 24 * 60 * 60 * 1000);
-  return shifted.toISOString();
+  const shiftedMs = parsed.getTime() + deltaDays * 24 * 60 * 60 * 1000;
+  const wib = new Date(shiftedMs + 7 * 60 * 60 * 1000);
+  return wib.toISOString().replace('Z', '+07:00');
 }
 
 /**

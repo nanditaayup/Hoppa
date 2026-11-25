@@ -42,19 +42,15 @@ export default function RaceCountdown({
 
   const accentNumberClass =
     countdown.status === 'race_day'
-      ? 'text-emerald-700 dark:text-emerald-400'
-      : countdown.status === 'race_week' || countdown.status === 'tapering'
-        ? 'text-indigo-700 dark:text-indigo-300'
-        : countdown.status === 'passed'
-          ? 'text-slate-600 dark:text-slate-400'
-          : 'text-teal-700 dark:text-teal-400';
+      ? 'text-[#087F73] dark:text-emerald-400'
+      : countdown.status === 'passed'
+        ? 'text-[#596866] dark:text-slate-400'
+        : 'text-[#087F73] dark:text-teal-400';
 
   const statusTextClass =
     countdown.status === 'race_day'
-      ? 'text-emerald-700 dark:text-emerald-400'
-      : countdown.status === 'race_week' || countdown.status === 'tapering'
-        ? 'text-indigo-700 dark:text-indigo-300'
-        : 'text-teal-700 dark:text-teal-400';
+      ? 'text-[#087F73] dark:text-emerald-400'
+      : 'text-[#087F73] dark:text-teal-300';
 
   const weeksBreakdown =
     countdown.daysRemaining > 0
@@ -64,17 +60,17 @@ export default function RaceCountdown({
   return (
     <div data-testid="race-countdown" className="space-y-3">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        {/* Left: Race Countdown Metric & Motivation */}
-        <div className="flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-6 min-w-0">
-          <div className="flex items-baseline gap-2.5 shrink-0">
+        {/* Left: Calm Race Countdown Metric & Motivation */}
+        <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-5 min-w-0">
+          <div className="flex items-baseline gap-2 shrink-0">
             <Flag
-              className="w-4 h-4 text-teal-700 dark:text-teal-400 self-center shrink-0"
+              className="w-4 h-4 text-[#087F73] dark:text-teal-400 self-center shrink-0"
               aria-hidden="true"
             />
             {countdown.status === 'race_day' ? (
               <span
                 data-testid="race-countdown-days"
-                className={`text-2xl sm:text-3xl font-bold font-mono tabular-nums tracking-tight ${accentNumberClass}`}
+                className={`text-xl sm:text-2xl font-bold tracking-tight ${accentNumberClass}`}
               >
                 {t.todayLabel}
               </span>
@@ -82,11 +78,11 @@ export default function RaceCountdown({
               <>
                 <span
                   data-testid="race-countdown-days"
-                  className={`text-3xl sm:text-4xl font-bold font-mono tabular-nums tracking-tight ${accentNumberClass}`}
+                  className={`text-2xl font-bold tabular-nums tracking-tight ${accentNumberClass}`}
                 >
                   {Math.abs(countdown.daysRemaining)}
                 </span>
-                <span className="text-sm font-medium text-slate-600 dark:text-slate-300">
+                <span className="text-xs sm:text-sm font-medium text-[#596866] dark:text-slate-300">
                   {t.passedDaysSuffix}
                 </span>
               </>
@@ -94,21 +90,21 @@ export default function RaceCountdown({
               <>
                 <span
                   data-testid="race-countdown-days"
-                  className={`text-3xl sm:text-4xl font-bold font-mono tabular-nums tracking-tight ${accentNumberClass}`}
+                  className={`text-2xl font-bold tabular-nums tracking-tight ${accentNumberClass}`}
                 >
                   {countdown.daysRemaining}
                 </span>
-                <span className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                <span className="text-xs sm:text-sm font-medium text-[#202A2A] dark:text-slate-300">
                   {t.daysLeftUnit}
                 </span>
               </>
             )}
           </div>
 
-          <div className="sm:border-l sm:border-teal-200/70 dark:sm:border-teal-800/60 sm:pl-5 space-y-1 min-w-0">
+          <div className="sm:border-l sm:border-[#DFE7E2] dark:sm:border-teal-800/60 sm:pl-5 space-y-0.5 min-w-0">
             <p
               data-testid="race-countdown-title"
-              className="text-xs sm:text-sm font-semibold text-slate-900 dark:text-slate-100"
+              className="text-xs sm:text-sm font-semibold text-[#202A2A] dark:text-slate-100"
             >
               {t.badgeLabel}: {t.untilPrefix} {targetEventLabel}
             </p>
@@ -119,23 +115,23 @@ export default function RaceCountdown({
               </span>
               {weeksBreakdown && (
                 <>
-                  <span className="text-slate-400 dark:text-slate-500" aria-hidden="true">
+                  <span className="text-[#596866]/60 dark:text-slate-500" aria-hidden="true">
                     ·
                   </span>
-                  <span className="font-mono tabular-nums text-slate-600 dark:text-slate-300 whitespace-nowrap">
+                  <span className="tabular-nums text-[#596866] dark:text-slate-300 whitespace-nowrap">
                     {weeksBreakdown}
                   </span>
                 </>
               )}
-              <span className="text-slate-400 dark:text-slate-500" aria-hidden="true">
+              <span className="text-[#596866]/60 dark:text-slate-500" aria-hidden="true">
                 ·
               </span>
-              <span className="font-mono tabular-nums text-slate-600 dark:text-slate-300 whitespace-nowrap">
+              <span className="tabular-nums text-[#596866] dark:text-slate-300 whitespace-nowrap">
                 {countdown.formattedRaceDate}
               </span>
             </div>
 
-            <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+            <p className="text-xs text-[#596866] dark:text-slate-300 leading-relaxed">
               {countdown.motivationTip}
             </p>
           </div>
@@ -146,16 +142,16 @@ export default function RaceCountdown({
           onClick={() => setIsEditing((prev) => !prev)}
           data-testid="race-countdown-edit-toggle"
           aria-expanded={isEditing}
-          className="min-h-[40px] px-3.5 py-2 rounded-xl border border-teal-200/80 dark:border-teal-800 bg-white/85 dark:bg-slate-900/80 text-xs font-semibold text-teal-900 dark:text-teal-200 hover:border-teal-300 dark:hover:border-teal-600 hover:bg-white dark:hover:bg-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-700 dark:focus-visible:ring-teal-400 inline-flex items-center gap-1.5 transition-colors whitespace-nowrap shrink-0 self-start sm:self-center"
+          className="min-h-[40px] px-3.5 py-2 rounded-xl border border-[#DFE7E2] dark:border-teal-800 bg-white dark:bg-slate-900/80 text-xs font-semibold text-[#202A2A] dark:text-teal-200 hover:border-[#087F73] dark:hover:border-teal-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#087F73] dark:focus-visible:ring-teal-400 inline-flex items-center gap-1.5 transition-colors whitespace-nowrap shrink-0 self-start sm:self-center"
         >
-          <PencilLine className="w-3.5 h-3.5" aria-hidden="true" />
+          <PencilLine className="w-3.5 h-3.5 text-[#087F73] dark:text-teal-400" aria-hidden="true" />
           {isEditing ? t.doneEditBtn : t.editEventBtn}
         </button>
       </div>
 
       {/* Collapsible Event Customization Row */}
       {isEditing && (
-        <div className="pt-3 border-t border-teal-200/60 dark:border-teal-800/50 flex flex-wrap items-center gap-3">
+        <div className="pt-3 border-t border-[#DFE7E2] dark:border-teal-800/50 flex flex-wrap items-center gap-3">
           <div className="flex items-center gap-2">
             <label
               htmlFor="input-race-name"

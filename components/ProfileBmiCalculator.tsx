@@ -40,6 +40,7 @@ import {
   normalizeAccessCode,
 } from '@/lib/billing/license-format';
 import {
+  OWNER_ADMIN_EMAIL,
   adminCreateAccessCode,
   adminRevokeAccessCode,
   adminUpsertAccessGrant,
@@ -55,7 +56,7 @@ interface ProfileBmiCalculatorProps {
   lang: AppLanguage;
   latestRunKm?: number;
   isOwnerAdmin?: boolean;
-  firebaseUser?: User;
+  firebaseUser?: User | null;
   onChangeProfile: (updater: (prev: RunnerProfile) => RunnerProfile) => void;
   onExportBackup?: () => void;
   onRestoreBackup?: (backup: BackupPayloadV1) => Promise<void>;
@@ -117,8 +118,14 @@ export default function ProfileBmiCalculator({
   const [isGeneratingLicense, setIsGeneratingLicense] = useState(false);
   const [copiedLicense, setCopiedLicense] = useState(false);
 
+  const canShowOwnerAdmin = Boolean(
+    isOwnerAdmin &&
+      firebaseUser?.emailVerified === true &&
+      firebaseUser.email?.toLowerCase() === OWNER_ADMIN_EMAIL
+  );
+
   useEffect(() => {
-    if (!isOwnerAdmin) return;
+    if (!canShowOwnerAdmin) return;
     const unsubGrants = subscribeToAdminAccessGrants((grants) => {
       setAdminGrants(grants);
     });
@@ -129,7 +136,7 @@ export default function ProfileBmiCalculator({
       unsubGrants();
       unsubCodes();
     };
-  }, [isOwnerAdmin]);
+  }, [canShowOwnerAdmin]);
 
   const shoeCurrentKm = Math.max(0, profile.shoeCurrentKm ?? 0);
   const shoeMaxKm = Math.min(2000, Math.max(200, profile.shoeMaxKm ?? 700));
@@ -280,7 +287,7 @@ export default function ProfileBmiCalculator({
         role="tablist"
         aria-label={t.tabsAriaLabel}
         data-testid="profile-subtabs"
-        className="inline-flex max-w-full items-center gap-1.5 p-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-x-auto"
+        className="flex w-full items-center gap-1.5 p-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-x-auto"
       >
         {(
           [
@@ -288,7 +295,7 @@ export default function ProfileBmiCalculator({
             { id: 'hr', label: t.tabs.hr, icon: HeartPulse },
             { id: 'shoes', label: t.tabs.shoes, icon: Footprints },
             { id: 'account', label: t.tabs.account, icon: Shield },
-            ...(isOwnerAdmin
+            ...(canShowOwnerAdmin
               ? [{ id: 'admin' as const, label: t.tabs.admin, icon: KeyRound }]
               : []),
           ] as const
@@ -673,6 +680,11 @@ export default function ProfileBmiCalculator({
               >
                 {t.categoryPrefix}: {hrVo2.vo2MaxCategory}
               </p>
+              <p className="text-[11px] font-semibold text-teal-900 dark:text-teal-200">
+                {hrVo2.vo2MaxSource === 'strava_hr_blended'
+                  ? t.vo2MethodBlended
+                  : t.vo2MethodResting}
+              </p>
               <p className="text-[11px] text-teal-900/85 dark:text-teal-200/85 leading-relaxed">
                 {hrVo2.vo2MaxNote}
               </p>
@@ -698,6 +710,13 @@ export default function ProfileBmiCalculator({
               </p>
             </div>
           </div>
+        </div>
+
+        <div
+          data-testid="vo2-nonlab-disclaimer"
+          className="rounded-xl bg-slate-50 dark:bg-slate-800/70 border border-slate-200/80 dark:border-slate-700 px-4 py-3 text-xs text-slate-600 dark:text-slate-300 leading-relaxed"
+        >
+          {t.vo2NonLabDisclaimer}
         </div>
 
         {/* 5 Karvonen Heart Rate Zones */}
@@ -940,6 +959,13 @@ export default function ProfileBmiCalculator({
             <span>{shoeCopy.resetNewShoeBtn}</span>
           </button>
         </div>
+
+        <p
+          data-testid="shoe-mileage-disclaimer"
+          className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed pt-2 border-t border-slate-100 dark:border-slate-800"
+        >
+          {t.shoeDisclaimer}
+        </p>
       </div>
       )}
 
@@ -1074,7 +1100,7 @@ export default function ProfileBmiCalculator({
       )}
 
       {/* Verified Owner Admin Panel: Approve Buyer Payments & Generate Licenses */}
-      {activeProfileTab === 'admin' && isOwnerAdmin && (
+      {activeProfileTab === 'admin' && canShowOwnerAdmin && (
         <div
           data-testid="admin-access-panel"
           className="bg-white dark:bg-slate-900 border border-indigo-200 dark:border-indigo-800/70 rounded-2xl p-6 space-y-5"

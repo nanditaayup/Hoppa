@@ -5,11 +5,14 @@ import {
   RACE_TARGETS_BY_LANG,
   RUN_TYPE_LABELS_BY_LANG,
 } from './config';
+import { assessRunDataQuality } from './import-parser';
 import {
+  AdaptivePlanAdjustment,
   AppLanguage,
   BmiCategoryKey,
   BmiResult,
   DailyProgressEntry,
+  DailyProgressStats,
   DailySessionPlan,
   HeartRateVo2Summary,
   HeartRateZone,
@@ -24,6 +27,7 @@ import {
   RunActivity,
   RunnerProfile,
   StravaSyncCandidate,
+  TargetPaceReadinessAssessment,
   TrainingPlanSummary,
   WeeklyChartBucket,
   WeeklyVolumeProgression,
@@ -95,12 +99,14 @@ export function computePaceSecPerKm(
   movingTimeSeconds: number,
   averageSpeedMps?: number
 ): number {
+  const km = distanceMeters / 1000;
+  if (km > 0 && movingTimeSeconds > 0) {
+    return Math.round(movingTimeSeconds / km);
+  }
   if (averageSpeedMps && averageSpeedMps > 0.2) {
     return Math.round(1000 / averageSpeedMps);
   }
-  const km = distanceMeters / 1000;
-  if (km <= 0 || movingTimeSeconds <= 0) return 0;
-  return Math.round(movingTimeSeconds / km);
+  return 0;
 }
 
 export function formatPace(secPerKm: number): string {
@@ -282,6 +288,7 @@ export function computeKpiSummary(
       longestRunKm: 0,
       runCount30Days: 0,
       totalActivitiesCount: 0,
+      flaggedAnomalyCount: 0,
     };
   }
 
@@ -316,15 +323,35 @@ export function computeKpiSummary(
   const fourWeekAvgKm = Math.round((fourWeekTotalKm / 4) * 100) / 100;
 
   const thirtyDayTotalMeters = runs30Days.reduce((acc, r) => acc + r.distanceMeters, 0);
-  const thirtyDayTotalSeconds = runs30Days.reduce(
+  const thirtyDayTotalKm = Math.round((thirtyDayTotalMeters / 1000) * 100) / 100;
+
+  const validPaceRuns30Days = runs30Days.filter((r) => {
+    const pace = computePaceSecPerKm(
+      r.distanceMeters,
+      r.movingTimeSeconds,
+      r.averageSpeedMps
+    );
+    const quality = assessRunDataQuality(r);
+    return (
+      pace >= 140 &&
+      pace <= 1800 &&
+      quality.reason !== 'implausible_fast' &&
+      quality.reason !== 'implausible_slow'
+    );
+  });
+
+  const validPaceMeters = validPaceRuns30Days.reduce(
+    (acc, r) => acc + r.distanceMeters,
+    0
+  );
+  const validPaceSeconds = validPaceRuns30Days.reduce(
     (acc, r) => acc + r.movingTimeSeconds,
     0
   );
-  const thirtyDayTotalKm = Math.round((thirtyDayTotalMeters / 1000) * 100) / 100;
 
   const thirtyDayAvgPaceSecPerKm =
-    thirtyDayTotalMeters > 0
-      ? Math.round(thirtyDayTotalSeconds / (thirtyDayTotalMeters / 1000))
+    validPaceMeters > 0
+      ? Math.round(validPaceSeconds / (validPaceMeters / 1000))
       : 0;
 
   const longestMeters = sorted.reduce(
@@ -332,6 +359,9 @@ export function computeKpiSummary(
     0
   );
   const longestRunKm = Math.round((longestMeters / 1000) * 100) / 100;
+  const flaggedAnomalyCount = sorted.filter(
+    (r) => assessRunDataQuality(r).hasAnomaly
+  ).length;
 
   return {
     fourWeekAvgKm,
@@ -340,6 +370,7 @@ export function computeKpiSummary(
     longestRunKm,
     runCount30Days: runs30Days.length,
     totalActivitiesCount: sorted.length,
+    flaggedAnomalyCount,
   };
 }
 
@@ -412,22 +443,43 @@ export function computeWeeklyChartBuckets(
 
 export function computePaceZones(
   baselinePaceSecPerKm: number,
-  lang: AppLanguage = 'id'
+  lang: AppLanguage = 'id',
+  options?: {
+    basis?: 'default' | 'strava_baseline' | 'race_goal';
+    targetRace?: RaceDistanceKey;
+  }
 ): PaceZoneRange[] {
   const base = clampNumber(
     baselinePaceSecPerKm > 0 ? baselinePaceSecPerKm : 365,
-    180,
-    720
+    150,
+    900
   );
 
   const easyMin = base + 45;
   const easyMax = base + 75;
 
-  const tempoFast = Math.max(150, base - 25);
-  const tempoSlow = Math.max(165, base - 15);
+  let tempoFast = Math.max(150, base - 25);
+  let tempoSlow = Math.max(165, base - 15);
+  let intervalFast = Math.max(135, base - 50);
+  let intervalSlow = Math.max(150, base - 35);
 
-  const intervalFast = Math.max(135, base - 50);
-  const intervalSlow = Math.max(150, base - 35);
+  if (options?.basis === 'race_goal') {
+    const race = options.targetRace ?? '10K';
+    if (race === '21K') {
+      tempoFast = Math.max(120, base - 5);
+      tempoSlow = Math.max(130, base + 5);
+    } else if (race === '42K') {
+      tempoFast = Math.max(120, base - 25);
+      tempoSlow = Math.max(130, base - 15);
+    } else {
+      // 5K & 10K goal pace is faster than lactate threshold tempo pace
+      tempoFast = Math.max(120, base + 10);
+      tempoSlow = Math.max(130, base + 20);
+    }
+    const intervalBase = Math.min(base, tempoFast);
+    intervalFast = Math.max(90, intervalBase - 25);
+    intervalSlow = Math.max(95, intervalBase - 12);
+  }
 
   return [
     {
@@ -509,7 +561,16 @@ export function generateTrainingPlan(
       ? kpi.thirtyDayAvgPaceSecPerKm
       : 365; // default 06:05/km
 
-  const paceZones = computePaceZones(baselinePaceSecPerKm, lang);
+  const paceZoneBasis: TrainingPlanSummary['paceZoneBasis'] = hasCustomTargetPace
+    ? 'race_goal'
+    : hasRunHistory
+      ? 'strava_baseline'
+      : 'default';
+
+  const paceZones = computePaceZones(baselinePaceSecPerKm, lang, {
+    basis: paceZoneBasis,
+    targetRace: profile.targetRace,
+  });
   const easyZone = paceZones.find((z) => z.key === 'easy')!;
   const tempoZone = paceZones.find((z) => z.key === 'tempo')!;
   const intervalZone = paceZones.find((z) => z.key === 'interval')!;
@@ -906,6 +967,7 @@ export function generateTrainingPlan(
     baselinePaceSecPerKm,
     isUsingDefaultBaseline: !hasRunHistory && !hasCustomTargetPace,
     isUsingCustomTargetPace: hasCustomTargetPace,
+    paceZoneBasis,
     bmiResult,
     paceZones,
     weeklySchedule,
@@ -917,62 +979,99 @@ export function generateTrainingPlan(
 }
 
 /**
- * Computes consecutive daily streak & weekly completion stats for Daily Progress Tracker.
+ * Computes consecutive streak (honoring scheduled rest days) & current Mon–Sun week completion stats
+ * for Daily Progress Tracker, separating running sessions from cross-training/rest logs.
  */
 export function computeDailyProgressStats(
   entries: DailyProgressEntry[],
   weeklySchedule: DailySessionPlan[],
   todayDateKey: string
-): {
-  currentStreakDays: number;
-  completedThisWeekCount: number;
-  plannedRunSessionsCount: number;
-  totalLoggedKm: number;
-  completionPct: number;
-  avgPaceSecPerKm: number | null;
-  avgHeartRateBpm: number | null;
-} {
-  const uniqueDates = Array.from(new Set(entries.map((e) => e.dateKey))).sort(
-    (a, b) => (a > b ? -1 : 1)
+): DailyProgressStats {
+  const loggedDateSet = new Set(entries.map((e) => e.dateKey));
+  const restDayIndices = new Set(
+    weeklySchedule.filter((s) => s.zone === 'rest').map((s) => s.dayIndex)
   );
+  const getWeekdayIndexFromKey = (key: string): number => {
+    const ms = parseDateKeyUtcMs(key);
+    if (ms === null) return 0;
+    const utcDay = new Date(ms).getUTCDay();
+    return utcDay === 0 ? 6 : utcDay - 1;
+  };
 
   let streak = 0;
-  if (uniqueDates.length > 0) {
-    const parseUtcDay = (key: string) => {
-      const [y, m, d] = key.split('-').map(Number);
-      return Date.UTC(y, m - 1, d);
-    };
-
-    const todayMs = parseUtcDay(todayDateKey);
-    const newestMs = parseUtcDay(uniqueDates[0]);
-    const dayMs = 24 * 60 * 60 * 1000;
-
-    // Streak stays active if newest log is today or yesterday
-    if (todayMs - newestMs <= dayMs && newestMs <= todayMs) {
-      streak = 1;
-      let prevMs = newestMs;
-      for (let i = 1; i < uniqueDates.length; i++) {
-        const currMs = parseUtcDay(uniqueDates[i]);
-        if (prevMs - currMs === dayMs) {
-          streak++;
-          prevMs = currMs;
-        } else if (prevMs !== currMs) {
+  if (loggedDateSet.size > 0) {
+    let startKey: string | null = null;
+    if (loggedDateSet.has(todayDateKey)) {
+      startKey = todayDateKey;
+    } else {
+      // Allow bridging over today if today isn't logged yet, and any scheduled rest days
+      let probeKey = addDaysToDateKey(todayDateKey, -1);
+      for (let step = 0; step < 7; step++) {
+        if (loggedDateSet.has(probeKey)) {
+          startKey = probeKey;
           break;
         }
+        if (!restDayIndices.has(getWeekdayIndexFromKey(probeKey))) {
+          break;
+        }
+        probeKey = addDaysToDateKey(probeKey, -1);
+      }
+    }
+
+    if (startKey) {
+      let cursorKey = startKey;
+      for (let i = 0; i < 365; i++) {
+        if (loggedDateSet.has(cursorKey)) {
+          streak++;
+        } else if (!restDayIndices.has(getWeekdayIndexFromKey(cursorKey))) {
+          break;
+        }
+        cursorKey = addDaysToDateKey(cursorKey, -1);
       }
     }
   }
 
+  // Scope weekly progress metrics strictly to the current Mon–Sun week containing todayDateKey
+  const todayWeekday = getWeekdayIndexFromKey(todayDateKey);
+  const weekStartKey = addDaysToDateKey(todayDateKey, -todayWeekday);
+  const weekEndKey = addDaysToDateKey(weekStartKey, 6);
+  const thisWeekEntries = entries.filter(
+    (e) => e.dateKey >= weekStartKey && e.dateKey <= weekEndKey
+  );
+
   const plannedRunSessionsCount = weeklySchedule.filter(
     (s) => s.zone !== 'rest'
   ).length;
-  const completedDayIndices = new Set(entries.map((e) => e.dayIndex));
+  const completedRunDayIndices = new Set(
+    thisWeekEntries
+      .filter((e) => e.zone !== 'rest' && e.actualKm > 0)
+      .map((e) => e.dayIndex)
+  );
   const completedThisWeekCount = weeklySchedule.filter(
-    (s) => s.zone !== 'rest' && completedDayIndices.has(s.dayIndex)
+    (s) => s.zone !== 'rest' && completedRunDayIndices.has(s.dayIndex)
+  ).length;
+
+  const strengthDayIndices = new Set(
+    weeklySchedule.filter((s) => Boolean(s.strengthSession)).map((s) => s.dayIndex)
+  );
+  const completedCrossTrainCount = thisWeekEntries.filter(
+    (e) => e.zone === 'rest' && strengthDayIndices.has(e.dayIndex)
+  ).length;
+  const loggedRestDaysCount = thisWeekEntries.filter(
+    (e) => e.zone === 'rest' && !strengthDayIndices.has(e.dayIndex)
   ).length;
 
   const totalLoggedKm =
-    Math.round(entries.reduce((sum, e) => sum + e.actualKm, 0) * 10) / 10;
+    Math.round(
+      thisWeekEntries
+        .filter((e) => e.zone !== 'rest')
+        .reduce((sum, e) => sum + e.actualKm, 0) * 10
+    ) / 10;
+
+  const plannedWeekKm =
+    Math.round(
+      weeklySchedule.reduce((sum, s) => sum + s.targetDistanceKm, 0) * 10
+    ) / 10;
 
   const completionPct =
     plannedRunSessionsCount > 0
@@ -982,7 +1081,12 @@ export function computeDailyProgressStats(
         )
       : 0;
 
-  const paceEntries = entries.filter(
+  const actualVsPlannedPct =
+    plannedWeekKm > 0 ? Math.round((totalLoggedKm / plannedWeekKm) * 100) : 0;
+  const isVolumeSignificantlyOverPlan =
+    plannedWeekKm > 0 && actualVsPlannedPct > 115;
+
+  const paceEntries = thisWeekEntries.filter(
     (e) =>
       typeof e.paceSecPerKm === 'number' &&
       Number.isFinite(e.paceSecPerKm) &&
@@ -996,7 +1100,7 @@ export function computeDailyProgressStats(
         )
       : null;
 
-  const hrEntries = entries.filter(
+  const hrEntries = thisWeekEntries.filter(
     (e) =>
       typeof e.avgHeartRateBpm === 'number' &&
       Number.isFinite(e.avgHeartRateBpm) &&
@@ -1014,8 +1118,13 @@ export function computeDailyProgressStats(
     currentStreakDays: streak,
     completedThisWeekCount,
     plannedRunSessionsCount,
+    completedCrossTrainCount,
+    loggedRestDaysCount,
     totalLoggedKm,
+    plannedWeekKm,
     completionPct,
+    actualVsPlannedPct,
+    isVolumeSignificantlyOverPlan,
     avgPaceSecPerKm,
     avgHeartRateBpm,
   };
@@ -1093,15 +1202,15 @@ export function computeNutritionRecommendation(
   const bmiNutritionNote =
     lang === 'en'
       ? bmiResult.category === 'kurus'
-        ? 'With an Underweight BMI, aim toward the upper end of your carbohydrate & protein ranges and add a nutrient-dense snack after running to protect lean mass and energy.'
+        ? `Prioritize your ${profile.targetRace} training load and session duration first—increase carbs on Long Run & Tempo days, while an Underweight BMI suggests leaning toward the upper calorie and protein range.`
         : bmiResult.category === 'berlebih' || bmiResult.category === 'obesitas'
-          ? 'Time your carbohydrate intake around training sessions (before and 30–60 minutes after running) and meet your protein target to support satiety and muscle repair.'
-          : 'Balanced macronutrient strategy: lean toward the upper carb range on Long Run or Tempo days, and the lower bound on rest days.'
+          ? `Prioritize fuel around ${profile.targetRace} workouts (before and within 30–90 minutes after running) and meet daily protein targets to support recovery and satiety; BMI is only a secondary guide.`
+          : `Lead with your ${profile.targetRace} training load: eat toward the upper carbohydrate range on Long Run or Tempo days and the lower bound on lighter or rest days.`
       : bmiResult.category === 'kurus'
-        ? 'Dengan BMI Kurus, prioritaskan batas atas rentang karbohidrat & protein serta tambah camilan padat gizi setelah sesi lari agar massa otot dan energi tetap terjaga.'
+        ? `Sesuaikan asupan dengan beban & durasi latihan ${profile.targetRace} Anda lebih dulu—tambah porsi karbohidrat di hari Long Run & Tempo. Dengan BMI Kurus, prioritaskan batas atas energi dan protein agar pemulihan tetap optimal.`
         : bmiResult.category === 'berlebih' || bmiResult.category === 'obesitas'
-          ? 'Fokuskan porsi karbohidrat di sekitar waktu latihan (sebelum & 30–60 menit sesudah lari) dan penuhi target protein untuk menjaga rasa kenyang serta pemulihan jaringan otot.'
-          : 'Distribusi makronutrisi seimbang: sesuaikan asupan karbohidrat di batas atas pada hari Long Run atau Tempo, dan batas bawah pada hari istirahat.';
+          ? `Utamakan penjadwalan karbohidrat di sekitar jam latihan ${profile.targetRace} (sebelum & 30–90 menit sesudah lari) serta cukupi protein harian untuk rasa kenyang dan pemulihan otot; BMI hanya acuan pendamping.`
+          : `Sesuaikan asupan dengan beban latihan ${profile.targetRace} Anda: pakai batas atas karbohidrat di hari Long Run atau Tempo, dan batas bawah pada hari ringan atau istirahat.`;
 
   const recoveryTimings: NutritionRecoveryTiming[] =
     lang === 'en'
@@ -1110,20 +1219,21 @@ export function computeNutritionRecommendation(
             key: 'pre',
             timingLabel: '60–120 Minutes Pre-Run',
             title: 'Light Pre-Run Fueling',
-            macroFocus: 'Fast-digesting carbs (30–60 g)',
+            macroFocus: 'Easy-to-digest carbs (30–60 g)',
             detail:
-              'Stabilizes blood glucose before stepping out without weighing down your stomach.',
-            foodExamples: '1–2 ripe bananas, whole-grain toast with honey, or a small bowl of warm oats',
+              'Helps provide energy before running without weighing down your stomach; individual tolerance varies.',
+            foodExamples:
+              '1–2 ripe bananas, toast with honey, or a small bowl of warm oats',
           },
           {
             key: 'post',
-            timingLabel: '30–60 Minutes Post-Run',
-            title: 'Recovery Window',
-            macroFocus: '3:1 Carb-to-Protein Ratio (20–30 g protein)',
+            timingLabel: '30–90 Minutes Post-Run (Flexible)',
+            title: 'Post-Run Recovery Fueling',
+            macroFocus: 'Example ~3:1 Carb-to-Protein strategy (20–30 g protein)',
             detail:
-              'Accelerates glycogen replenishment and jumpstarts muscle fiber repair right after training.',
+              'Supports glycogen replenishment and muscle repair. Urgency depends on session load and when your next run is; total daily intake still matters most.',
             foodExamples:
-              'Low-fat milk + banana, Greek yogurt with granola, or boiled eggs + toast',
+              'Low-fat milk + banana, yogurt with granola, steamed tempeh/tofu, or boiled eggs + toast',
           },
           {
             key: 'daily',
@@ -1131,9 +1241,9 @@ export function computeNutritionRecommendation(
             title: 'Daily Repair & Hydration',
             macroFocus: 'Evenly spaced protein + complex carbs',
             detail:
-              'Supports overnight training adaptation so your legs feel fresh for the next run.',
+              'Supports overall recovery between sessions so your legs feel ready for the next run.',
             foodExamples:
-              'Rice or sweet potato, chicken breast/fish/tempeh, leafy greens, and water + electrolytes',
+              'Rice, sweet potato, or cassava; chicken, fish, eggs, tofu/tempeh; leafy greens; and water + electrolytes',
           },
         ]
       : [
@@ -1143,18 +1253,18 @@ export function computeNutritionRecommendation(
             title: 'Isi Bahan Bakar Ringan',
             macroFocus: 'Karbohidrat mudah cerna (30–60 g)',
             detail:
-              'Menstabilkan glukosa darah sebelum berlari tanpa membebani lambung saat melangkah.',
-            foodExamples: '1–2 buah pisang, roti gandum madu, atau oatmeal hangat porsi kecil',
+              'Membantu menyediakan energi sebelum berlari tanpa membebani lambung; respons tiap orang berbeda.',
+            foodExamples: '1–2 buah pisang, roti madu, atau oatmeal hangat porsi kecil',
           },
           {
             key: 'post',
-            timingLabel: '30–60 Menit Setelah Lari',
-            title: 'Jendela Pemulihan Otot',
-            macroFocus: 'Rasio Karbohidrat : Protein 3:1 (20–30 g protein)',
+            timingLabel: '30–90 Menit Setelah Lari (Fleksibel)',
+            title: 'Asupan Pemulihan Pasca-Lari',
+            macroFocus: 'Contoh strategi rasio Karbo : Protein ~3:1 (20–30 g protein)',
             detail:
-              'Mempercepat pengisian ulang glikogen otot yang terkuras dan memperbaiki serat otot setelah sesi.',
+              'Membantu isi ulang glikogen dan perbaikan otot. Urgensinya bergantung pada berat latihan & kapan sesi berikutnya; asupan harian tetap paling utama.',
             foodExamples:
-              'Susu rendah lemak + pisang, yogurt dengan granola, atau telur rebus + roti',
+              'Susu rendah lemak + pisang, yogurt dengan granola, tempe/tahu kukus, atau telur rebus + roti',
           },
           {
             key: 'daily',
@@ -1162,9 +1272,9 @@ export function computeNutritionRecommendation(
             title: 'Pemeliharaan & Hidrasi Harian',
             macroFocus: 'Protein merata tiap makan + karbohidrat kompleks',
             detail:
-              'Mendukung adaptasi latihan semalaman agar kaki terasa segar pada sesi berikutnya.',
+              'Mendukung pemulihan menyeluruh antar sesi agar kaki terasa lebih siap pada latihan berikutnya.',
             foodExamples:
-              'Nasi merah/putih, dada ayam/ikan/tempe, sayur hijau, dan air + elektrolit',
+              'Nasi, ubi jalar, atau singkong; ayam, ikan, telur, tahu/tempe; sayur hijau; dan air + elektrolit',
           },
         ];
 
@@ -1314,7 +1424,8 @@ export function findStravaProgressMatches(
   runs: RunActivity[],
   weeklySchedule: DailySessionPlan[],
   existingEntries: DailyProgressEntry[],
-  referenceTodayKey: string
+  referenceTodayKey: string,
+  lang: AppLanguage = 'id'
 ): StravaSyncCandidate[] {
   if (runs.length === 0 || weeklySchedule.length === 0) return [];
 
@@ -1407,6 +1518,8 @@ export function findStravaProgressMatches(
           )
         : null;
 
+    const isPlannedRest = planDay.zone === 'rest';
+
     candidates.push({
       runId: grouped.runId,
       runName: grouped.names.join(' + '),
@@ -1417,8 +1530,12 @@ export function findStravaProgressMatches(
       plannedKm: planDay.targetDistanceKm,
       paceSecPerKm,
       avgHeartRateBpm,
-      zone: planDay.zone,
-      sessionTitle: planDay.title,
+      zone: isPlannedRest ? 'easy' : planDay.zone,
+      sessionTitle: isPlannedRest
+        ? lang === 'en'
+          ? 'Extra Run (Planned Rest)'
+          : 'Lari Ekstra (Hari Istirahat)'
+        : planDay.title,
       startDate: grouped.startDate,
     });
   }
@@ -1543,19 +1660,33 @@ export function computeHeartRateAndVo2Max(
   // Base Uth-Sorensen VO2max from HRmax/HRrest ratio
   const uthVo2 = clampNumber(15.3 * (maxHrBpm / restingHrBpm), 22, 85);
 
-  const stravaWithSpeedAndHr = runs.filter(
-    (r) =>
-      r.averageSpeedMps > 1.2 &&
+  const stravaWithSpeedAndHr = runs.filter((r) => {
+    const quality = assessRunDataQuality(r);
+    if (quality.reason === 'implausible_fast' || quality.reason === 'implausible_slow') {
+      return false;
+    }
+    const effectiveSpeed =
+      r.distanceMeters > 0 && r.movingTimeSeconds > 0
+        ? r.distanceMeters / r.movingTimeSeconds
+        : r.averageSpeedMps;
+    return (
+      effectiveSpeed > 1.2 &&
+      effectiveSpeed <= 7.5 &&
       r.averageHeartRate !== null &&
       r.averageHeartRate > restingHrBpm + 20
-  );
+    );
+  });
 
   let vo2Max = Math.round(uthVo2 * 10) / 10;
   let vo2MaxSource: HeartRateVo2Summary['vo2MaxSource'] = 'resting_ratio';
 
   if (stravaWithSpeedAndHr.length > 0) {
     const sampleVo2s = stravaWithSpeedAndHr.map((r) => {
-      const speedMPerMin = r.averageSpeedMps * 60;
+      const effectiveSpeed =
+        r.distanceMeters > 0 && r.movingTimeSeconds > 0
+          ? r.distanceMeters / r.movingTimeSeconds
+          : r.averageSpeedMps;
+      const speedMPerMin = effectiveSpeed * 60;
       const runningVo2Cost = 0.2 * speedMPerMin + 3.5;
       const pctHrr = clampNumber(
         ((r.averageHeartRate ?? restingHrBpm) - restingHrBpm) / hrr,
@@ -1594,11 +1725,11 @@ export function computeHeartRateAndVo2Max(
   const vo2MaxNote =
     lang === 'en'
       ? vo2MaxSource === 'strava_hr_blended'
-        ? `Calibrated from ${stravaWithSpeedAndHr.length} Strava HR runs and your resting/max HR reserve.`
-        : 'Estimated from your Resting HR & Max HR ratio (Uth formula). Import Strava HR runs for pace-calibrated accuracy.'
+        ? `Non-lab estimate from ${stravaWithSpeedAndHr.length} valid Strava HR runs blended with Uth HRmax/HRrest ratio (15.3 × HRmax/HRrest).`
+        : 'Non-lab estimate from Resting HR & Max HR ratio (Uth formula: 15.3 × HRmax/HRrest). Not a substitute for a lab VO2max test.'
       : vo2MaxSource === 'strava_hr_blended'
-        ? `Dikalibrasi dari ${stravaWithSpeedAndHr.length} sesi Strava ber-HR serta rasio HR istirahat & maksimal Anda.`
-        : 'Diestimasi dari rasio HR Istirahat & HR Maksimal Anda (rumus Uth). Impor riwayat Strava ber-HR untuk kalibrasi tambahan.';
+        ? `Estimasi non-lab dari ${stravaWithSpeedAndHr.length} sesi Strava ber-HR yang valid dan rasio HRmaks/HRistirahat (rumus Uth).`
+        : 'Estimasi non-lab dari rasio HR Istirahat & HR Maksimal (rumus Uth: 15,3 × HRmaks/HRistirahat), bukan pengganti tes laboratorium.';
 
   return {
     restingHrBpm,
@@ -1612,4 +1743,255 @@ export function computeHeartRateAndVo2Max(
     zones,
   };
 }
+
+/**
+ * Evaluates whether a target race pace is aligned with recent running history
+ * so users distinguish Target Race Pace (goal) from Current Training Pace (today's readiness).
+ */
+export function evaluateTargetPaceReadiness(params: {
+  goalRace: RaceDistanceKey;
+  goalPaceSecPerKm: number;
+  kpi: KpiSummary;
+  daysToRace: number;
+  lang?: AppLanguage;
+}): TargetPaceReadinessAssessment {
+  const { goalRace, goalPaceSecPerKm, kpi, daysToRace, lang = 'id' } = params;
+  const hasValidBaseline =
+    kpi.runCount30Days > 0 &&
+    kpi.thirtyDayAvgPaceSecPerKm >= 140 &&
+    kpi.thirtyDayAvgPaceSecPerKm <= 1800;
+
+  if (!hasValidBaseline) {
+    const recommendedTrainingPaceSecPerKm = Math.round(goalPaceSecPerKm * 1.06);
+    return {
+      status: 'no_history_caution',
+      goalRace,
+      goalPaceSecPerKm,
+      currentBaselinePaceSecPerKm: null,
+      recommendedTrainingPaceSecPerKm,
+      gapPct: null,
+      daysToRace,
+      headline:
+        lang === 'en'
+          ? 'No Recent Run History for Readiness Check'
+          : 'Belum Ada Riwayat Lari 30 Hari untuk Kalibrasi',
+      explanation:
+        lang === 'en'
+          ? `Your ${goalRace} target (${formatPace(goalPaceSecPerKm)}) is a finish-day goal, not necessarily your current safe training intensity. Import Strava runs or start 6% more conservatively (${formatPace(recommendedTrainingPaceSecPerKm)}) if you are returning from a break.`
+          : `Target ${goalRace} (${formatPace(goalPaceSecPerKm)}) adalah kecepatan lomba yang ingin dicapai, bukan otomatis kemampuan latihan saat ini. Impor riwayat Strava atau mulai ~6% lebih santai (${formatPace(recommendedTrainingPaceSecPerKm)}) bila baru mulai berlatih.`,
+      suggestedTrainingNote:
+        lang === 'en'
+          ? `Conservative start pace: ${formatPace(recommendedTrainingPaceSecPerKm)}`
+          : `Saran pace latihan awal lebih aman: ${formatPace(recommendedTrainingPaceSecPerKm)}`,
+    };
+  }
+
+  const currentBaselinePaceSecPerKm = kpi.thirtyDayAvgPaceSecPerKm;
+  const gapPct =
+    Math.round(
+      ((currentBaselinePaceSecPerKm - goalPaceSecPerKm) /
+        currentBaselinePaceSecPerKm) *
+        1000
+    ) / 10;
+
+  const needsCaution =
+    gapPct > 15 || (gapPct > 8 && daysToRace >= 0 && daysToRace < 42);
+
+  if (needsCaution) {
+    const recommendedTrainingPaceSecPerKm = Math.max(
+      goalPaceSecPerKm,
+      Math.round(currentBaselinePaceSecPerKm * 0.94)
+    );
+    return {
+      status: 'ambitious_caution',
+      goalRace,
+      goalPaceSecPerKm,
+      currentBaselinePaceSecPerKm,
+      recommendedTrainingPaceSecPerKm,
+      gapPct,
+      daysToRace,
+      headline:
+        lang === 'en'
+          ? 'Target Pace Is Significantly Faster Than Current Baseline'
+          : 'Target Pace Lomba Jauh Lebih Cepat dari Baseline Saat Ini',
+      explanation:
+        lang === 'en'
+          ? `Your ${goalRace} goal pace (${formatPace(goalPaceSecPerKm)}) is ${formatDecimalComma(gapPct, 1, 'en')}% faster than your 30-day average (${formatPace(currentBaselinePaceSecPerKm)}). Remember: Easy runs raise that average, yet jumping straight to goal-pace zones with ${Math.max(0, daysToRace)} days left can overload joints.`
+          : `Target pace ${goalRace} (${formatPace(goalPaceSecPerKm)}) lebih cepat ${formatDecimalComma(gapPct, 1, 'id')}% daripada rata-rata 30 hari Anda (${formatPace(currentBaselinePaceSecPerKm)}). Meski Easy run membuat rata-rata lebih lambat, langsung berlatih di zona target dengan sisa ${Math.max(0, daysToRace)} hari berisiko membebani pemulihan.`,
+      suggestedTrainingNote:
+        lang === 'en'
+          ? `Conservative current training basis: ${formatPace(recommendedTrainingPaceSecPerKm)} (step toward your goal after a 2–3 week test run)`
+          : `Saran pace latihan saat ini: ${formatPace(recommendedTrainingPaceSecPerKm)} (evaluasi bertahap lewat tes lari 2–3 minggu)`,
+    };
+  }
+
+  return {
+    status: 'aligned',
+    goalRace,
+    goalPaceSecPerKm,
+    currentBaselinePaceSecPerKm,
+    recommendedTrainingPaceSecPerKm: goalPaceSecPerKm,
+    gapPct,
+    daysToRace,
+    headline:
+      lang === 'en'
+        ? 'Goal Pace Is Realistic for Your Recent Baseline'
+        : 'Target Pace Selaras dengan Riwayat 30 Hari Anda',
+    explanation:
+      lang === 'en'
+        ? `Your ${goalRace} goal (${formatPace(goalPaceSecPerKm)}) sits within a manageable step from your 30-day average (${formatPace(currentBaselinePaceSecPerKm)}). Keep Easy days truly comfortable.`
+        : `Target ${goalRace} (${formatPace(goalPaceSecPerKm)}) berada dalam jarak progres yang wajar dari rata-rata 30 hari Anda (${formatPace(currentBaselinePaceSecPerKm)}). Tetap jaga porsi Easy agar benar-benar santai.`,
+    suggestedTrainingNote:
+      lang === 'en'
+        ? 'Ready to apply directly or keep your current Strava baseline.'
+        : 'Siap diterapkan ke zona latihan atau tetap pakai baseline Strava.',
+  };
+}
+
+/**
+ * Transparent, rule-based conservative weekly plan adaptation answering:
+ * "What changes if I miss workouts, exceed planned volume, or feel unusually fatigued?"
+ */
+export function computeAdaptivePlanAdjustment(params: {
+  weeklySchedule: DailySessionPlan[];
+  progressEntries: DailyProgressEntry[];
+  dailyStats: DailyProgressStats;
+  todayDateKey: string;
+  todayDayIndex: number;
+  manualFatigueMode?: boolean;
+  lang?: AppLanguage;
+}): AdaptivePlanAdjustment {
+  const {
+    weeklySchedule,
+    progressEntries,
+    dailyStats,
+    todayDateKey,
+    todayDayIndex,
+    manualFatigueMode = false,
+    lang = 'id',
+  } = params;
+
+  const getWeekdayIndexFromKey = (key: string): number => {
+    const ms = parseDateKeyUtcMs(key);
+    if (ms === null) return 0;
+    const utcDay = new Date(ms).getUTCDay();
+    return utcDay === 0 ? 6 : utcDay - 1;
+  };
+
+  const todayWeekday = getWeekdayIndexFromKey(todayDateKey);
+  const weekStartKey = addDaysToDateKey(todayDateKey, -todayWeekday);
+  const weekEndKey = addDaysToDateKey(weekStartKey, 6);
+  const thisWeekEntries = progressEntries.filter(
+    (e) => e.dateKey >= weekStartKey && e.dateKey <= weekEndKey
+  );
+
+  const reasons: AdaptivePlanAdjustment['reasons'] = [];
+
+  const recentFatigueEntry = thisWeekEntries.find(
+    (e) => e.comfortRating <= 2 && e.zone !== 'rest'
+  );
+  if (recentFatigueEntry) {
+    reasons.push('heavy_fatigue');
+  }
+
+  const loggedDayIndices = new Set(
+    thisWeekEntries
+      .filter((e) => e.zone !== 'rest' && e.actualKm > 0)
+      .map((e) => e.dayIndex)
+  );
+  const missedEarlierRuns = weeklySchedule.filter(
+    (s) =>
+      s.zone !== 'rest' &&
+      s.dayIndex < todayDayIndex &&
+      !loggedDayIndices.has(s.dayIndex)
+  );
+  if (missedEarlierRuns.length >= 2) {
+    reasons.push('missed_sessions');
+  }
+
+  if (dailyStats.isVolumeSignificantlyOverPlan) {
+    reasons.push('volume_overload');
+  }
+
+  if (manualFatigueMode) {
+    reasons.push('manual_fatigue');
+  }
+
+  if (reasons.length === 0) {
+    return {
+      triggered: false,
+      reasons: [],
+      volumeMultiplier: 1,
+      downgradeQualityToEasy: false,
+      headline:
+        lang === 'en'
+          ? 'Normal Weekly Plan Active (No Deload Triggered)'
+          : 'Jadwal Normal Aktif (Belum Ada Penyesuaian Pemulihan)',
+      summary:
+        lang === 'en'
+          ? 'If you log heavy fatigue (score 1–2), miss 2+ sessions, exceed planned km by >15%, or toggle "Legs Feel Heavy", remaining workouts automatically ease back.'
+          : 'Jika Anda mencatat rasa berat/lelah (skor 1–2), melewatkan 2+ sesi, melebihi target >15%, atau menyalakan mode "Kaki Terasa Berat", sisa jadwal minggu ini otomatis diturunkan.',
+      nextSessionAction:
+        lang === 'en'
+          ? 'Follow your scheduled intensity and keep Easy runs conversational.'
+          : 'Jalani jadwal sesuai rencana dan jaga porsi Easy tetap nyaman.',
+      adjustedTotalWeekKm: dailyStats.plannedWeekKm,
+    };
+  }
+
+  const needsDeeperTrim =
+    reasons.includes('volume_overload') ||
+    (reasons.includes('heavy_fatigue') && reasons.includes('manual_fatigue'));
+  const volumeMultiplier = needsDeeperTrim ? 0.8 : 0.85;
+  const downgradeQualityToEasy =
+    reasons.includes('heavy_fatigue') ||
+    reasons.includes('volume_overload') ||
+    reasons.includes('manual_fatigue');
+
+  const adjustedTotalWeekKm =
+    Math.round(dailyStats.plannedWeekKm * volumeMultiplier * 10) / 10;
+
+  const reasonLabels = reasons.map((r) => {
+    if (lang === 'en') {
+      if (r === 'heavy_fatigue') return 'heavy fatigue logged (score ≤ 2)';
+      if (r === 'missed_sessions')
+        return `${missedEarlierRuns.length} missed planned runs this week`;
+      if (r === 'volume_overload')
+        return `actual volume at ${dailyStats.actualVsPlannedPct}% of plan`;
+      return 'manual recovery mode enabled';
+    }
+    if (r === 'heavy_fatigue') return 'catatan sesi terasa berat/lelah (skor ≤ 2)';
+    if (r === 'missed_sessions')
+      return `${missedEarlierRuns.length} sesi terjadwal minggu ini terlewat`;
+    if (r === 'volume_overload')
+      return `jarak aktual mencapai ${dailyStats.actualVsPlannedPct}% dari rencana`;
+    return 'mode pemulihan manual diaktifkan';
+  });
+
+  const trimPct = Math.round((1 - volumeMultiplier) * 100);
+
+  return {
+    triggered: true,
+    reasons,
+    volumeMultiplier,
+    downgradeQualityToEasy,
+    headline:
+      lang === 'en'
+        ? `Conservative Recovery Adjustment (-${trimPct}% Volume)`
+        : `Penyesuaian Pemulihan Konservatif (-${trimPct}% Volume)`,
+    summary:
+      lang === 'en'
+        ? `Triggered by: ${reasonLabels.join(' · ')}. Do not try to "make up" missed mileage all at once.`
+        : `Dipicu oleh: ${reasonLabels.join(' · ')}. Jangan memaksakan mengejar seluruh jarak yang terlewat sekaligus.`,
+    nextSessionAction: downgradeQualityToEasy
+      ? lang === 'en'
+        ? `Swap remaining Tempo/Interval sessions to Easy Pace and trim remaining distances by ${trimPct}%.`
+        : `Ubah sisa sesi Tempo/Interval menjadi Easy Pace dan pangkas target jarak sisa sekitar ${trimPct}%.`
+      : lang === 'en'
+        ? `Resume calmly with ${trimPct}% lighter distance on remaining runs rather than doubling up sessions.`
+        : `Lanjutkan bertahap dengan jarak ${trimPct}% lebih ringan pada sisa sesi tanpa menumpuk latihan.`,
+    adjustedTotalWeekKm,
+  };
+}
+
 

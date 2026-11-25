@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
+  assessRunDataQuality,
   mergeAndDeduplicateRuns,
   normalizeRunType,
   parseGpxFiles,
@@ -39,6 +40,19 @@ test('AC-02: parseStravaCsv keeps Run, TrailRun, VirtualRun and skips Ride/Swim'
     ),
     '05:00/km'
   );
+  // Verify 2.604 m/s on VirtualRun 5K stays ~06:24/km rather than being parsed as 2604 m/s
+  const run105 = res.runs[2];
+  assert.ok(run105.averageSpeedMps > 2.5 && run105.averageSpeedMps < 2.7);
+  assert.equal(
+    formatPace(
+      computePaceSecPerKm(
+        run105.distanceMeters,
+        run105.movingTimeSeconds,
+        run105.averageSpeedMps
+      )
+    ),
+    '06:24/km'
+  );
 });
 
 test('parseStravaCsv supports Indonesian comma decimals and km distance headers', () => {
@@ -51,6 +65,44 @@ test('parseStravaCsv supports Indonesian comma decimals and km distance headers'
   assert.equal(res.runs.length, 1);
   assert.equal(res.runs[0].distanceMeters, 5500);
   assert.equal(res.runs[0].movingTimeSeconds, 1800);
+});
+
+test('REGRESSION: MAF Training day 6 (5.03 km in 45:44) never outputs 00:33/km even with 3-decimal m/s or corrupted speed', () => {
+  const csvValidSpeed = [
+    'Activity Name,Activity Type,Activity Date,Moving Time,Distance,Average Heart Rate,Average Speed',
+    'MAF Training day 6,Run,2026-11-20T06:00:00Z,45:44,5.03,142,1.833',
+  ].join('\n');
+
+  const cleanRes = parseStravaCsv(csvValidSpeed);
+  assert.equal(cleanRes.runs.length, 1);
+  const cleanRun = cleanRes.runs[0];
+  assert.equal(cleanRun.distanceMeters, 5030);
+  assert.equal(cleanRun.movingTimeSeconds, 2744);
+  const cleanPace = computePaceSecPerKm(
+    cleanRun.distanceMeters,
+    cleanRun.movingTimeSeconds,
+    cleanRun.averageSpeedMps
+  );
+  assert.equal(formatPace(cleanPace), '09:06/km');
+  assert.equal(assessRunDataQuality(cleanRun).hasAnomaly, false);
+
+  // Corrupted average speed column (e.g. 30.3 m/s -> 00:33/km if trusted blindly)
+  const csvCorruptedSpeed = [
+    'Activity Name,Activity Type,Activity Date,Moving Time,Distance,Average Heart Rate,Average Speed',
+    'MAF Training day 6,Run,2026-11-20T06:00:00Z,45:44,5.03,142,30.3',
+  ].join('\n');
+
+  const fixedRes = parseStravaCsv(csvCorruptedSpeed);
+  assert.equal(fixedRes.runs.length, 1);
+  const fixedRun = fixedRes.runs[0];
+  const fixedPace = computePaceSecPerKm(
+    fixedRun.distanceMeters,
+    fixedRun.movingTimeSeconds,
+    fixedRun.averageSpeedMps
+  );
+  assert.equal(formatPace(fixedPace), '09:06/km');
+  assert.equal(assessRunDataQuality(fixedRun).hasAnomaly, true);
+  assert.equal(assessRunDataQuality(fixedRun).reason, 'speed_distance_mismatch');
 });
 
 test('AC-04: parseGpxFiles parses GPS trackpoints into RunActivity with encoded polyline', () => {

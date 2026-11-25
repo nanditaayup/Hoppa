@@ -17,8 +17,8 @@
 
   body {
     font-family: var(--font-sans);
-    background-color: #f7f9fa;
-    color: #1e293b;
+    background-color: #f7f6f2;
+    color: #202a2a;
   }
 
   html.dark body {

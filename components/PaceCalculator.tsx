@@ -1,19 +1,28 @@
 'use client';
 
 import React, { useMemo, useState } from 'react';
-import { Calculator, CheckCircle2, RotateCcw } from 'lucide-react';
+import {
+  AlertTriangle,
+  Calculator,
+  CheckCircle2,
+  RotateCcw,
+  ShieldCheck,
+} from 'lucide-react';
 import {
   RACE_DISTANCES,
   calculateTrainingPaces,
   formatCalculatorDecimal,
   formatCalculatorPace,
 } from '@/lib/strava/pace-calculator';
+import { evaluateTargetPaceReadiness } from '@/lib/strava/transform';
 import { UI_COPY } from '@/lib/strava/i18n';
-import { AppLanguage, RaceDistanceKey } from '@/lib/strava/types';
+import { AppLanguage, KpiSummary, RaceDistanceKey } from '@/lib/strava/types';
 
 interface PaceCalculatorProps {
   initialRace: RaceDistanceKey;
   activeCustomPaceSecPerKm?: number | null;
+  kpi?: KpiSummary;
+  daysToRace?: number;
   lang: AppLanguage;
   applyButtonLabel?: string;
   onApplyTargetPace: (race: RaceDistanceKey, paceSecPerKm: number) => void;
@@ -25,6 +34,8 @@ const RACE_KEYS: RaceDistanceKey[] = ['5K', '10K', '21K', '42K'];
 export default function PaceCalculator({
   initialRace,
   activeCustomPaceSecPerKm = null,
+  kpi,
+  daysToRace = 56,
   lang,
   applyButtonLabel,
   onApplyTargetPace,
@@ -68,6 +79,20 @@ export default function PaceCalculator({
     [selectedDistance, hours, minutes, seconds, lang]
   );
 
+  const readiness = useMemo(
+    () =>
+      kpi
+        ? evaluateTargetPaceReadiness({
+            goalRace: selectedDistance,
+            goalPaceSecPerKm: result.racePaceSec,
+            kpi,
+            daysToRace,
+            lang,
+          })
+        : null,
+    [kpi, selectedDistance, result.racePaceSec, daysToRace, lang]
+  );
+
   const handleApply = () => {
     onApplyTargetPace(selectedDistance, result.racePaceSec);
     setAppliedNotice(
@@ -75,25 +100,34 @@ export default function PaceCalculator({
     );
   };
 
+  const handleApplyConservative = () => {
+    if (!readiness) return;
+    const pace = readiness.recommendedTrainingPaceSecPerKm;
+    onApplyTargetPace(selectedDistance, pace);
+    setAppliedNotice(
+      t.appliedNotice(selectedDistance, formatCalculatorPace(pace))
+    );
+  };
+
   return (
     <section
       data-testid="pace-calculator-section"
       aria-labelledby="pace-calculator-heading"
-      className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 sm:p-6 space-y-6"
+      className="bg-white dark:bg-slate-900 border border-[#DFE7E2] dark:border-slate-800 rounded-2xl p-5 sm:p-6 space-y-6"
     >
       <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
         <div className="space-y-1">
           <h3
             id="pace-calculator-heading"
-            className="text-lg sm:text-xl font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2"
+            className="text-lg sm:text-xl font-bold text-[#202A2A] dark:text-slate-100 flex items-center gap-2"
           >
             <Calculator
-              className="w-5 h-5 text-teal-700 dark:text-teal-400 shrink-0"
+              className="w-5 h-5 text-[#087F73] dark:text-teal-400 shrink-0"
               aria-hidden="true"
             />
             <span>{t.heading}</span>
           </h3>
-          <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 leading-relaxed max-w-2xl">
+          <p className="text-xs sm:text-sm text-[#596866] dark:text-slate-300 leading-relaxed max-w-2xl">
             {t.subtitle}
           </p>
         </div>
@@ -102,7 +136,7 @@ export default function PaceCalculator({
           type="button"
           onClick={handleReset}
           data-testid="pace-calc-reset-btn"
-          className="min-h-[44px] px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:border-teal-300 dark:hover:border-teal-600 hover:text-teal-800 dark:hover:text-teal-300 transition-colors inline-flex items-center gap-1.5 whitespace-nowrap shrink-0 self-start focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-700 dark:focus-visible:ring-teal-400"
+          className="min-h-[44px] px-4 py-2 rounded-xl border border-[#DFE7E2] dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-semibold text-[#202A2A] dark:text-slate-200 hover:border-[#087F73] dark:hover:border-teal-600 hover:text-[#087F73] dark:hover:text-teal-300 transition-colors inline-flex items-center gap-1.5 whitespace-nowrap shrink-0 self-start focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#087F73] dark:focus-visible:ring-teal-400"
         >
           <RotateCcw className="w-3.5 h-3.5" aria-hidden="true" />
           <span>{t.resetBtn}</span>
@@ -112,11 +146,11 @@ export default function PaceCalculator({
       {activeCustomPaceSecPerKm && activeCustomPaceSecPerKm > 0 && (
         <div
           data-testid="active-custom-pace-banner"
-          className="rounded-xl bg-teal-50/85 dark:bg-teal-950/50 border border-teal-200 dark:border-teal-800/70 px-4 py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs sm:text-sm text-teal-950 dark:text-teal-100"
+          className="rounded-xl bg-[#E6F3EE] dark:bg-teal-950/50 border border-[#DFE7E2] dark:border-teal-800/70 px-4 py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs sm:text-sm text-[#202A2A] dark:text-teal-100"
         >
           <div className="flex items-center gap-2">
             <CheckCircle2
-              className="w-4 h-4 text-teal-700 dark:text-teal-400 shrink-0"
+              className="w-4 h-4 text-[#087F73] dark:text-teal-400 shrink-0"
               aria-hidden="true"
             />
             <span>
@@ -132,7 +166,7 @@ export default function PaceCalculator({
               setAppliedNotice(null);
             }}
             data-testid="clear-custom-pace-btn"
-            className="min-h-[38px] px-3.5 py-1.5 rounded-lg bg-white dark:bg-slate-800 border border-teal-200 dark:border-teal-700 text-xs font-semibold text-teal-800 dark:text-teal-200 hover:bg-teal-100/60 dark:hover:bg-slate-700 whitespace-nowrap shrink-0 self-start sm:self-center"
+            className="min-h-[38px] px-3.5 py-1.5 rounded-lg bg-white dark:bg-slate-800 border border-[#DFE7E2] dark:border-teal-700 text-xs font-semibold text-[#087F73] dark:text-teal-200 hover:border-[#087F73] dark:hover:bg-slate-700 whitespace-nowrap shrink-0 self-start sm:self-center"
           >
             {t.useStravaBaselineBtn}
           </button>
@@ -141,7 +175,7 @@ export default function PaceCalculator({
 
       {/* Distance Selection */}
       <div className="space-y-2">
-        <span className="block text-xs font-semibold text-slate-700 dark:text-slate-200">
+        <span className="block text-xs font-semibold text-[#202A2A] dark:text-slate-200">
           {t.distanceLabel}
         </span>
         <div
@@ -159,18 +193,18 @@ export default function PaceCalculator({
                 onClick={() => handleSelectDistance(key)}
                 data-testid={`pace-calc-dist-${key}`}
                 aria-pressed={active}
-                className={`min-h-[52px] px-3.5 py-2.5 rounded-xl border text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-700 dark:focus-visible:ring-teal-400 ${
+                className={`min-h-[52px] px-3.5 py-2.5 rounded-xl border text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#087F73] dark:focus-visible:ring-teal-400 ${
                   active
-                    ? 'bg-teal-700 dark:bg-teal-600 border-teal-700 dark:border-teal-500 text-white'
-                    : 'bg-[#F7F9FA] dark:bg-slate-800/70 border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-100 hover:border-teal-300 dark:hover:border-teal-600'
+                    ? 'bg-[#087F73] dark:bg-teal-600 border-[#087F73] dark:border-teal-500 text-white'
+                    : 'bg-[#F7F6F2] dark:bg-slate-800/70 border-[#DFE7E2] dark:border-slate-700 text-[#202A2A] dark:text-slate-100 hover:border-[#087F73] dark:hover:border-teal-600'
                 }`}
               >
                 <span className="block text-sm font-bold">{key}</span>
                 <span
-                  className={`block text-xs font-mono tabular-nums mt-0.5 ${
+                  className={`block text-xs tabular-nums mt-0.5 ${
                     active
-                      ? 'text-teal-100'
-                      : 'text-slate-500 dark:text-slate-400'
+                      ? 'text-teal-50'
+                      : 'text-[#596866] dark:text-slate-400'
                   }`}
                 >
                   {formatCalculatorDecimal(opt.km, 2, lang)} km
@@ -253,27 +287,27 @@ export default function PaceCalculator({
         </div>
       </div>
 
-      {/* Primary Race Pace Output & Apply Action */}
-      <div className="rounded-xl bg-gradient-to-br from-[#EAF6F3] via-[#F4F8FB] to-[#EEF2FB] dark:from-teal-950/60 dark:via-slate-800/80 dark:to-indigo-950/50 border border-teal-200/80 dark:border-teal-800/60 p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      {/* Primary Race Pace Output & Apply Action (Mint Surface) */}
+      <div className="rounded-xl bg-[#E6F3EE] dark:bg-slate-800/80 border border-[#DFE7E2] dark:border-teal-800/60 p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex flex-wrap items-center gap-6">
           <div>
-            <p className="text-xs font-medium text-teal-900 dark:text-teal-200">
+            <p className="text-xs font-medium text-[#596866] dark:text-teal-200">
               {t.racePaceLabel} ({selectedDistance})
             </p>
             <p
               data-testid="pace-calc-race-pace"
-              className="text-2xl sm:text-3xl font-bold font-mono tabular-nums text-slate-900 dark:text-slate-100 mt-0.5"
+              className="text-2xl sm:text-3xl font-bold font-mono tabular-nums text-[#202A2A] dark:text-slate-100 mt-0.5"
             >
               {result.racePaceFormatted}
             </p>
           </div>
-          <div className="pl-0 sm:pl-6 sm:border-l border-teal-200/70 dark:border-teal-800/60">
-            <p className="text-xs font-medium text-slate-600 dark:text-slate-300">
+          <div className="pl-0 sm:pl-6 sm:border-l border-[#DFE7E2] dark:border-teal-800/60">
+            <p className="text-xs font-medium text-[#596866] dark:text-slate-300">
               {t.speedLabel}
             </p>
             <p
               data-testid="pace-calc-speed"
-              className="text-lg sm:text-xl font-bold font-mono tabular-nums text-teal-800 dark:text-teal-300 mt-0.5"
+              className="text-lg sm:text-xl font-bold tabular-nums text-[#087F73] dark:text-teal-300 mt-0.5"
             >
               {result.speedKmhFormatted}
             </p>
@@ -284,11 +318,62 @@ export default function PaceCalculator({
           type="button"
           onClick={handleApply}
           data-testid="pace-calc-apply-btn"
-          className="min-h-[44px] px-5 py-2.5 rounded-xl bg-teal-700 dark:bg-teal-600 text-white text-sm font-semibold hover:bg-teal-800 dark:hover:bg-teal-500 transition-colors whitespace-nowrap shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-700 dark:focus-visible:ring-teal-400"
+          className="min-h-[44px] px-5 py-2.5 rounded-xl bg-[#087F73] dark:bg-teal-600 text-white text-sm font-semibold hover:bg-[#06685E] dark:hover:bg-teal-500 transition-colors whitespace-nowrap shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#087F73] dark:focus-visible:ring-teal-400"
         >
           {applyButtonLabel || t.applyToPlanBtn}
         </button>
       </div>
+
+      {readiness && (
+        <div
+          data-testid="pace-readiness-card"
+          className={`rounded-xl border p-4 space-y-2.5 text-xs ${
+            readiness.status === 'aligned'
+              ? 'bg-emerald-50/75 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-800/70 text-emerald-950 dark:text-emerald-100'
+              : 'bg-amber-50/85 dark:bg-amber-950/50 border-amber-200 dark:border-amber-800/70 text-amber-950 dark:text-amber-100'
+          }`}
+        >
+          <div className="flex items-start gap-2.5">
+            {readiness.status === 'aligned' ? (
+              <ShieldCheck
+                className="w-4 h-4 text-emerald-700 dark:text-emerald-400 shrink-0 mt-0.5"
+                aria-hidden="true"
+              />
+            ) : (
+              <AlertTriangle
+                className="w-4 h-4 text-amber-700 dark:text-amber-400 shrink-0 mt-0.5"
+                aria-hidden="true"
+              />
+            )}
+            <div className="space-y-1 min-w-0">
+              <p className="font-bold">
+                {t.readinessHeading} · {readiness.headline}
+              </p>
+              <p className="leading-relaxed opacity-90">{readiness.explanation}</p>
+              <p className="opacity-80">{t.goalVsTrainingNote}</p>
+            </div>
+          </div>
+
+          {readiness.status !== 'aligned' &&
+            readiness.recommendedTrainingPaceSecPerKm !== result.racePaceSec && (
+              <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
+                <span className="font-semibold">
+                  {readiness.suggestedTrainingNote}
+                </span>
+                <button
+                  type="button"
+                  onClick={handleApplyConservative}
+                  data-testid="pace-calc-apply-conservative-btn"
+                  className="min-h-[38px] px-3.5 py-1.5 rounded-lg bg-white dark:bg-slate-800 border border-amber-300 dark:border-amber-700 text-xs font-semibold text-amber-950 dark:text-amber-100 hover:bg-amber-100/70 dark:hover:bg-slate-700 whitespace-nowrap"
+                >
+                  {t.applyConservativeBtn(
+                    formatCalculatorPace(readiness.recommendedTrainingPaceSecPerKm)
+                  )}
+                </button>
+              </div>
+            )}
+        </div>
+      )}
 
       {appliedNotice && (
         <div
@@ -304,49 +389,51 @@ export default function PaceCalculator({
         </div>
       )}
 
-      {/* 3 Training Zone Summary Strips */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        <div className="rounded-xl bg-emerald-50/85 dark:bg-emerald-950/50 border border-emerald-200/70 dark:border-emerald-800/60 p-4 space-y-1">
-          <p className="text-xs font-semibold text-emerald-900 dark:text-emerald-200">
+      {/* 3 Training Zone Summary Strip (Hairline Dividers instead of Nested Boxes) */}
+      <div className="pt-4 border-t border-[#DFE7E2] dark:border-slate-800 grid grid-cols-1 sm:grid-cols-3 divide-y sm:divide-y-0 sm:divide-x divide-[#DFE7E2] dark:divide-slate-800">
+        <div className="py-3 sm:py-1 sm:pr-5 space-y-1">
+          <p className="text-xs font-semibold text-[#087F73] dark:text-teal-300">
             {t.easyTitle}
           </p>
           <p
             data-testid="pace-calc-easy"
-            className="text-base font-bold font-mono tabular-nums text-emerald-950 dark:text-emerald-100"
+            className="text-base font-bold font-mono tabular-nums text-[#202A2A] dark:text-slate-100"
           >
             {result.easyRange}
           </p>
-          <p className="text-[11px] text-emerald-900/80 dark:text-emerald-200/80 leading-relaxed">
+          <p className="text-xs text-[#596866] dark:text-slate-300 leading-relaxed">
             {t.easyNote}
           </p>
         </div>
 
-        <div className="rounded-xl bg-sky-50/85 dark:bg-sky-950/50 border border-sky-200/70 dark:border-sky-800/60 p-4 space-y-1">
-          <p className="text-xs font-semibold text-sky-900 dark:text-sky-200">
-            {t.tempoTitle}
+        <div className="py-3 sm:py-1 sm:px-5 space-y-1">
+          <p className="text-xs font-semibold text-[#202A2A] dark:text-slate-200 inline-flex items-center gap-1.5">
+            <span className="w-2 h-2 rounded-full bg-[#E9957D]" aria-hidden="true" />
+            <span>{t.tempoTitle}</span>
           </p>
           <p
             data-testid="pace-calc-tempo"
-            className="text-base font-bold font-mono tabular-nums text-sky-950 dark:text-sky-100"
+            className="text-base font-bold font-mono tabular-nums text-[#202A2A] dark:text-slate-100"
           >
             {result.tempoRange}
           </p>
-          <p className="text-[11px] text-sky-900/80 dark:text-sky-200/80 leading-relaxed">
+          <p className="text-xs text-[#596866] dark:text-slate-300 leading-relaxed">
             {t.tempoNote}
           </p>
         </div>
 
-        <div className="rounded-xl bg-indigo-50/85 dark:bg-indigo-950/50 border border-indigo-200/70 dark:border-indigo-800/60 p-4 space-y-1">
-          <p className="text-xs font-semibold text-indigo-900 dark:text-indigo-200">
-            {t.intervalTitle}
+        <div className="py-3 sm:py-1 sm:pl-5 space-y-1">
+          <p className="text-xs font-semibold text-[#202A2A] dark:text-slate-200 inline-flex items-center gap-1.5">
+            <span className="w-2 h-2 rounded-full bg-[#087F73]" aria-hidden="true" />
+            <span>{t.intervalTitle}</span>
           </p>
           <p
             data-testid="pace-calc-interval"
-            className="text-base font-bold font-mono tabular-nums text-indigo-950 dark:text-indigo-100"
+            className="text-base font-bold font-mono tabular-nums text-[#202A2A] dark:text-slate-100"
           >
             {result.intervalRange}
           </p>
-          <p className="text-[11px] text-indigo-900/80 dark:text-indigo-200/80 leading-relaxed">
+          <p className="text-xs text-[#596866] dark:text-slate-300 leading-relaxed">
             {t.intervalNote}
           </p>
         </div>
