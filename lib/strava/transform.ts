@@ -23,6 +23,7 @@ import {
   RaceCountdownInfo,
   RaceCountdownStatus,
   RaceDistanceKey,
+  RacePredictionItem,
   RoutePoint,
   RunActivity,
   RunnerProfile,
@@ -31,6 +32,7 @@ import {
   TrainingPlanSummary,
   WeeklyChartBucket,
   WeeklyVolumeProgression,
+  WorkoutStepBlock,
 } from './types';
 
 const MONTHS_ID_SHORT = [
@@ -615,7 +617,7 @@ export function generateTrainingPlan(
             isCutback: false,
             note:
               weeklyIncreasePct > 0
-                ? `Gradual +${weeklyIncreasePct}% step-up within BMI safety bounds.`
+                ? `Gradual +${weeklyIncreasePct}% initial step-up. Adjust based on recovery and body response.`
                 : 'Volume held steady to support injury recovery.',
           },
           {
@@ -651,7 +653,7 @@ export function generateTrainingPlan(
             isCutback: false,
             note:
               weeklyIncreasePct > 0
-                ? `Naik bertahap +${weeklyIncreasePct}% sesuai batas aman BMI.`
+                ? `Naik bertahap +${weeklyIncreasePct}% sebagai patokan awal. Sesuaikan dengan pemulihan dan respons tubuh.`
                 : 'Volume ditahan stabil untuk pemulihan cedera.',
           },
           {
@@ -746,24 +748,24 @@ export function generateTrainingPlan(
           ? {
               title: 'Lower-Body Strength & Core',
               durationMin: 30,
-              exercises: 'Squats, reverse lunges, calf raises & plank',
+              exercises: 'Squat 3×10 · Reverse lunges 3×8/leg · Calf raises 3×15 · Plank 3×40s',
             }
           : {
               title: 'Kekuatan Kaki & Core',
               durationMin: 30,
-              exercises: 'Squat, lunges, calf raises & plank',
+              exercises: 'Squat 3×10 · Lunges 3×8/sisi · Calf raises 3×15 · Plank 3×40 dtk',
             };
       strengthScheduleMap[3] =
         lang === 'en'
           ? {
               title: 'Single-Leg Stability & Mobility',
               durationMin: 25,
-              exercises: 'Glute bridge, step-ups, clamshell & hip mobility',
+              exercises: 'Glute bridge 3×12 · Step-ups 3×8/leg · Clamshell 2×15 · Hip mobility',
             }
           : {
               title: 'Stabilitas Satu Kaki & Mobilitas',
               durationMin: 25,
-              exercises: 'Glute bridge, step-up, clamshell & mobilitas pinggul',
+              exercises: 'Glute bridge 3×12 · Step-up 3×8/sisi · Clamshell 2×15 · Mobilitas pinggul',
             };
     } else if (days === 5) {
       strengthScheduleMap[0] =
@@ -771,24 +773,24 @@ export function generateTrainingPlan(
           ? {
               title: 'Post-Run Core & Hip Stability',
               durationMin: 20,
-              exercises: 'Plank, side plank, dead bug & clamshell',
+              exercises: 'Plank 3×40s · Side plank 2×30s/side · Dead bug 3×10 · Clamshell 2×15',
             }
           : {
               title: 'Core & Stabilitas Pinggul (Usai Lari)',
               durationMin: 20,
-              exercises: 'Plank, side plank, dead bug & clamshell',
+              exercises: 'Plank 3×40 dtk · Side plank 2×30 dtk · Dead bug 3×10 · Clamshell 2×15',
             };
       strengthScheduleMap[2] =
         lang === 'en'
           ? {
               title: 'Runner Lower-Body Strength',
               durationMin: 30,
-              exercises: 'Goblet squat, single-leg RDL & eccentric calf raises',
+              exercises: 'Goblet squat 3×10 · Single-leg RDL 3×8/leg · Eccentric calf raises 3×12',
             }
           : {
               title: 'Kekuatan Otot Lari (Hari Non-Lari)',
               durationMin: 30,
-              exercises: 'Goblet squat, single-leg RDL & calf raises',
+              exercises: 'Goblet squat 3×10 · Single-leg RDL 3×8/sisi · Calf raises 3×12',
             };
     } else {
       strengthScheduleMap[1] =
@@ -796,27 +798,187 @@ export function generateTrainingPlan(
           ? {
               title: 'Post-Easy Core & Glute Activation',
               durationMin: 20,
-              exercises: 'Glute bridge, plank & bird-dog',
+              exercises: 'Glute bridge 3×12 · Plank 3×40s · Bird-dog 3×8/side',
             }
           : {
               title: 'Core & Aktivasi Glute (Usai Easy Run)',
               durationMin: 20,
-              exercises: 'Glute bridge, plank & bird-dog',
+              exercises: 'Glute bridge 3×12 · Plank 3×40 dtk · Bird-dog 3×8/sisi',
             };
       strengthScheduleMap[3] =
         lang === 'en'
           ? {
               title: 'Light Leg Strength & Tendon Care',
               durationMin: 25,
-              exercises: 'Step-ups, wall sit & heel drops',
+              exercises: 'Step-ups 3×8/leg · Wall sit 2×40s · Heel drops 3×12',
             }
           : {
               title: 'Kekuatan Kaki Ringan & Tendon',
               durationMin: 25,
-              exercises: 'Step-up, wall sit & heel drops',
+              exercises: 'Step-up 3×8/sisi · Wall sit 2×40 dtk · Heel drops 3×12',
             };
     }
   }
+
+  const estimateDuration = (km: number, zoneRange: PaceZoneRange): number => {
+    const midPace = Math.round((zoneRange.minPaceSecPerKm + zoneRange.maxPaceSecPerKm) / 2);
+    return Math.max(12, Math.round((km * midPace) / 60));
+  };
+
+  const buildSteps = (
+    role: 'easy' | 'tempo' | 'interval' | 'long_run',
+    km: number
+  ): {
+    steps: WorkoutStepBlock[];
+    coachNote: string;
+    durationMin: number;
+  } => {
+    const wuKm = km >= 5 ? 1.5 : km >= 3.5 ? 1.0 : 0.8;
+    const cdKm = km >= 4 ? 1.0 : 0.6;
+    const mainKm = Math.max(1.0, Math.round((km - wuKm - cdKm) * 10) / 10);
+
+    if (role === 'interval') {
+      const repsCount = clampNumber(Math.round((mainKm * 1000) / 500), 4, 8);
+      return {
+        durationMin: estimateDuration(km, tempoZone),
+        coachNote:
+          lang === 'en'
+            ? 'Run each repeat smooth and controlled—save a touch in reserve rather than sprinting rep 1.'
+            : 'Jaga tiap repetisi tetap rapi dan terkontrol—jangan langsung sprint habis di repetisi pertama.',
+        steps: [
+          {
+            phase: 'warmup',
+            label: lang === 'en' ? 'Warm-up' : 'Pemanasan',
+            targetText: `${formatDecimalComma(wuKm, 1, lang)} km + 2×60m strides`,
+            paceText: easyZone.formattedRange,
+          },
+          {
+            phase: 'main',
+            label: lang === 'en' ? 'Main Set' : 'Sesi Inti',
+            targetText:
+              lang === 'en'
+                ? `${repsCount}×400m fast + 90s walk/jog recovery`
+                : `${repsCount}×400m cepat + jeda jalan/jog 90 dtk`,
+            paceText: intervalZone.formattedRange,
+          },
+          {
+            phase: 'cooldown',
+            label: lang === 'en' ? 'Cool-down' : 'Pendinginan',
+            targetText: `${formatDecimalComma(cdKm, 1, lang)} km`,
+            paceText: easyZone.formattedRange,
+          },
+        ],
+      };
+    }
+
+    if (role === 'tempo') {
+      return {
+        durationMin: estimateDuration(km, tempoZone),
+        coachNote:
+          lang === 'en'
+            ? 'Settle into a steady rhythm where you can speak 3–4 words at a time during the main block.'
+            : 'Kunci ritme stabil di sesi inti—masih cukup terkontrol untuk mengucap 3–4 kata singkat.',
+        steps: [
+          {
+            phase: 'warmup',
+            label: lang === 'en' ? 'Warm-up' : 'Pemanasan',
+            targetText: `${formatDecimalComma(wuKm, 1, lang)} km`,
+            paceText: easyZone.formattedRange,
+          },
+          {
+            phase: 'main',
+            label: lang === 'en' ? 'Main Set' : 'Sesi Inti',
+            targetText:
+              lang === 'en'
+                ? `${formatDecimalComma(mainKm, 1, lang)} km steady Tempo`
+                : `${formatDecimalComma(mainKm, 1, lang)} km Tempo stabil`,
+            paceText: tempoZone.formattedRange,
+          },
+          {
+            phase: 'cooldown',
+            label: lang === 'en' ? 'Cool-down' : 'Pendinginan',
+            targetText: `${formatDecimalComma(cdKm, 1, lang)} km`,
+            paceText: easyZone.formattedRange,
+          },
+        ],
+      };
+    }
+
+    if (role === 'long_run') {
+      const longWu = Math.min(2.0, Math.round(km * 0.2 * 10) / 10);
+      const longCd = 1.0;
+      const longMain = Math.max(1.5, Math.round((km - longWu - longCd) * 10) / 10);
+      return {
+        durationMin: estimateDuration(km, longRunZone),
+        coachNote:
+          lang === 'en'
+            ? 'Start conservatively on the first 2 km and sip water every 20–25 minutes if weather is humid.'
+            : 'Mulai 2 km pertama dengan santai; minum air bertahap tiap 20–25 menit bila cuaca lembap.',
+        steps: [
+          {
+            phase: 'warmup',
+            label: lang === 'en' ? 'Warm-up' : 'Awalan Santai',
+            targetText: `${formatDecimalComma(longWu, 1, lang)} km`,
+            paceText: easyZone.formattedRange,
+          },
+          {
+            phase: 'main',
+            label: lang === 'en' ? 'Main Set' : 'Jarak Inti',
+            targetText:
+              lowImpactOnly
+                ? lang === 'en'
+                  ? `${formatDecimalComma(longMain, 1, lang)} km (3m jog / 1m walk)`
+                  : `${formatDecimalComma(longMain, 1, lang)} km (3 mnt lari / 1 mnt jalan)`
+                : lang === 'en'
+                  ? `${formatDecimalComma(longMain, 1, lang)} km conversational aerobic`
+                  : `${formatDecimalComma(longMain, 1, lang)} km aerobik nyaman`,
+            paceText: longRunZone.formattedRange,
+          },
+          {
+            phase: 'cooldown',
+            label: lang === 'en' ? 'Finish' : 'Penutup Rapi',
+            targetText: `${formatDecimalComma(longCd, 1, lang)} km`,
+            paceText: easyZone.formattedRange,
+          },
+        ],
+      };
+    }
+
+    return {
+      durationMin: estimateDuration(km, easyZone),
+      coachNote:
+        lang === 'en'
+          ? isRaceWeekOrDay
+            ? 'Keep your stride bouncy and light—let the legs feel fresh for race day.'
+            : 'Ignore GPS pressure today; keep breathing relaxed enough to chat comfortably.'
+          : isRaceWeekOrDay
+            ? 'Jaga langkah ringan dan santai—fokus menjaga kaki tetap segar menuju garis start.'
+            : 'Tak perlu kejar angka pace hari ini; jaga napas tetap cukup nyaman untuk mengobrol.',
+      steps: [
+        {
+          phase: 'warmup',
+          label: lang === 'en' ? 'Warm-up' : 'Pemanasan',
+          targetText:
+            lang === 'en' ? '5 min brisk walk & ankle mobility' : '5 mnt jalan cepat & mobilitas engkel',
+        },
+        {
+          phase: 'main',
+          label: lang === 'en' ? 'Main Set' : 'Sesi Inti',
+          targetText: `${formatDecimalComma(km, 1, lang)} km`,
+          paceText: easyZone.formattedRange,
+        },
+        {
+          phase: 'cooldown',
+          label: lang === 'en' ? 'Cool-down' : 'Pendinginan',
+          targetText: isRaceWeekOrDay
+            ? '3×60m strides + stretch'
+            : lang === 'en'
+              ? '5 min calf & hip stretch'
+              : '5 mnt peregangan betis & pinggul',
+        },
+      ],
+    };
+  };
 
   const weeklySchedule: DailySessionPlan[] = dayNames.map((dayName, dayIndex) => {
     const strengthSession = strengthScheduleMap[dayIndex] ?? null;
@@ -840,6 +1002,36 @@ export function generateTrainingPlan(
           lang === 'en'
             ? 'Prioritize quality sleep, steady hydration, and 10 minutes of gentle mobility.'
             : 'Fokus tidur cukup, hidrasi, dan peregangan ringan 10 menit.',
+        estimatedDurationMin: strengthSession ? strengthSession.durationMin : 15,
+        coachNote:
+          lang === 'en'
+            ? strengthSession
+              ? 'Strong glutes and calves absorb running impact cleanly without adding extra mileage.'
+              : 'Muscles adapt during rest—take today genuinely easy.'
+            : strengthSession
+              ? 'Otot glute dan betis yang kuat membantu menahan benturan lari tanpa menambah kilometer.'
+              : 'Adaptasi kekuatan justru terjadi saat istirahat—nikmati hari pemulihan ini.',
+        workoutSteps: strengthSession
+          ? [
+              {
+                phase: 'warmup',
+                label: lang === 'en' ? 'Activation' : 'Aktivasi',
+                targetText:
+                  lang === 'en' ? '5 min hip circles & glute bridges' : '5 mnt mobilitas pinggul',
+              },
+              {
+                phase: 'main',
+                label: lang === 'en' ? 'Strength' : 'Penguatan',
+                targetText: strengthSession.exercises,
+              },
+              {
+                phase: 'cooldown',
+                label: lang === 'en' ? 'Mobility' : 'Mobilitas',
+                targetText:
+                  lang === 'en' ? '5 min calf & hamstring stretch' : '5 mnt peregangan ringan',
+              },
+            ]
+          : undefined,
         strengthSession,
       };
     }
@@ -849,6 +1041,7 @@ export function generateTrainingPlan(
       minSessionKm,
       Math.round(((scheduleTargetWeekKm * roleWeights[role]) / totalWeight) * 10) / 10
     );
+    const meta = buildSteps(role, km);
 
     if (role === 'long_run') {
       return {
@@ -881,6 +1074,9 @@ export function generateTrainingPlan(
               : lowImpactOnly
                 ? 'Kombinasikan lari pelan 3 menit dan jalan cepat 1 menit secara konsisten.'
                 : 'Jaga detak jantung stabil di zona aerobik nyaman sejak kilometer pertama.',
+        estimatedDurationMin: meta.durationMin,
+        coachNote: meta.coachNote,
+        workoutSteps: meta.steps,
         strengthSession,
       };
     }
@@ -900,6 +1096,9 @@ export function generateTrainingPlan(
           lang === 'en'
             ? 'Warm up 1.5 km easy, hold Tempo pace for the core block, then cool down 1 km.'
             : 'Pemanasan 1,5 km Easy, masuk pace Tempo di inti sesi, lalu pendinginan 1 km.',
+        estimatedDurationMin: meta.durationMin,
+        coachNote: meta.coachNote,
+        workoutSteps: meta.steps,
         strengthSession,
       };
     }
@@ -917,6 +1116,9 @@ export function generateTrainingPlan(
           lang === 'en'
             ? 'Run 5–6×400m fast repeats with 90 seconds of easy walk/jog recovery.'
             : 'Lakukan 5–6×400m cepat dengan jeda jalan/jogging 90 detik di antaranya.',
+        estimatedDurationMin: meta.durationMin,
+        coachNote: meta.coachNote,
+        workoutSteps: meta.steps,
         strengthSession,
       };
     }
@@ -951,6 +1153,9 @@ export function generateTrainingPlan(
             : bmiResult.extraEasyRatioPct >= 15
               ? 'Sisipkan jeda jalan cepat 1 menit tiap 5 menit lari bila napas terasa berat.'
               : 'Lari santai tanpa mengejar waktu untuk membangun kapiler dan efisiensi langkah.',
+      estimatedDurationMin: meta.durationMin,
+      coachNote: meta.coachNote,
+      workoutSteps: meta.steps,
       strengthSession,
     };
   });
@@ -1994,4 +2199,156 @@ export function computeAdaptivePlanAdjustment(params: {
   };
 }
 
+/**
+ * Pure helper to update distance & moving time on an imported/logged run activity,
+ * recomputing derived average speed and clearing prior anomaly flags when valid.
+ */
+export function updateRunActivityDistanceAndTime(
+  run: RunActivity,
+  distanceMeters: number,
+  movingTimeSeconds: number
+): RunActivity {
+  const safeDistance = Math.max(100, Math.min(500000, Math.round(distanceMeters)));
+  const safeMovingTime = Math.max(30, Math.min(604800, Math.round(movingTimeSeconds)));
+  const recomputedSpeedMps = safeDistance / safeMovingTime;
+
+  const updated: RunActivity = {
+    ...run,
+    distanceMeters: safeDistance,
+    movingTimeSeconds: safeMovingTime,
+    elapsedTimeSeconds: Math.max(safeMovingTime, run.elapsedTimeSeconds || safeMovingTime),
+    averageSpeedMps: recomputedSpeedMps,
+    maxSpeedMps: Math.max(recomputedSpeedMps, run.maxSpeedMps || recomputedSpeedMps),
+  };
+  delete updated.dataWarningReason;
+  return updated;
+}
+
+/**
+ * Scales a Week 1 weeklySchedule to any week (1..4) in the 4-week progressive block
+ * so runners can inspect upcoming build & cutback weeks just like Runna.
+ */
+export function scaleScheduleForWeek(
+  plan: TrainingPlanSummary,
+  weekNumber: 1 | 2 | 3 | 4,
+  lang: AppLanguage = 'id'
+): {
+  weekInfo: WeeklyVolumeProgression;
+  schedule: DailySessionPlan[];
+  totalKm: number;
+} {
+  const weekInfo =
+    plan.fourWeekProgression.find((w) => w.weekNumber === weekNumber) ??
+    plan.fourWeekProgression[0];
+  const baseWeekKm = Math.max(0.1, plan.fourWeekProgression[0]?.targetVolumeKm || plan.totalPlannedWeekKm || 1);
+  const ratio = weekInfo ? weekInfo.targetVolumeKm / baseWeekKm : 1;
+
+  if (weekNumber === 1 || Math.abs(ratio - 1) < 0.01) {
+    return {
+      weekInfo,
+      schedule: plan.weeklySchedule,
+      totalKm: plan.totalPlannedWeekKm,
+    };
+  }
+
+  const schedule = plan.weeklySchedule.map((session) => {
+    if (session.zone === 'rest') return session;
+    const scaledKm = Math.max(1.5, Math.round(session.targetDistanceKm * ratio * 10) / 10);
+    const estDuration = session.estimatedDurationMin
+      ? Math.max(12, Math.round(session.estimatedDurationMin * ratio))
+      : undefined;
+
+    const scaledSteps = session.workoutSteps?.map((step) => {
+      if (step.phase !== 'main') return step;
+      if (session.zone === 'interval') {
+        const baseReps = clampNumber(Math.round(((scaledKm - 2.2) * 1000) / 500), 4, 8);
+        return {
+          ...step,
+          targetText:
+            lang === 'en'
+              ? `${baseReps}×400m fast + 90s walk/jog recovery`
+              : `${baseReps}×400m cepat + jeda jalan/jog 90 dtk`,
+        };
+      }
+      const wu = scaledKm >= 5 ? 1.5 : 1.0;
+      const cd = 1.0;
+      const mainKm = Math.max(1.0, Math.round((scaledKm - wu - cd) * 10) / 10);
+      if (session.zone === 'tempo') {
+        return {
+          ...step,
+          targetText:
+            lang === 'en'
+              ? `${formatDecimalComma(mainKm, 1, lang)} km steady Tempo`
+              : `${formatDecimalComma(mainKm, 1, lang)} km Tempo stabil`,
+        };
+      }
+      if (session.zone === 'long_run') {
+        return {
+          ...step,
+          targetText:
+            lang === 'en'
+              ? `${formatDecimalComma(Math.max(1.5, scaledKm - 2.5), 1, lang)} km conversational aerobic`
+              : `${formatDecimalComma(Math.max(1.5, scaledKm - 2.5), 1, lang)} km aerobik nyaman`,
+        };
+      }
+      return {
+        ...step,
+        targetText: `${formatDecimalComma(scaledKm, 1, lang)} km`,
+      };
+    });
+
+    return {
+      ...session,
+      targetDistanceKm: scaledKm,
+      estimatedDurationMin: estDuration,
+      workoutSteps: scaledSteps,
+    };
+  });
+
+  const totalKm =
+    Math.round(schedule.reduce((sum, s) => sum + s.targetDistanceKm, 0) * 10) / 10;
+
+  return {
+    weekInfo,
+    schedule,
+    totalKm,
+  };
+}
+
+/**
+ * Predicts 5K, 10K, 21K, and 42K race finish times from the runner's baseline pace
+ * using the Riegel equivalence formula (T2 = T1 * (D2 / D1)^1.06).
+ */
+export function predictRaceFinishTimes(
+  baselinePaceSecPerKm: number,
+  targetRace: RaceDistanceKey,
+  paceZoneBasis: TrainingPlanSummary['paceZoneBasis'] = 'default'
+): RacePredictionItem[] {
+  const safePace = clampNumber(baselinePaceSecPerKm > 0 ? baselinePaceSecPerKm : 365, 150, 900);
+  const referenceDistanceKm =
+    paceZoneBasis === 'race_goal'
+      ? RACE_TARGETS_BY_LANG.id[targetRace].distanceKm
+      : 5.0;
+  const referencePaceSec =
+    paceZoneBasis === 'race_goal' ? safePace : Math.max(150, safePace - 25);
+  const referenceTotalSeconds = referenceDistanceKm * referencePaceSec;
+
+  const raceKeys: RaceDistanceKey[] = ['5K', '10K', '21K', '42K'];
+  return raceKeys.map((race) => {
+    const distanceKm = RACE_TARGETS_BY_LANG.id[race].distanceKm;
+    const predictedSeconds = Math.round(
+      referenceTotalSeconds * Math.pow(distanceKm / referenceDistanceKm, 1.06)
+    );
+    const paceSecPerKm = Math.round(predictedSeconds / distanceKm);
+    return {
+      race,
+      distanceKm,
+      predictedSeconds,
+      formattedTime: formatDuration(predictedSeconds),
+      paceSecPerKm,
+      formattedPace: formatPace(paceSecPerKm),
+      isCurrentTarget: race === targetRace,
+    };
+  });
+}
 

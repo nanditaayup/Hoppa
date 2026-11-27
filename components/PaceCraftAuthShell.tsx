@@ -12,11 +12,32 @@ import {
   subscribeToAccessGrant,
 } from '@/lib/firebase/firestore-sync';
 import { PENDING_LICENSE_KEY_SESSION_KEY } from '@/lib/billing/license-format';
+import dynamic from 'next/dynamic';
 import FirebaseErrorBoundary from './FirebaseErrorBoundary';
 import { AuthProvider, useAuth } from './AuthProvider';
 import LandingPage from './LandingPage';
-import PaymentAccessGate from './PaymentAccessGate';
-import PaceCraftApp from './PaceCraftApp';
+
+const PaymentAccessGate = dynamic(() => import('./PaymentAccessGate'), {
+  ssr: false,
+  loading: () => (
+    <div className="min-h-screen bg-[#F7F6F2] dark:bg-slate-950 flex items-center justify-center p-6">
+      <div className="max-w-sm w-full bg-white dark:bg-slate-900 border border-[#DFE7E2] dark:border-slate-800 rounded-2xl p-6 text-center space-y-3">
+        <div className="h-6 w-28 bg-slate-100 dark:bg-slate-800 rounded-lg mx-auto animate-pulse" />
+      </div>
+    </div>
+  ),
+});
+
+const PaceCraftApp = dynamic(() => import('./PaceCraftApp'), {
+  ssr: false,
+  loading: () => (
+    <div className="min-h-screen bg-[#F7F6F2] dark:bg-slate-950 flex items-center justify-center p-6">
+      <div className="max-w-sm w-full bg-white dark:bg-slate-900 border border-[#DFE7E2] dark:border-slate-800 rounded-2xl p-6 text-center space-y-3">
+        <div className="h-6 w-28 bg-slate-100 dark:bg-slate-800 rounded-lg mx-auto animate-pulse" />
+      </div>
+    </div>
+  ),
+});
 
 const PRE_AUTH_LANG_EVENT = 'pacecraft-preauth-lang-change';
 

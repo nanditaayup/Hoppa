@@ -48,18 +48,18 @@ interface MonthlyIntensityCalendarProps {
 
 const TIER_CELL_CLASSES: Record<TrainingIntensityTier, string> = {
   0: 'bg-[#F7F6F2] dark:bg-slate-800/50 border-[#DFE7E2] dark:border-slate-700/80 text-[#596866] dark:text-slate-300',
-  1: 'bg-[#E6F3EE]/65 dark:bg-emerald-950/60 border-[#DFE7E2] dark:border-emerald-800 text-[#202A2A] dark:text-emerald-200',
-  2: 'bg-[#E6F3EE] dark:bg-teal-900/60 border-[#087F73]/30 dark:border-teal-700 text-[#202A2A] dark:text-teal-100',
-  3: 'bg-[#E9957D]/35 dark:bg-amber-900/55 border-[#E9957D]/80 dark:border-amber-700 text-[#202A2A] dark:text-amber-100',
-  4: 'bg-[#E9957D]/70 dark:bg-rose-900/55 border-[#E9957D] dark:border-rose-700 text-[#202A2A] dark:text-rose-100',
+  1: 'bg-[#E6F3EE]/60 dark:bg-teal-950/40 border-[#DFE7E2] dark:border-teal-900 text-[#202A2A] dark:text-teal-200',
+  2: 'bg-[#E6F3EE] dark:bg-teal-900/60 border-[#087F73]/30 dark:border-teal-700 text-[#087F73] dark:text-teal-100',
+  3: 'bg-[#087F73]/18 dark:bg-teal-800/75 border-[#087F73]/45 dark:border-teal-600 text-[#202A2A] dark:text-teal-50',
+  4: 'bg-[#087F73] dark:bg-teal-600 border-[#087F73] dark:border-teal-500 text-white dark:text-white',
 };
 
 const TIER_DOT_CLASSES: Record<TrainingIntensityTier, string> = {
   0: 'bg-[#DFE7E2] dark:bg-slate-600',
-  1: 'bg-[#087F73]/55 dark:bg-emerald-400',
-  2: 'bg-[#087F73] dark:bg-teal-400',
-  3: 'bg-[#E9957D] dark:bg-amber-400',
-  4: 'bg-rose-700 dark:bg-rose-400',
+  1: 'bg-[#087F73]/45 dark:bg-teal-400',
+  2: 'bg-[#087F73]/75 dark:bg-teal-300',
+  3: 'bg-[#087F73] dark:bg-teal-200',
+  4: 'bg-white/90 dark:bg-white',
 };
 
 const TIER_KEYS: TrainingIntensityTier[] = [0, 1, 2, 3, 4];
@@ -318,7 +318,9 @@ export default function MonthlyIntensityCalendar({
                   <span
                     className={`text-xs font-bold ${
                       day.isToday
-                        ? 'px-1.5 py-0.5 rounded-md bg-[#087F73] dark:bg-teal-500 text-white'
+                        ? day.intensityTier === 4
+                          ? 'px-1.5 py-0.5 rounded-md bg-white text-[#087F73]'
+                          : 'px-1.5 py-0.5 rounded-md bg-[#087F73] dark:bg-teal-500 text-white'
                         : ''
                     }`}
                   >
@@ -414,14 +416,20 @@ export default function MonthlyIntensityCalendar({
           </div>
 
           <div className="flex flex-wrap items-center gap-4 text-xs">
-            <div>
-              <span className="text-[#596866] dark:text-slate-400 mr-1.5">
-                {t.selectedTotalLabel}:
+            {selectedDay.totalDistanceKm > 0 ? (
+              <div>
+                <span className="text-[#596866] dark:text-slate-400 mr-1.5">
+                  {t.selectedTotalLabel}:
+                </span>
+                <span className="font-mono tabular-nums font-bold text-[#202A2A] dark:text-slate-100">
+                  {formatDecimalComma(selectedDay.totalDistanceKm, 2, lang)} km
+                </span>
+              </div>
+            ) : selectedDay.hasRestLog ? (
+              <span className="font-semibold text-[#087F73] dark:text-teal-300">
+                {t.restLoggedTag}
               </span>
-              <span className="font-bold text-[#202A2A] dark:text-slate-100">
-                {formatDecimalComma(selectedDay.totalDistanceKm, 2, lang)} km
-              </span>
-            </div>
+            ) : null}
             {selectedDay.totalMovingTimeSeconds > 0 && (
               <div>
                 <span className="text-[#596866] dark:text-slate-400 mr-1.5">
@@ -435,76 +443,92 @@ export default function MonthlyIntensityCalendar({
           </div>
         </div>
 
+        <p className="text-xs text-[#596866] dark:text-slate-400">
+          {t.intensityDescriptions[selectedDay.intensityLevel]}
+        </p>
+
         {selectedDay.sessions.length > 0 ? (
           <div className="divide-y divide-[#DFE7E2] dark:divide-slate-800 rounded-xl bg-[#F7F6F2] dark:bg-slate-800/50 px-4">
-            {selectedDay.sessions.map((session) => (
-              <div
-                key={session.id}
-                className="py-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3"
-              >
-                <div className="space-y-1 min-w-0">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="text-sm font-bold text-[#202A2A] dark:text-slate-100">
-                      {session.title}
-                    </span>
-                    <span className="px-2 py-0.5 rounded-md bg-white dark:bg-slate-900 text-[#087F73] dark:text-teal-300 text-[11px] font-semibold">
-                      {t.sourceLabels[session.source]}
-                    </span>
-                    <span className="px-2 py-0.5 rounded-md bg-white dark:bg-slate-900 text-[#596866] dark:text-slate-300 text-[11px] font-medium">
-                      {zoneLabels[session.zone]}
-                    </span>
+            {selectedDay.sessions.map((session) => {
+              const feelWord =
+                session.comfortRating !== null
+                  ? session.comfortRating <= 2
+                    ? UI_COPY[lang].dailyProgress.feelSimpleOptions.hard
+                    : session.comfortRating === 3
+                      ? UI_COPY[lang].dailyProgress.feelSimpleOptions.steady
+                      : UI_COPY[lang].dailyProgress.feelSimpleOptions.comfy
+                  : null;
+              return (
+                <div
+                  key={session.id}
+                  className="py-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+                >
+                  <div className="space-y-1 min-w-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="text-sm font-bold text-[#202A2A] dark:text-slate-100">
+                        {session.title}
+                      </span>
+                      <span className="px-2 py-0.5 rounded-md bg-white dark:bg-slate-900 text-[#087F73] dark:text-teal-300 text-[11px] font-semibold">
+                        {t.sourceLabels[session.source]}
+                      </span>
+                      <span className="px-2 py-0.5 rounded-md bg-white dark:bg-slate-900 text-[#596866] dark:text-slate-300 text-[11px] font-medium">
+                        {zoneLabels[session.zone]}
+                      </span>
+                    </div>
+                    {session.note && (
+                      <p className="text-xs text-[#596866] dark:text-slate-300">
+                        {session.note}
+                      </p>
+                    )}
                   </div>
-                  {session.note && (
-                    <p className="text-xs text-[#596866] dark:text-slate-300">
-                      {session.note}
-                    </p>
-                  )}
-                </div>
 
-                <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs shrink-0">
-                  <span className="inline-flex items-center gap-1 font-bold text-[#202A2A] dark:text-slate-100">
-                    <Flame className="w-3.5 h-3.5 text-[#087F73] dark:text-teal-400" aria-hidden="true" />
-                    {formatDecimalComma(session.distanceKm, 2, lang)} km
-                  </span>
-
-                  {session.paceSecPerKm && session.paceSecPerKm > 0 && (
-                    <span className="inline-flex items-center gap-1 font-mono tabular-nums text-[#202A2A] dark:text-slate-200">
-                      <Activity className="w-3.5 h-3.5 text-[#087F73] dark:text-sky-400" aria-hidden="true" />
-                      {formatPace(session.paceSecPerKm)}
-                    </span>
-                  )}
-
-                  {session.movingTimeSeconds && session.movingTimeSeconds > 0 && (
-                    <span className="inline-flex items-center gap-1 font-mono tabular-nums text-[#596866] dark:text-slate-300">
-                      <Clock className="w-3.5 h-3.5 text-[#596866]" aria-hidden="true" />
-                      {formatDuration(session.movingTimeSeconds)}
-                    </span>
-                  )}
-
-                  {session.avgHeartRateBpm && session.avgHeartRateBpm > 0 && (
-                    <span className="inline-flex items-center gap-1 font-mono tabular-nums text-[#202A2A] dark:text-rose-400">
-                      <HeartPulse className="w-3.5 h-3.5 text-[#087F73]" aria-hidden="true" />
-                      {session.avgHeartRateBpm} bpm
-                    </span>
-                  )}
-
-                  {session.elevationGainMeters !== null &&
-                    session.elevationGainMeters > 0 && (
-                      <span className="inline-flex items-center gap-1 text-[#596866] dark:text-slate-300">
-                        <Mountain className="w-3.5 h-3.5" aria-hidden="true" />
-                        +{Math.round(session.elevationGainMeters)} m
+                  <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs shrink-0">
+                    {session.distanceKm > 0 && (
+                      <span className="inline-flex items-center gap-1 font-mono tabular-nums font-bold text-[#202A2A] dark:text-slate-100">
+                        <Flame className="w-3.5 h-3.5 text-[#087F73] dark:text-teal-400" aria-hidden="true" />
+                        {formatDecimalComma(session.distanceKm, 2, lang)} km
                       </span>
                     )}
 
-                  {session.comfortRating !== null && (
-                    <span className="inline-flex items-center gap-1 font-semibold text-[#202A2A] dark:text-amber-400">
-                      <Star className="w-3.5 h-3.5 text-[#E9957D]" aria-hidden="true" />
-                      {session.comfortRating}/5
-                    </span>
-                  )}
+                    {session.paceSecPerKm && session.paceSecPerKm > 0 && (
+                      <span className="inline-flex items-center gap-1 font-mono tabular-nums text-[#202A2A] dark:text-slate-200">
+                        <Activity className="w-3.5 h-3.5 text-[#087F73] dark:text-sky-400" aria-hidden="true" />
+                        {formatPace(session.paceSecPerKm)}
+                      </span>
+                    )}
+
+                    {session.movingTimeSeconds && session.movingTimeSeconds > 0 && (
+                      <span className="inline-flex items-center gap-1 font-mono tabular-nums text-[#596866] dark:text-slate-300">
+                        <Clock className="w-3.5 h-3.5 text-[#596866]" aria-hidden="true" />
+                        {formatDuration(session.movingTimeSeconds)}
+                      </span>
+                    )}
+
+                    {session.avgHeartRateBpm && session.avgHeartRateBpm > 0 && (
+                      <span className="inline-flex items-center gap-1 font-mono tabular-nums text-[#202A2A] dark:text-rose-400">
+                        <HeartPulse className="w-3.5 h-3.5 text-[#087F73]" aria-hidden="true" />
+                        {session.avgHeartRateBpm} bpm
+                      </span>
+                    )}
+
+                    {session.elevationGainMeters !== null &&
+                      session.elevationGainMeters > 0 && (
+                        <span className="inline-flex items-center gap-1 text-[#596866] dark:text-slate-300">
+                          <Mountain className="w-3.5 h-3.5" aria-hidden="true" />
+                          +{Math.round(session.elevationGainMeters)} m
+                        </span>
+                      )}
+
+                    {feelWord && (
+                      <span className="inline-flex items-center gap-1 font-semibold text-[#202A2A] dark:text-amber-300">
+                        <Star className="w-3.5 h-3.5 text-[#087F73] dark:text-teal-300" aria-hidden="true" />
+                        {feelWord}
+                      </span>
+                    )}
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         ) : (
           <div className="rounded-xl bg-[#F7F6F2] dark:bg-slate-800/50 p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">

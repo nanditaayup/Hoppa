@@ -1,6 +1,5 @@
 import { ImageResponse } from 'next/og';
 
-export const runtime = 'edge';
 export const alt = 'PaceCraft — Perencana Menu Lari 5K–42K & Sinkronisasi Strava';
 export const size = {
   width: 1200,

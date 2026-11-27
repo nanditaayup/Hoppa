@@ -14,8 +14,8 @@ export default function HomePage() {
         </p>
         <ul>
           <li>Kalkulator Pace &amp; Zona Latihan (Easy, Tempo, Interval Pace)</li>
-          <li>Jadwal Mingguan aman dengan batas progresi volume maksimal 10%</li>
-          <li>Pelacak Jarak Sepatu Lari (Shoe Mileage Tracker 600–800 km)</li>
+          <li>Jadwal Mingguan dengan panduan progresi bertahap 5K hingga maraton</li>
+          <li>Pelacak Jarak Sepatu Lari &amp; Catatan Personal Best</li>
           <li>Impor Strava CSV/GPX gratis tanpa wajib langganan API berbayar</li>
           <li>Autentikasi Google, penyimpanan cloud terisolasi, dan akses pembeli</li>
         </ul>

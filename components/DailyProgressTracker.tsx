@@ -75,11 +75,22 @@ export default function DailyProgressTracker({
 
   const [paceInput, setPaceInput] = useState('');
   const [hrInput, setHrInput] = useState('');
-  const [comfortRating, setComfortRating] = useState<1 | 2 | 3 | 4 | 5>(4);
+  const [comfortRating, setComfortRating] = useState<1 | 2 | 3 | 4 | 5>(5);
   const [note, setNote] = useState('');
   const [showOptionalDetails, setShowOptionalDetails] = useState(false);
+  const [showHistoryLogs, setShowHistoryLogs] = useState(false);
   const [savedDayIndex, setSavedDayIndex] = useState<number | null>(null);
   const [isShareOpen, setIsShareOpen] = useState(false);
+
+  const feelBucket: 'hard' | 'steady' | 'comfy' =
+    comfortRating <= 2 ? 'hard' : comfortRating === 3 ? 'steady' : 'comfy';
+
+  const getFeelText = (rating: number) =>
+    rating <= 2
+      ? t.feelSimpleOptions.hard
+      : rating === 3
+        ? t.feelSimpleOptions.steady
+        : t.feelSimpleOptions.comfy;
 
   const handleSelectDay = (dayIndex: number) => {
     onSelectDayIndex(dayIndex);
@@ -171,7 +182,7 @@ export default function DailyProgressTracker({
     <section
       id="progres-harian"
       aria-labelledby="daily-progress-heading"
-      className="bg-white dark:bg-slate-900 border border-[#DFE7E2] dark:border-slate-800 rounded-2xl p-6 space-y-6"
+      className="bg-white dark:bg-slate-900 border border-[#DFE7E2] dark:border-slate-800 rounded-2xl p-5 sm:p-6 space-y-6"
     >
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
         <div className="space-y-1">
@@ -403,168 +414,112 @@ export default function DailyProgressTracker({
         })}
       </div>
 
-      {/* Check-in Form & Recent Logs */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 pt-4 border-t border-[#DFE7E2] dark:border-slate-800 items-start">
-        <form onSubmit={handleSubmit} className="lg:col-span-7 space-y-4">
-          <div className="flex items-center justify-between gap-2">
-            <div>
-              <p className="text-xs text-[#596866] dark:text-slate-400">
-                {t.logSectionPrefix} · {selectedSession?.dayName}
-              </p>
-              <h3 className="text-base font-bold text-[#202A2A] dark:text-slate-100">
-                {selectedSession?.title}
-              </h3>
-            </div>
-            {selectedSession && selectedSession.targetDistanceKm > 0 && (
-              <span className="text-xs font-medium text-[#596866] dark:text-slate-300">
-                {t.targetLabel}{' '}
+      {/* Focused Check-in Form (Full Width, Uncluttered) */}
+      <form
+        onSubmit={handleSubmit}
+        className="pt-4 border-t border-[#DFE7E2] dark:border-slate-800 space-y-4"
+      >
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <p className="text-xs text-[#596866] dark:text-slate-400">
+              {t.logSectionPrefix} · {selectedSession?.dayName}
+            </p>
+            <h3 className="text-base font-bold text-[#202A2A] dark:text-slate-100">
+              {selectedSession?.title}
+            </h3>
+          </div>
+          {selectedSession && selectedSession.targetDistanceKm > 0 && (
+            <span className="text-xs font-medium text-[#596866] dark:text-slate-300">
+              {t.targetLabel}{' '}
+              <span className="font-mono tabular-nums font-semibold text-[#202A2A] dark:text-slate-100">
                 {formatDecimalComma(selectedSession.targetDistanceKm, 1, lang)} km
               </span>
-            )}
+            </span>
+          )}
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-end">
+          <div>
+            <label
+              htmlFor="input-actual-km"
+              className="block text-sm font-medium text-[#202A2A] dark:text-slate-200 mb-1.5"
+            >
+              {t.actualDistanceLabel}
+            </label>
+            <input
+              id="input-actual-km"
+              type="number"
+              min={0}
+              max={100}
+              step={0.1}
+              value={actualKmInput}
+              onChange={(e) =>
+                setKmDraft({ key: draftKey, value: e.target.value })
+              }
+              className="w-full min-h-[44px] px-3.5 py-2 rounded-xl border border-[#DFE7E2] dark:border-slate-700 bg-[#F7F6F2] dark:bg-slate-800/70 text-[#202A2A] dark:text-slate-100 font-mono tabular-nums focus:bg-white dark:focus:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-[#087F73] dark:focus:ring-teal-400"
+            />
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label
-                htmlFor="input-actual-km"
-                className="block text-sm font-medium text-[#202A2A] dark:text-slate-200 mb-1.5"
-              >
-                {t.actualDistanceLabel}
-              </label>
-              <input
-                id="input-actual-km"
-                type="number"
-                min={0}
-                max={100}
-                step={0.1}
-                value={actualKmInput}
-                onChange={(e) =>
-                  setKmDraft({ key: draftKey, value: e.target.value })
-                }
-                className="w-full min-h-[44px] px-3.5 py-2 rounded-xl border border-[#DFE7E2] dark:border-slate-700 bg-[#F7F6F2] dark:bg-slate-800/70 text-[#202A2A] dark:text-slate-100 focus:bg-white dark:focus:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-[#087F73] dark:focus:ring-teal-400"
-              />
-            </div>
-
-            <div>
-              <span className="block text-sm font-medium text-[#202A2A] dark:text-slate-200 mb-1.5">
-                {t.comfortLabel} ({t.comfortRatings[comfortRating]})
-              </span>
-              <div
-                role="group"
-                aria-label={t.comfortGroupAria}
-                className="grid grid-cols-5 gap-1.5"
-              >
-                {([1, 2, 3, 4, 5] as const).map((score) => (
+          <div>
+            <span className="block text-sm font-medium text-[#202A2A] dark:text-slate-200 mb-1.5">
+              {t.comfortLabel}
+            </span>
+            <div
+              role="group"
+              aria-label={t.comfortGroupAria}
+              data-testid="daily-feel-selector"
+              className="grid grid-cols-3 gap-2"
+            >
+              {(
+                [
+                  { key: 'hard', label: t.feelSimpleOptions.hard, rating: 1 as const },
+                  { key: 'steady', label: t.feelSimpleOptions.steady, rating: 3 as const },
+                  { key: 'comfy', label: t.feelSimpleOptions.comfy, rating: 5 as const },
+                ] as const
+              ).map((option) => {
+                const isSelectedFeel = feelBucket === option.key;
+                return (
                   <button
-                    key={score}
+                    key={option.key}
                     type="button"
-                    onClick={() => setComfortRating(score)}
-                    aria-label={`${t.comfortScoreAria} ${score}: ${t.comfortRatings[score]}`}
-                    className={`min-h-[44px] rounded-xl border text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#087F73] dark:focus-visible:ring-teal-400 ${
-                      comfortRating === score
+                    data-testid={`feel-option-${option.key}`}
+                    onClick={() => setComfortRating(option.rating)}
+                    aria-pressed={isSelectedFeel}
+                    className={`min-h-[44px] px-3 py-2 rounded-xl border text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#087F73] dark:focus-visible:ring-teal-400 ${
+                      isSelectedFeel
                         ? 'bg-[#087F73] dark:bg-teal-600 border-[#087F73] dark:border-teal-500 text-white'
                         : 'bg-[#F7F6F2] dark:bg-slate-800/70 border-[#DFE7E2] dark:border-slate-700 text-[#202A2A] dark:text-slate-200 hover:border-[#087F73] dark:hover:border-teal-600'
                     }`}
                   >
-                    {score}
+                    {option.label}
                   </button>
-                ))}
-              </div>
+                );
+              })}
             </div>
           </div>
+        </div>
 
-          <div>
-            <button
-              type="button"
-              onClick={() => setShowOptionalDetails((prev) => !prev)}
-              aria-expanded={showOptionalDetails}
-              data-testid="toggle-optional-progress-details"
-              className="min-h-[40px] px-3.5 py-2 rounded-xl border border-[#DFE7E2] dark:border-slate-700 bg-[#F7F6F2] dark:bg-slate-800/70 text-xs font-semibold text-[#202A2A] dark:text-slate-200 hover:border-[#087F73] dark:hover:border-teal-600 inline-flex items-center gap-1.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#087F73] dark:focus-visible:ring-teal-400"
-            >
-              {showOptionalDetails ? (
-                <ChevronUp className="w-4 h-4 text-[#087F73] dark:text-teal-400" aria-hidden="true" />
-              ) : (
-                <ChevronDown className="w-4 h-4 text-[#087F73] dark:text-teal-400" aria-hidden="true" />
-              )}
-              <span>
-                {showOptionalDetails
-                  ? t.optionalDetailsHide
-                  : t.optionalDetailsShow}
-              </span>
-            </button>
-          </div>
-
-          {showOptionalDetails && (
-            <div className="space-y-4 pt-1">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label
-                    htmlFor="input-progress-pace"
-                    className="block text-sm font-medium text-[#202A2A] dark:text-slate-200 mb-1.5"
-                  >
-                    {t.paceInputLabel}
-                  </label>
-                  <input
-                    id="input-progress-pace"
-                    data-testid="input-progress-pace"
-                    type="text"
-                    maxLength={10}
-                    value={paceInput}
-                    onChange={(e) => setPaceInput(e.target.value)}
-                    placeholder={t.paceInputPlaceholder}
-                    className="w-full min-h-[44px] px-3.5 py-2 rounded-xl border border-[#DFE7E2] dark:border-slate-700 bg-[#F7F6F2] dark:bg-slate-800/70 text-[#202A2A] dark:text-slate-100 font-mono tabular-nums placeholder:text-[#596866] dark:placeholder:text-slate-500 focus:bg-white dark:focus:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-[#087F73] dark:focus:ring-teal-400"
-                  />
-                </div>
-
-                <div>
-                  <label
-                    htmlFor="input-progress-hr"
-                    className="block text-sm font-medium text-[#202A2A] dark:text-slate-200 mb-1.5"
-                  >
-                    {t.hrInputLabel}
-                  </label>
-                  <input
-                    id="input-progress-hr"
-                    data-testid="input-progress-hr"
-                    type="number"
-                    min={35}
-                    max={230}
-                    step={1}
-                    value={hrInput}
-                    onChange={(e) => setHrInput(e.target.value)}
-                    placeholder={t.hrInputPlaceholder}
-                    className="w-full min-h-[44px] px-3.5 py-2 rounded-xl border border-[#DFE7E2] dark:border-slate-700 bg-[#F7F6F2] dark:bg-slate-800/70 text-[#202A2A] dark:text-slate-100 font-mono tabular-nums placeholder:text-[#596866] dark:placeholder:text-slate-500 focus:bg-white dark:focus:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-[#087F73] dark:focus:ring-teal-400"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label
-                  htmlFor="input-progress-note"
-                  className="block text-sm font-medium text-[#202A2A] dark:text-slate-200 mb-1.5"
-                >
-                  {t.noteLabel}
-                </label>
-                <input
-                  id="input-progress-note"
-                  type="text"
-                  maxLength={120}
-                  value={note}
-                  onChange={(e) => setNote(e.target.value)}
-                  placeholder={t.notePlaceholder}
-                  className="w-full min-h-[44px] px-3.5 py-2 rounded-xl border border-[#DFE7E2] dark:border-slate-700 bg-[#F7F6F2] dark:bg-slate-800/70 text-sm text-[#202A2A] dark:text-slate-100 placeholder:text-[#596866] dark:placeholder:text-slate-500 focus:bg-white dark:focus:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-[#087F73] dark:focus:ring-teal-400"
-                />
-              </div>
-            </div>
-          )}
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <button
+            type="button"
+            onClick={() => setShowOptionalDetails((prev) => !prev)}
+            aria-expanded={showOptionalDetails}
+            data-testid="toggle-optional-progress-details"
+            className="min-h-[40px] px-3.5 py-2 rounded-xl border border-[#DFE7E2] dark:border-slate-700 bg-[#F7F6F2] dark:bg-slate-800/70 text-xs font-semibold text-[#202A2A] dark:text-slate-200 hover:border-[#087F73] dark:hover:border-teal-600 inline-flex items-center gap-1.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#087F73] dark:focus-visible:ring-teal-400"
+          >
+            {showOptionalDetails ? (
+              <ChevronUp className="w-4 h-4 text-[#087F73] dark:text-teal-400" aria-hidden="true" />
+            ) : (
+              <ChevronDown className="w-4 h-4 text-[#087F73] dark:text-teal-400" aria-hidden="true" />
+            )}
+            <span>
+              {showOptionalDetails
+                ? t.optionalDetailsHide
+                : t.optionalDetailsShow}
+            </span>
+          </button>
 
           <div className="flex flex-wrap items-center gap-3">
-            <button
-              type="submit"
-              className="min-h-[44px] px-5 py-2.5 rounded-xl bg-[#087F73] dark:bg-teal-600 text-white text-sm font-semibold hover:bg-[#06685E] dark:hover:bg-teal-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#087F73] dark:focus-visible:ring-teal-400 transition-colors"
-            >
-              {t.saveBtn}
-            </button>
             {savedSession && (
               <span
                 role="status"
@@ -573,16 +528,102 @@ export default function DailyProgressTracker({
                 {t.savedFeedback(savedSession.dayName, savedSession.title)}
               </span>
             )}
+            <button
+              type="submit"
+              data-testid="daily-progress-save-btn"
+              className="min-h-[44px] px-5 py-2.5 rounded-xl bg-[#087F73] dark:bg-teal-600 text-white text-sm font-semibold hover:bg-[#06685E] dark:hover:bg-teal-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#087F73] dark:focus-visible:ring-teal-400 transition-colors"
+            >
+              {t.saveBtn}
+            </button>
           </div>
-        </form>
+        </div>
 
-        {/* Recent Logs */}
-        <div className="lg:col-span-5 space-y-3">
-          <h3 className="text-sm font-bold text-[#202A2A] dark:text-slate-100">
-            {t.savedLogsHeading}
-          </h3>
+        {showOptionalDetails && (
+          <div className="space-y-4 pt-2 border-t border-[#DFE7E2] dark:border-slate-800">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label
+                  htmlFor="input-progress-pace"
+                  className="block text-sm font-medium text-[#202A2A] dark:text-slate-200 mb-1.5"
+                >
+                  {t.paceInputLabel}
+                </label>
+                <input
+                  id="input-progress-pace"
+                  data-testid="input-progress-pace"
+                  type="text"
+                  maxLength={10}
+                  value={paceInput}
+                  onChange={(e) => setPaceInput(e.target.value)}
+                  placeholder={t.paceInputPlaceholder}
+                  className="w-full min-h-[44px] px-3.5 py-2 rounded-xl border border-[#DFE7E2] dark:border-slate-700 bg-[#F7F6F2] dark:bg-slate-800/70 text-[#202A2A] dark:text-slate-100 font-mono tabular-nums placeholder:text-[#596866] dark:placeholder:text-slate-500 focus:bg-white dark:focus:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-[#087F73] dark:focus:ring-teal-400"
+                />
+              </div>
 
-          {entries.length === 0 ? (
+              <div>
+                <label
+                  htmlFor="input-progress-hr"
+                  className="block text-sm font-medium text-[#202A2A] dark:text-slate-200 mb-1.5"
+                >
+                  {t.hrInputLabel}
+                </label>
+                <input
+                  id="input-progress-hr"
+                  data-testid="input-progress-hr"
+                  type="number"
+                  min={35}
+                  max={230}
+                  step={1}
+                  value={hrInput}
+                  onChange={(e) => setHrInput(e.target.value)}
+                  placeholder={t.hrInputPlaceholder}
+                  className="w-full min-h-[44px] px-3.5 py-2 rounded-xl border border-[#DFE7E2] dark:border-slate-700 bg-[#F7F6F2] dark:bg-slate-800/70 text-[#202A2A] dark:text-slate-100 font-mono tabular-nums placeholder:text-[#596866] dark:placeholder:text-slate-500 focus:bg-white dark:focus:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-[#087F73] dark:focus:ring-teal-400"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label
+                htmlFor="input-progress-note"
+                className="block text-sm font-medium text-[#202A2A] dark:text-slate-200 mb-1.5"
+              >
+                {t.noteLabel}
+              </label>
+              <input
+                id="input-progress-note"
+                type="text"
+                maxLength={120}
+                value={note}
+                onChange={(e) => setNote(e.target.value)}
+                placeholder={t.notePlaceholder}
+                className="w-full min-h-[44px] px-3.5 py-2 rounded-xl border border-[#DFE7E2] dark:border-slate-700 bg-[#F7F6F2] dark:bg-slate-800/70 text-sm text-[#202A2A] dark:text-slate-100 placeholder:text-[#596866] dark:placeholder:text-slate-500 focus:bg-white dark:focus:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-[#087F73] dark:focus:ring-teal-400"
+              />
+            </div>
+          </div>
+        )}
+      </form>
+
+      {/* Collapsible Full-Width Check-In History */}
+      <div className="pt-4 border-t border-[#DFE7E2] dark:border-slate-800 space-y-3">
+        <button
+          type="button"
+          onClick={() => setShowHistoryLogs((prev) => !prev)}
+          aria-expanded={showHistoryLogs}
+          data-testid="toggle-daily-progress-history"
+          className="w-full min-h-[44px] px-4 py-2.5 rounded-xl bg-[#F7F6F2] dark:bg-slate-800/70 border border-[#DFE7E2] dark:border-slate-700 flex items-center justify-between gap-2 text-sm font-semibold text-[#202A2A] dark:text-slate-100 hover:border-[#087F73] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#087F73]"
+        >
+          <span>
+            {showHistoryLogs ? t.historyToggleHide : t.historyToggleShow} ({entries.length})
+          </span>
+          {showHistoryLogs ? (
+            <ChevronUp className="w-4 h-4 text-[#087F73] shrink-0" aria-hidden="true" />
+          ) : (
+            <ChevronDown className="w-4 h-4 text-[#087F73] shrink-0" aria-hidden="true" />
+          )}
+        </button>
+
+        {showHistoryLogs && (
+          entries.length === 0 ? (
             <div className="rounded-xl bg-[#F7F6F2] dark:bg-slate-800/70 p-5 text-sm text-[#596866] dark:text-slate-400">
               {t.emptyLogsBeforeBtn}{' '}
               <span className="font-semibold text-[#202A2A] dark:text-slate-200">
@@ -593,12 +634,13 @@ export default function DailyProgressTracker({
           ) : (
             <div
               data-testid="daily-progress-list"
-              className="divide-y divide-[#DFE7E2] dark:divide-slate-800 max-h-72 overflow-y-auto pr-1"
+              className="divide-y divide-[#DFE7E2] dark:divide-slate-800 max-h-80 overflow-y-auto pr-1"
             >
               {entries.map((entry) => {
                 const localizedScheduleTitle =
                   weeklySchedule.find((s) => s.dayIndex === entry.dayIndex)
                     ?.title ?? entry.sessionTitle;
+                const isRestEntry = entry.zone === 'rest' && entry.actualKm <= 0;
                 return (
                   <div
                     key={`${entry.dateKey}-${entry.dayIndex}`}
@@ -606,16 +648,19 @@ export default function DailyProgressTracker({
                   >
                     <div className="space-y-0.5 min-w-0">
                       <p className="text-xs text-[#596866] dark:text-slate-400">
-                        {entry.dateKey} · {t.feelingPrefix}{' '}
-                        {entry.comfortRating}/5 (
-                        {t.comfortRatings[entry.comfortRating]})
+                        {entry.dateKey} · {t.feelingPrefix}:{' '}
+                        <span className="font-medium text-[#202A2A] dark:text-slate-200">
+                          {getFeelText(entry.comfortRating)}
+                        </span>
                       </p>
                       <p className="text-sm font-semibold text-[#202A2A] dark:text-slate-100 truncate">
                         {localizedScheduleTitle}
                       </p>
                       <p className="text-xs text-[#596866] dark:text-slate-300">
                         <span className="font-semibold text-[#087F73] dark:text-teal-400">
-                          {formatDecimalComma(entry.actualKm, 1, lang)} km
+                          {isRestEntry
+                            ? t.restShort
+                            : `${formatDecimalComma(entry.actualKm, 1, lang)} km`}
                         </span>
                         {entry.paceSecPerKm ? (
                           <span className="font-mono tabular-nums text-[#202A2A] dark:text-sky-300">
@@ -645,8 +690,8 @@ export default function DailyProgressTracker({
                 );
               })}
             </div>
-          )}
-        </div>
+          )
+        )}
       </div>
 
       <ShareProgressModal

@@ -52,12 +52,12 @@ interface PaymentAccessGateProps {
 function readInitialSelectedPlan(): AccessPlanType {
   if (typeof window === 'undefined') return 'lifetime';
   try {
-    const raw = window.sessionStorage.getItem(SELECTED_PLAN_SESSION_KEY);
-    if (raw === 'pro') return 'pro';
+    return window.sessionStorage.getItem(SELECTED_PLAN_SESSION_KEY) === 'pro'
+      ? 'pro'
+      : 'lifetime';
   } catch {
-    // Ignore storage restriction
+    return 'lifetime';
   }
-  return 'lifetime';
 }
 
 export default function PaymentAccessGate({
@@ -85,6 +85,16 @@ export default function PaymentAccessGate({
   const [planType, setPlanType] = useState<AccessPlanType>(
     readInitialSelectedPlan
   );
+  const handleChangePlan = (nextPlan: AccessPlanType) => {
+    setPlanType(nextPlan);
+    if (typeof window !== 'undefined') {
+      try {
+        window.sessionStorage.setItem(SELECTED_PLAN_SESSION_KEY, nextPlan);
+      } catch {
+        // Ignore storage error
+      }
+    }
+  };
   const [orderRef, setOrderRef] = useState('');
   const [manualNote, setManualNote] = useState('');
   const [submittingManual, setSubmittingManual] = useState(false);
@@ -256,11 +266,11 @@ export default function PaymentAccessGate({
   return (
     <div
       data-testid="payment-access-gate"
-      className="min-h-screen bg-[#F7F9FA] dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col"
+      className="min-h-screen bg-[#F7F6F2] dark:bg-slate-950 text-[#202A2A] dark:text-slate-100 flex flex-col"
     >
       {/* Top Bar */}
-      <header className="h-16 px-4 sm:px-8 border-b border-slate-200/80 dark:border-slate-800 bg-[#F7F9FA]/95 dark:bg-slate-950/90 flex items-center justify-between gap-3">
-        <span className="text-xl font-bold tracking-tight text-slate-900 dark:text-slate-100 whitespace-nowrap">
+      <header className="h-16 px-4 sm:px-8 border-b border-[#DFE7E2] dark:border-slate-800 bg-[#F7F6F2]/95 dark:bg-slate-950/90 flex items-center justify-between gap-3">
+        <span className="text-xl font-bold tracking-tight text-[#202A2A] dark:text-slate-100 whitespace-nowrap">
           PaceCraft
         </span>
 
@@ -320,31 +330,31 @@ export default function PaymentAccessGate({
 
       <main className="flex-1 max-w-5xl w-full mx-auto px-4 sm:px-8 py-8 space-y-6">
         {/* Hero Banner */}
-        <section className="rounded-2xl bg-gradient-to-br from-[#EAF6F3] via-[#F4F8FB] to-[#EEF2FB] dark:from-teal-950/60 dark:via-slate-900 dark:to-indigo-950/50 border border-teal-100/90 dark:border-teal-800/60 p-6 sm:p-8 space-y-4">
+        <section className="rounded-2xl bg-[#E6F3EE] dark:bg-slate-900 border border-[#DFE7E2] dark:border-slate-800 p-6 sm:p-8 space-y-4">
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-white/90 dark:bg-slate-800/90 border border-teal-200 dark:border-teal-800 text-xs font-semibold text-teal-800 dark:text-teal-300">
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-white dark:bg-slate-800 border border-[#DFE7E2] dark:border-slate-700 text-xs font-semibold text-[#087F73] dark:text-teal-300">
               <ShieldCheck className="w-3.5 h-3.5" aria-hidden="true" />
               {g.badge}
             </span>
             <button
               type="button"
               onClick={() => void onRefreshStatus()}
-              className="min-h-[38px] px-3.5 py-1.5 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:border-teal-400 inline-flex items-center gap-1.5 whitespace-nowrap"
+              className="min-h-[38px] px-3.5 py-1.5 rounded-xl bg-white dark:bg-slate-800 border border-[#DFE7E2] dark:border-slate-700 text-xs font-semibold text-[#202A2A] dark:text-slate-200 hover:border-[#087F73] inline-flex items-center gap-1.5 whitespace-nowrap"
             >
               <RefreshCw className="w-3.5 h-3.5" aria-hidden="true" />
               {g.refreshBtn}
             </button>
           </div>
 
-          <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-slate-100 tracking-tight">
+          <h1 className="text-2xl sm:text-3xl font-bold text-[#202A2A] dark:text-slate-100 tracking-tight">
             {g.title}
           </h1>
-          <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed max-w-2xl">
+          <p className="text-sm text-[#596866] dark:text-slate-300 leading-relaxed max-w-2xl">
             {g.subtitle}
           </p>
-          <p className="text-xs text-slate-600 dark:text-slate-300">
+          <p className="text-xs text-[#596866] dark:text-slate-300">
             {g.signedInAs}{' '}
-            <span className="font-semibold text-slate-900 dark:text-slate-100">
+            <span className="font-semibold text-[#202A2A] dark:text-slate-100">
               {user.displayName || user.email || user.uid}
             </span>
             {user.email ? ` (${user.email})` : ''}
@@ -498,49 +508,46 @@ export default function PaymentAccessGate({
             </form>
           ) : (
             <div className="space-y-5">
-              {/* Step 1: Plan Selector Cards with Clear Pricing */}
-              <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 space-y-4">
-                <h2 className="text-base font-bold text-slate-900 dark:text-slate-100">
+              {/* Step 1: Dual Plan Selector (Essential Rp59.000 vs Lifetime Rp99.000) */}
+              <div className="space-y-2.5">
+                <span className="block text-xs font-semibold text-[#087F73] dark:text-teal-300">
                   {g.planChooseLabel}
-                </h2>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-                  {(['lifetime', 'pro'] as const).map((key) => {
-                    const plan = COMMERCIAL_PLANS[key];
-                    const active = planType === key;
+                </span>
+                <div
+                  role="radiogroup"
+                  aria-label={g.planChooseLabel}
+                  className="grid grid-cols-1 sm:grid-cols-2 gap-3"
+                >
+                  {(['pro', 'lifetime'] as const).map((tierKey) => {
+                    const tier = COMMERCIAL_PLANS[tierKey];
+                    const active = planType === tierKey;
                     return (
                       <button
-                        key={key}
+                        key={tierKey}
                         type="button"
-                        onClick={() => setPlanType(key)}
-                        data-testid={`gate-plan-card-${key}`}
-                        aria-pressed={active}
-                        className={`text-left rounded-xl border p-4 space-y-2 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-700 dark:focus-visible:ring-teal-400 ${
+                        role="radio"
+                        aria-checked={active}
+                        onClick={() => handleChangePlan(tierKey)}
+                        data-testid={`gate-plan-card-${tierKey}`}
+                        className={`text-left rounded-2xl border p-5 flex items-center justify-between gap-4 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#087F73] ${
                           active
-                            ? 'bg-teal-50/90 dark:bg-teal-950/60 border-teal-600 dark:border-teal-500'
-                            : 'bg-[#F7F9FA] dark:bg-slate-800/60 border-slate-200 dark:border-slate-700 hover:border-teal-300'
+                            ? 'bg-[#E6F3EE] dark:bg-teal-950/50 border-[#087F73] dark:border-teal-500 ring-1 ring-[#087F73]/25'
+                            : 'bg-white dark:bg-slate-900 border-[#DFE7E2] dark:border-slate-800 hover:border-[#087F73]/60'
                         }`}
                       >
-                        <div className="flex items-center justify-between gap-2">
-                          <span className="text-sm font-bold text-slate-900 dark:text-slate-100">
-                            {plan.title[lang]}
-                          </span>
-                          {plan.badge && (
-                            <span className="px-2 py-0.5 rounded-md bg-teal-700 dark:bg-teal-600 text-white text-[11px] font-semibold">
-                              {plan.badge[lang]}
-                            </span>
-                          )}
+                        <div className="space-y-1 min-w-0">
+                          <h2 className="text-base font-bold text-[#202A2A] dark:text-slate-100">
+                            {tier.title[lang]}
+                          </h2>
+                          <p className="text-xs text-[#596866] dark:text-slate-300">
+                            {tier.billingPeriod[lang]}
+                          </p>
                         </div>
-                        <div className="flex items-baseline gap-2">
-                          <span className="text-xl font-bold font-mono tabular-nums text-teal-800 dark:text-teal-300">
-                            {plan.priceLabel}
-                          </span>
-                          <span className="text-xs font-mono tabular-nums line-through text-slate-400">
-                            {plan.originalPriceLabel}
+                        <div className="shrink-0 text-right">
+                          <span className="block text-lg sm:text-xl font-bold tabular-nums text-[#087F73] dark:text-teal-300">
+                            {tier.priceLabel}
                           </span>
                         </div>
-                        <p className="text-xs text-slate-600 dark:text-slate-300">
-                          {plan.billingPeriod[lang]}
-                        </p>
                       </button>
                     );
                   })}
@@ -559,7 +566,10 @@ export default function PaymentAccessGate({
                     </div>
 
                     <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
-                      {g.qrisSectionDesc}
+                      {g.qrisSectionDesc(
+                        selectedPlan.title[lang],
+                        selectedPlan.priceLabel
+                      )}
                     </p>
 
                     {/* Merchant QRIS Frame */}

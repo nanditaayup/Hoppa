@@ -4,84 +4,121 @@ export interface PricingTierInfo {
   id: AccessPlanType;
   priceIdr: number;
   priceLabel: string;
-  originalPriceLabel: string;
   billingPeriod: Record<AppLanguage, string>;
   title: Record<AppLanguage, string>;
+  subtitle?: Record<AppLanguage, string>;
   summary: Record<AppLanguage, string>;
-  badge?: Record<AppLanguage, string>;
+  listIntro?: Record<AppLanguage, string>;
+  suitedFor: Record<AppLanguage, string>;
+  coreValue: Record<AppLanguage, string>;
+  ctaLabel: Record<AppLanguage, string>;
   features: Record<AppLanguage, string[]>;
 }
 
 export const COMMERCIAL_PLANS: Record<AccessPlanType, PricingTierInfo> = {
-  lifetime: {
-    id: 'lifetime',
-    priceIdr: 149000,
-    priceLabel: 'Rp 149.000',
-    originalPriceLabel: 'Rp 299.000',
+  pro: {
+    id: 'pro',
+    priceIdr: 59000,
+    priceLabel: 'Rp59.000',
     billingPeriod: {
-      id: 'Sekali bayar · Akses selamanya',
-      en: 'One-time payment · Lifetime access',
+      id: 'Akses 12 bulan',
+      en: '12-month access',
     },
     title: {
-      id: 'Paket Lifetime',
-      en: 'Lifetime Access',
+      id: 'PaceCraft Essential',
+      en: 'PaceCraft Essential',
+    },
+    subtitle: {
+      id: 'Sekali bayar untuk 1 tahun persiapan lomba',
+      en: 'One-time payment for 1 full year of race prep',
     },
     summary: {
-      id: 'Bayar sekali tanpa iuran bulanan untuk seluruh fitur 5K hingga Marathon.',
-      en: 'Pay once with zero monthly subscriptions for all 5K to Marathon features.',
+      id: 'Untuk pelari yang ingin jadwal terstruktur ala coach, sesi harian jelas, dan progres konsisten selama 12 bulan.',
+      en: 'For runners who want structured coach-style weekly blocks, clear daily workouts, and steady progress for 12 months.',
     },
-    badge: {
-      id: 'Paling Hemat',
-      en: 'Best Value',
+    listIntro: {
+      id: 'Termasuk dalam Essential (12 bulan):',
+      en: 'Included in Essential (12 months):',
+    },
+    suitedFor: {
+      id: 'Pelari target 5K–42K yang fokus pada jadwal terstruktur & check-in harian',
+      en: '5K–42K runners focused on structured weekly plans & daily check-ins',
+    },
+    coreValue: {
+      id: 'Jadwal terstruktur harian tanpa kebingungan menentukan porsi lari',
+      en: 'Structured daily runs without guessing weekly mileage or pace',
+    },
+    ctaLabel: {
+      id: 'Pilih Essential Rp59.000',
+      en: 'Choose Essential Rp59.000',
     },
     features: {
       id: [
-        'Menu latihan 5K, 10K, 21K & 42K + batas aman BMI',
-        'Kalkulator Pace, Zona HR Karvonen & estimasi VO2max',
-        'Impor CSV & GPX Strava gratis tanpa langganan Strava',
-        'Kalender intensitas bulanan, ekspor .ics & kartu IG Story 9:16',
-        'Sinkronisasi cloud terisolasi + semua pembaruan selamanya',
+        'Rencana latihan 5K, 10K, 21K, hingga 42K dengan blok 4 minggu & cutback otomatis',
+        'Detail tiap sesi terstruktur (Warm-up, Main Set, Cool-down) + latihan Strength',
+        'Tampilan Hari Ini: target jarak, pace panduan, dan catat hasil dalam hitungan detik',
+        'Zona pace Easy/Tempo/Interval, zona detak jantung Karvonen, & panduan Makan & Pulih',
+        'Penyesuaian intensitas otomatis saat tubuh terasa lelah dan fase tapering lomba',
       ],
       en: [
-        '5K, 10K, 21K & 42K adaptive training plans with BMI guard',
-        'Race Pace Calculator, Karvonen HR zones & VO2max estimation',
-        'Free Strava CSV & GPX import without paid Strava Subscription',
-        'Monthly intensity calendar, .ics export & 9:16 IG Story card',
-        'Private cloud sync + all future feature updates included',
+        '5K to marathon training plans with 4-week progressive blocks & cutback weeks',
+        'Structured workout steps (Warm-up, Main Set, Cool-down) + Strength & Mobility',
+        'Today view with exact session structure, pace guide, and fast daily check-in',
+        'Easy/Tempo/Interval pace zones, Karvonen HR zones, & Eat & Recover guide',
+        'Fatigue recovery mode and automatic pre-race tapering adjustments',
       ],
     },
   },
-  pro: {
-    id: 'pro',
+  lifetime: {
+    id: 'lifetime',
     priceIdr: 99000,
-    priceLabel: 'Rp 99.000',
-    originalPriceLabel: 'Rp 149.000',
+    priceLabel: 'Rp99.000',
     billingPeriod: {
-      id: 'Per tahun · Hemat untuk 1 musim lomba',
-      en: 'Per year · Ideal for a full race season',
+      id: 'Sekali bayar · Akses selamanya',
+      en: 'One-time · Lifetime access',
     },
     title: {
-      id: 'Paket Pro Tahunan',
-      en: 'Annual Pro',
+      id: 'PaceCraft Lifetime',
+      en: 'PaceCraft Lifetime',
+    },
+    subtitle: {
+      id: 'Sekali bayar, pakai selamanya tanpa biaya perpanjangan',
+      en: 'Pay once, keep forever with zero renewal fees',
     },
     summary: {
-      id: 'Cocok untuk persiapan 1–2 target event lomba utama sepanjang tahun.',
-      en: 'Great for preparing 1–2 primary race targets over the year.',
+      id: 'Semua fitur Essential ditambah akses selamanya, impor Strava CSV/GPX, proyeksi waktu lomba, dan pelacak perlengkapan.',
+      en: 'Everything in Essential plus lifetime access, Strava CSV/GPX import, race finish predictor, and gear tracking.',
+    },
+    listIntro: {
+      id: 'Semua fitur Essential, ditambah:',
+      en: 'Everything in Essential, plus:',
+    },
+    suitedFor: {
+      id: 'Pelari yang ingin memakai riwayat Strava, proyeksi finis, & akses selamanya',
+      en: 'Runners who want Strava history calibration, finish predictions, & lifetime access',
+    },
+    coreValue: {
+      id: 'Sekali bayar untuk seumur hidup—termasuk analisis Strava tanpa langganan',
+      en: 'One payment forever—including Strava analysis with zero monthly fees',
+    },
+    ctaLabel: {
+      id: 'Pilih Lifetime Rp99.000',
+      en: 'Choose Lifetime Rp99.000',
     },
     features: {
       id: [
-        'Semua kalkulator pace, jadwal mingguan & strength training',
-        'Pelacak progres harian, sepatu lari & rekor PB pribadi',
-        'Impor Strava CSV/GPX lokal langsung di browser',
-        'Ekspor jadwal ke Google/Apple Calendar (.ics)',
-        'Cadangan JSON & dukungan prioritas via WhatsApp',
+        'Akses penuh selamanya (Lifetime) tanpa biaya bulanan maupun tahunan',
+        'Impor riwayat Strava (CSV/GPX) langsung di browser + kalibrasi baseline otomatis',
+        'Proyeksi waktu finis 5K–42K, catatan Personal Best, dan peta rute + deteksi anomali',
+        'Kalender intensitas bulanan gabungan, pelacak kilometer sepatu, & kartu share PNG',
+        'Ekspor jadwal latihan ke kalender ponsel (.ics) dan seluruh pembaruan mendatang',
       ],
       en: [
-        'Full pace calculator, weekly plan & strength training schedule',
-        'Daily progress tracker, shoe mileage & Personal Best records',
-        'Local Strava CSV/GPX file import directly in browser',
-        'One-click export to Google/Apple Calendar (.ics)',
-        'JSON backup/restore & WhatsApp customer support',
+        'Full lifetime access with zero monthly or annual renewal fees',
+        'Browser Strava CSV/GPX history import + automatic training baseline calibration',
+        '5K–42K race finish time predictor, Personal Best log, route map & anomaly checks',
+        'Combined monthly intensity calendar, shoe mileage tracker, & PNG progress cards',
+        'Export training blocks to your phone calendar (.ics) and all future updates',
       ],
     },
   },
@@ -90,76 +127,64 @@ export const COMMERCIAL_PLANS: Record<AccessPlanType, PricingTierInfo> = {
 export interface PricingComparisonRow {
   id: string;
   label: Record<AppLanguage, string>;
-  lifetime: Record<AppLanguage, string> | boolean;
   pro: Record<AppLanguage, string> | boolean;
+  lifetime: Record<AppLanguage, string> | boolean;
 }
 
 export const PRICING_COMPARISON_ROWS: PricingComparisonRow[] = [
   {
-    id: 'price',
-    label: { id: 'Harga Paket', en: 'Plan Price' },
-    lifetime: { id: 'Rp 149.000 (Sekali)', en: 'Rp 149.000 (One-Time)' },
-    pro: { id: 'Rp 99.000 / tahun', en: 'Rp 99.000 / year' },
-  },
-  {
     id: 'duration',
-    label: { id: 'Masa Berlaku Akses', en: 'Access Duration' },
-    lifetime: { id: 'Selamanya (Tanpa Perpanjangan)', en: 'Lifetime (No Renewal)' },
-    pro: { id: '12 Bulan (1 Musim Lomba)', en: '12 Months (1 Race Season)' },
+    label: {
+      id: 'Masa aktif akses',
+      en: 'Access duration',
+    },
+    pro: { id: '12 bulan', en: '12 months' },
+    lifetime: { id: 'Selamanya (Lifetime)', en: 'Lifetime (no renewal)' },
   },
   {
-    id: 'plans_bmi',
+    id: 'structured_workouts',
     label: {
-      id: 'Menu Lari 5K–42K, Pengaman BMI & Tapering',
-      en: '5K–42K Plans, BMI Guard & Auto Tapering',
+      id: 'Rencana 5K–42K, Warm-up/Inti/Cool-down & Strength',
+      en: '5K–42K plans, Warm-up/Main/Cool-down & Strength',
     },
-    lifetime: true,
     pro: true,
+    lifetime: true,
   },
   {
-    id: 'pace_hr',
+    id: 'today_checkin',
     label: {
-      id: 'Kalkulator Pace, Zona HR Karvonen & VO2max',
-      en: 'Race Pace Calculator, Karvonen HR & VO2max',
+      id: 'Tampilan Hari Ini, Zona Pace/HR & Panduan Makan',
+      en: 'Today view, Pace/HR Zones & Fueling Guide',
     },
-    lifetime: true,
     pro: true,
+    lifetime: true,
   },
   {
     id: 'strava_import',
     label: {
-      id: 'Impor Strava CSV/GPX Gratis (Tanpa Langganan API)',
-      en: 'Free Browser Strava CSV/GPX Import',
+      id: 'Impor Strava CSV/GPX tanpa langganan & kalibrasi baseline',
+      en: 'Free Strava CSV/GPX import & baseline calibration',
     },
+    pro: false,
     lifetime: true,
-    pro: true,
   },
   {
-    id: 'calendar_ics',
+    id: 'predictor_calendar',
     label: {
-      id: 'Kalender Intensitas Bulanan & Ekspor .ics HP',
-      en: 'Monthly Intensity Calendar & .ics Export',
+      id: 'Proyeksi Finis 5K–42K, Kalender Intensitas & Pelacak Sepatu',
+      en: '5K–42K Finish Predictor, Intensity Calendar & Shoe Log',
     },
+    pro: false,
     lifetime: true,
-    pro: true,
   },
   {
-    id: 'pb_story_shoe',
+    id: 'export_ics',
     label: {
-      id: 'Kartu IG Story 9:16, Rekor PB & Pelacak Sepatu',
-      en: '9:16 IG Story Cards, PB Wall & Shoe Tracker',
+      id: 'Ekspor jadwal ke Google/Apple Calendar (.ics) & update selamanya',
+      en: 'Calendar export (.ics) & all future plan updates',
     },
+    pro: false,
     lifetime: true,
-    pro: true,
-  },
-  {
-    id: 'future_updates',
-    label: {
-      id: 'Semua Pembaruan Fitur Mendatang',
-      en: 'All Future Feature Updates',
-    },
-    lifetime: { id: 'Termasuk Selamanya', en: 'Included Forever' },
-    pro: { id: 'Selama Masa Aktif', en: 'During Active Year' },
   },
 ];
 

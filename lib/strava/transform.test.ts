@@ -867,6 +867,120 @@ test('evaluateTargetPaceReadiness and computeAdaptivePlanAdjustment produce cons
   assert.ok(adjustment.reasons.includes('heavy_fatigue'));
 });
 
+test('updateRunActivityDistanceAndTime recalculates speed and clears anomaly flags', async () => {
+  const { updateRunActivityDistanceAndTime } = await import('./transform');
+  const { assessRunDataQuality } = await import('./import-parser');
+  const brokenRun = {
+    id: 'broken-1',
+    name: 'Corrupted Tempo',
+    type: 'Run' as const,
+    startDate: '2026-11-12T06:00:00+07:00',
+    distanceMeters: 1000,
+    movingTimeSeconds: 30,
+    elapsedTimeSeconds: 30,
+    elevationGainMeters: 10,
+    averageHeartRate: 155,
+    maxSpeedMps: 33.3,
+    averageSpeedMps: 33.3,
+    summaryPolyline: null,
+    source: 'csv' as const,
+    dataWarningReason: 'pace_too_fast' as const,
+  };
 
+  assert.equal(assessRunDataQuality(brokenRun).hasAnomaly, true);
 
+  const repaired = updateRunActivityDistanceAndTime(brokenRun, 8000, 2400);
+  assert.equal(repaired.distanceMeters, 8000);
+  assert.equal(repaired.movingTimeSeconds, 2400);
+  assert.equal(repaired.dataWarningReason, undefined);
+  assert.equal(assessRunDataQuality(repaired).hasAnomaly, false);
+});
+
+test('generateTrainingPlan includes structured workoutSteps, coachNote, estimatedDurationMin, and strength setsxreps', () => {
+  const kpi = computeKpiSummary(SAMPLE_STRAVA_RUNS, new Date('2026-11-19T12:00:00+07:00'));
+  const plan = generateTrainingPlan(
+    {
+      weightKg: 66,
+      heightCm: 170,
+      directBmi: null,
+      useDirectBmi: false,
+      age: 30,
+      injuryStatus: 'none',
+      targetRace: '10K',
+      trainingDaysPerWeek: 5, // includes interval, tempo, easy, long_run, and strength
+    },
+    kpi,
+    'id'
+  );
+
+  const activeRuns = plan.weeklySchedule.filter((s) => s.zone !== 'rest');
+  assert.equal(activeRuns.length, 5);
+
+  for (const session of activeRuns) {
+    assert.ok(
+      typeof session.estimatedDurationMin === 'number' && session.estimatedDurationMin >= 12,
+      `Expected estimatedDurationMin for ${session.dayName}`
+    );
+    assert.ok(session.coachNote && session.coachNote.length > 10);
+    assert.ok(session.workoutSteps && session.workoutSteps.length === 3);
+    assert.deepEqual(
+      session.workoutSteps.map((st) => st.phase),
+      ['warmup', 'main', 'cooldown']
+    );
+  }
+
+  const strengthDays = plan.weeklySchedule.filter((s) => Boolean(s.strengthSession));
+  assert.ok(strengthDays.length >= 1);
+  assert.ok(strengthDays.some((s) => s.strengthSession?.exercises.includes('×')));
+});
+
+test('scaleScheduleForWeek scales Week 1-4 progressive block and Week 4 cutback accurately', async () => {
+  const { scaleScheduleForWeek } = await import('./transform');
+  const kpi = computeKpiSummary(SAMPLE_STRAVA_RUNS, new Date('2026-11-19T12:00:00+07:00'));
+  const plan = generateTrainingPlan(
+    {
+      weightKg: 65,
+      heightCm: 170,
+      directBmi: null,
+      useDirectBmi: false,
+      age: 29,
+      injuryStatus: 'none',
+      targetRace: '21K',
+      trainingDaysPerWeek: 4,
+    },
+    kpi,
+    'id'
+  );
+
+  const w1 = scaleScheduleForWeek(plan, 1, 'id');
+  const w2 = scaleScheduleForWeek(plan, 2, 'id');
+  const w3 = scaleScheduleForWeek(plan, 3, 'id');
+  const w4 = scaleScheduleForWeek(plan, 4, 'id');
+
+  assert.equal(w1.totalKm, plan.totalPlannedWeekKm);
+  assert.ok(w2.totalKm >= w1.totalKm);
+  assert.ok(w3.totalKm >= w2.totalKm);
+  assert.ok(w4.totalKm < w3.totalKm);
+  assert.equal(w4.weekInfo.isCutback, true);
+});
+
+test('predictRaceFinishTimes computes monotonic 5K-42K Riegel predictions and marks active target', async () => {
+  const { predictRaceFinishTimes } = await import('./transform');
+  const preds = predictRaceFinishTimes(315, '10K', 'race_goal');
+
+  assert.deepEqual(
+    preds.map((p) => p.race),
+    ['5K', '10K', '21K', '42K']
+  );
+
+  const tenK = preds.find((p) => p.race === '10K');
+  assert.ok(tenK);
+  assert.equal(tenK.isCurrentTarget, true);
+  assert.equal(tenK.predictedSeconds, 3150);
+  assert.equal(tenK.formattedTime, '52:30');
+
+  assert.ok(preds[0].predictedSeconds < preds[1].predictedSeconds);
+  assert.ok(preds[1].predictedSeconds < preds[2].predictedSeconds);
+  assert.ok(preds[2].predictedSeconds < preds[3].predictedSeconds);
+});
 

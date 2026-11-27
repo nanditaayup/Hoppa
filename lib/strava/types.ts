@@ -93,6 +93,13 @@ export interface PaceZoneRange {
   formattedRange: string;
 }
 
+export interface WorkoutStepBlock {
+  phase: 'warmup' | 'main' | 'cooldown';
+  label: string;
+  targetText: string;
+  paceText?: string;
+}
+
 export interface DailySessionPlan {
   dayIndex: number; // 0 = Senin .. 6 = Minggu
   dayName: string;
@@ -101,11 +108,24 @@ export interface DailySessionPlan {
   targetDistanceKm: number;
   paceRange: string;
   guidance: string;
+  estimatedDurationMin?: number;
+  coachNote?: string;
+  workoutSteps?: WorkoutStepBlock[];
   strengthSession?: {
     title: string;
     durationMin: number;
     exercises: string;
   } | null;
+}
+
+export interface RacePredictionItem {
+  race: RaceDistanceKey;
+  distanceKm: number;
+  predictedSeconds: number;
+  formattedTime: string;
+  paceSecPerKm: number;
+  formattedPace: string;
+  isCurrentTarget: boolean;
 }
 
 export interface WeeklyVolumeProgression {

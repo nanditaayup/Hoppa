@@ -72,6 +72,15 @@ export interface PaceCraftCopy {
     proteinShort: string;
     estVo2Short: string;
     hydrationEstPrefix: string;
+    weeklyTitle: string;
+    activeGoalTitle: string;
+    viewPlanLink: string;
+    editGoalLink: string;
+    nutritionLink: string;
+    daysToRaceText: (days: number) => string;
+    todayStructureLabel: string;
+    estDurationUnit: string;
+    predictedFinishPrefix: string;
   };
   hero: {
     eyebrow: string;
@@ -150,6 +159,12 @@ export interface PaceCraftCopy {
     vo2MethodResting: string;
     vo2MethodBlended: string;
     shoeDisclaimer: string;
+    bmiOptionalTitle: string;
+    bmiOptionalSubtitle: string;
+    metricsOverviewTitle: string;
+    editBmiAction: string;
+    editVo2Action: string;
+    nonEssentialHint: string;
   };
   training: {
     heading: string;
@@ -184,6 +199,7 @@ export interface PaceCraftCopy {
     minuteShort: string;
     viewScheduleTab: string;
     viewZonesTab: string;
+    viewSimulatorTab: string;
     customPaceBadge: string;
     resetCustomPaceBtn: string;
     baselineVolumeChip: string;
@@ -201,6 +217,32 @@ export interface PaceCraftCopy {
     adaptiveHeading: string;
     adaptiveToggleLabel: string;
     adaptiveToggleHint: string;
+    adaptiveStatusNormal: string;
+    adaptiveAdjustCta: string;
+    planHeading: (race: string) => string;
+    planMetaLine: (days: number, raceDateLabel: string) => string;
+    editPlanBtn: string;
+    previewHeading: string;
+    confirmPlanBtn: string;
+    cancelEditPlanBtn: string;
+    basisDisclosureLabel: string;
+    nutritionLinkLabel: string;
+    blockWeeksHeading: string;
+    weekChipLabel: (weekNumber: number) => string;
+    activeWeekTag: string;
+    weeklyMixSummary: (
+      easyCount: number,
+      qualityCount: number,
+      longCount: number,
+      strengthCount: number
+    ) => string;
+    workoutStepsHeading: string;
+    coachCueLabel: string;
+    estDurationShort: (min: number) => string;
+    predictorHeading: string;
+    predictorSubtitle: string;
+    predictorDisclaimer: string;
+    predictorCurrentTargetBadge: string;
     zoneLabels: Record<TrainingZoneType, string>;
   };
   nutrition: {
@@ -215,6 +257,10 @@ export interface PaceCraftCopy {
     hydrationUnitNote: string;
     strategyHeadingPrefix: string;
     examplesLabel: string;
+    practicalHeading: string;
+    macroToggleShow: string;
+    macroToggleHide: string;
+    macroCalcNote: string;
   };
   dailyProgress: {
     heading: string;
@@ -239,6 +285,11 @@ export interface PaceCraftCopy {
     comfortGroupAria: string;
     comfortScoreAria: string;
     comfortRatings: Record<1 | 2 | 3 | 4 | 5, string>;
+    feelSimpleOptions: {
+      hard: string;
+      steady: string;
+      comfy: string;
+    };
     noteLabel: string;
     notePlaceholder: string;
     saveBtn: string;
@@ -270,6 +321,10 @@ export interface PaceCraftCopy {
     runDistanceLabel: string;
     strengthRestSummary: (crossCount: number, restCount: number) => string;
     overloadCautionBanner: (pct: number, plannedKm: string, actualKm: string) => string;
+    subTabCheckInCalendar: string;
+    subTabRunHistory: string;
+    historyToggleShow: string;
+    historyToggleHide: string;
     shareModal: {
       title: string;
       subtitle: string;
@@ -372,6 +427,12 @@ export interface PaceCraftCopy {
     provenanceItems: Array<{ title: string; body: string }>;
     flaggedAnomalyBanner: (count: number) => string;
     anomalyBadge: string;
+    flaggedBannerCompact: (count: number) => string;
+    reviewAnomaliesBtn: string;
+    showAllRunsBtn: string;
+    weeklyAvgSummaryLabel: string;
+    thirtyDayTotalSummaryLabel: string;
+    sessionsCountLabel: string;
   };
   detailModal: {
     closeAria: string;
@@ -397,6 +458,13 @@ export interface PaceCraftCopy {
       reportedPace: string | null,
       reason?: RunDataQuality['reason']
     ) => string;
+    editSectionHeading: string;
+    editDistanceLabel: string;
+    editDurationMinLabel: string;
+    saveEditBtn: string;
+    deleteActivityBtn: string;
+    confirmDeleteActivityBtn: string;
+    cancelEditBtn: string;
   };
   disconnectModal: {
     titleOAuth: string;
@@ -500,6 +568,8 @@ export interface PaceCraftCopy {
     readinessHeading: string;
     applyConservativeBtn: (pace: string) => string;
     goalVsTrainingNote: string;
+    statusActiveBadge: string;
+    statusSimulationBadge: string;
   };
   shoeTracker: {
     heading: string;
@@ -571,7 +641,7 @@ export interface PaceCraftCopy {
     stripeCanceledNotice: string;
     planChooseLabel: string;
     qrisSectionTitle: string;
-    qrisSectionDesc: string;
+    qrisSectionDesc: (planTitle: string, priceLabel: string) => string;
     qrisScanHint: string;
     qrisNotConfiguredNote: string;
     bankSectionLabel: string;
@@ -679,16 +749,28 @@ export interface PaceCraftCopy {
     trust1: string;
     trust2: string;
     trust3: string;
+    previewLabel: string;
+    previewTodayTag: string;
+    previewTodayHeadline: string;
+    previewTodayMetrics: string;
+    previewTodaySteps: string;
+    previewTodayCue: string;
+    previewActivePlan: string;
+    previewWeeklyTitle: string;
+    previewWeeklySessionLabel: string;
+    previewWeeklySessionVal: string;
+    previewWeeklyDistLabel: string;
+    previewWeeklyDistVal: string;
+    previewWeeklyCrossLabel: string;
+    previewWeeklyCrossVal: string;
     showcaseHeading: string;
     showcaseSubtitle: string;
-    showcaseTryDemoBtn: string;
     showcaseCards: Array<{
       badge: string;
       title: string;
       desc: string;
-      highlightLabel: string;
-      highlightValue: string;
     }>;
+    progressionNote: string;
     demoHeading: string;
     demoSubtitle: string;
     demoOpenFullBtn: string;
@@ -706,14 +788,19 @@ export interface PaceCraftCopy {
     }>;
     pricingHeading: string;
     pricingSubtitle: string;
-    pricingSelectBtn: string;
-    pricingSelectedBtn: string;
+    pricingBestValueBadge: string;
+    pricingFooterNote: string;
     comparisonTableHeading: string;
     comparisonFeatureHeader: string;
     comparisonIncludedLabel: string;
+    comparisonNotIncludedLabel: string;
+    selectedPlanHint: (planTitle: string, priceLabel: string) => string;
+    alreadyBoughtToggleLabel: string;
+    photoSectionTitle: string;
+    photoSectionDesc: string;
     faqHeading: string;
     faqSubtitle: string;
-    faqItems: Array<{ q: string; a: string }>;
+    faqItems: Array<{ q: string; a: string; hasPwaAction?: boolean }>;
   };
   demoMode: {
     badge: string;
@@ -786,11 +873,11 @@ export const UI_COPY: Record<AppLanguage, PaceCraftCopy> = {
     nav: {
       mainAriaLabel: 'Navigasi utama',
       mobileAriaLabel: 'Navigasi cepat mobile',
-      profileBmi: 'Profil & BMI',
-      trainingPlan: 'Menu Latihan',
-      nutrition: 'Nutrisi',
-      dailyProgress: 'Progres Harian',
-      stravaHistory: 'Riwayat Strava',
+      profileBmi: 'Profil',
+      trainingPlan: 'Rencana',
+      nutrition: 'Makan & Pulih',
+      dailyProgress: 'Progres',
+      stravaHistory: 'Riwayat Lari',
       buildMenuCta: 'Susun Menu',
       languageGroupLabel: 'Pilih bahasa',
       idButton: 'ID',
@@ -802,62 +889,71 @@ export const UI_COPY: Record<AppLanguage, PaceCraftCopy> = {
       closeMenuAria: 'Tutup menu samping',
       workspaceCaption: 'Asisten Latihan Lari',
       items: {
-        overview: { label: 'Beranda', hint: 'Fokus hari ini & ringkasan' },
-        training: { label: 'Menu Latihan', hint: 'Jadwal & kalkulator pace' },
-        progress: { label: 'Progres & Kalender', hint: 'Catat lari & kalender bulan' },
-        profile: { label: 'Profil & Alat', hint: 'BMI, HR, sepatu & akun' },
-        nutrition: { label: 'Nutrisi', hint: 'Makan & minum harian' },
-        strava: { label: 'Riwayat Strava', hint: 'Impor CSV/GPX & grafik' },
+        overview: { label: 'Hari Ini', hint: 'Latihan hari ini & progres' },
+        training: { label: 'Rencana', hint: 'Jadwal & simulasi target' },
+        progress: { label: 'Progres', hint: 'Catat lari, kalender & riwayat' },
+        profile: { label: 'Profil', hint: 'Profil pelari, performa & sepatu' },
+        nutrition: { label: 'Makan & Pulih', hint: 'Panduan makan & minum' },
+        strava: { label: 'Riwayat Lari', hint: 'Impor CSV/GPX & grafik' },
       },
     },
     overview: {
-      greetingTitle: 'Siap lari hari ini? Mulai dengan langkah yang nyaman.',
+      greetingTitle: 'Siap lari hari ini? Fokus ke satu sesi dulu.',
       greetingSubtitle:
-        'Semua alat latihan Anda tersusun rapi. Fokus cukup pada sesi hari ini dulu.',
-      quickPlanBtn: 'Atur Menu Latihan',
-      quickLogBtn: 'Catat Lari Hari Ini',
-      todaySectionLabel: 'Fokus Latihan Hari Ini',
-      todayDoneBadge: 'Sudah Dicatat',
+        'Jadwal, progres pekan ini, dan targetmu tersusun ringkas di bawah.',
+      quickPlanBtn: 'Ubah Target',
+      quickLogBtn: 'Catat Hasil',
+      todaySectionLabel: 'Latihan hari ini',
+      todayDoneBadge: 'Selesai',
       todayRestDesc:
         'Hari ini jadwal istirahat agar otot pulih. Jalan santai atau peregangan ringan sudah cukup.',
-      todayQuickLogBtn: 'Tandai Selesai',
+      todayQuickLogBtn: 'Catat Hasil',
       todayViewProgressBtn: 'Lihat di Progres',
-      todayViewPlanBtn: 'Lihat Jadwal Lengkap',
+      todayViewPlanBtn: 'Lihat rencana',
       todayLookWorkoutBtn: 'Lihat Latihan',
-      activePlanLabel: 'Rencana aktif',
+      activePlanLabel: 'Target aktif',
       paceGuidePrefix: 'Pace panduan',
       todayWarmHeadlines: {
-        easy: 'Lari santai dulu hari ini',
-        tempo: 'Fokus tempo terkontrol hari ini',
-        interval: 'Sesi interval terukur hari ini',
-        long: 'Lari jarak jauh bertahap hari ini',
-        rest: 'Istirahat & pemulihan hari ini',
-        strength: 'Penguatan otot & mobilitas hari ini',
+        easy: 'Hari ini, lari santai dulu',
+        tempo: 'Hari ini, lari tempo',
+        interval: 'Hari ini, sesi interval',
+        long: 'Hari ini, lari jarak jauh',
+        rest: 'Hari ini, istirahat & pulih',
+        strength: 'Hari ini, penguatan & mobilitas',
       },
       cards: {
-        trainingTitle: 'Menu Mingguan',
-        trainingAction: 'Buka Jadwal',
-        progressTitle: 'Progres Pekan Ini',
+        trainingTitle: 'Rencana Lari',
+        trainingAction: 'Lihat rencana',
+        progressTitle: 'Progres minggu ini',
         progressAction: 'Catat / Kalender',
-        profileTitle: 'Tubuh, Jantung & Sepatu',
+        profileTitle: 'Profil Pelari',
         profileAction: 'Buka Profil',
-        nutritionTitle: 'Panduan Makan & Minum',
+        nutritionTitle: 'Makan & Pulih',
         nutritionAction: 'Lihat Panduan',
       },
       stravaEmptyBanner:
-        'Baru mulai memakai PaceCraft? Muat data lari contoh agar jadwal dan pace langsung terisi otomatis.',
-      stravaLoadSampleShort: 'Coba Data Contoh',
-      extraMetricsHeading: 'Metrik & Ringkasan Tambahan',
-      weeklyProgressRunSessions: 'Sesi lari',
+        'Belum ada riwayat lari? Muat data contoh agar baseline terisi otomatis.',
+      stravaLoadSampleShort: 'Muat Data Contoh',
+      extraMetricsHeading: 'Ringkasan Tambahan',
+      weeklyProgressRunSessions: 'Sesi selesai',
       weeklyProgressDistance: 'Jarak lari',
       weeklyProgressCrossTrain: 'Strength / istirahat',
-      overloadAlertTitle: 'Jarak aktual jauh melampaui rencana (>115%)',
+      overloadAlertTitle: 'Jarak minggu ini di atas rencana (>115%)',
       overloadAlertBody: (pct) =>
-        `Total lari pekan ini sudah ${pct}% dari rencana. Tinjau beban latihan dan prioritaskan pemulihan agar tidak kelelahan berlebihan.`,
+        `Total lari pekan ini sudah ${pct}% dari rencana. Tinjau beban latihan dan prioritaskan pemulihan.`,
       carbsShort: 'Karbo',
       proteinShort: 'Protein',
       estVo2Short: 'Est. VO2',
       hydrationEstPrefix: 'Perkiraan awal',
+      weeklyTitle: 'Progres minggu ini',
+      activeGoalTitle: 'Target aktif',
+      viewPlanLink: 'Lihat rencana',
+      editGoalLink: 'Ubah target',
+      nutritionLink: 'Panduan Makan & Pulih',
+      daysToRaceText: (days) => `${days} hari menuju race`,
+      todayStructureLabel: 'Struktur sesi hari ini',
+      estDurationUnit: 'mnt',
+      predictedFinishPrefix: 'Proyeksi finis',
     },
     hero: {
       eyebrow: 'Perencana Lari 5K · 10K · 21K · 42K',
@@ -896,9 +992,9 @@ export const UI_COPY: Record<AppLanguage, PaceCraftCopy> = {
       doneEditBtn: 'Selesai',
     },
     bmi: {
-      heading: 'Profil & Pengaturan Pelari',
+      heading: 'Profil Pelari',
       subtitle:
-        'Atur data tubuh, zona detak jantung, kilometer sepatu, dan cadangan data Anda dari satu tempat yang rapi.',
+        'Atur data pelari, zona detak jantung, sepatu lari, dan cadangan data akunmu.',
       methodLabel: 'Cara Hitung',
       weightHeightBtn: 'Berat & Tinggi',
       directBmiBtn: 'BMI Langsung',
@@ -914,12 +1010,12 @@ export const UI_COPY: Record<AppLanguage, PaceCraftCopy> = {
         recovering: 'Pemulihan ringan',
         active: 'Nyeri sendi / cedera aktif',
       },
-      resultLabel: 'Hasil BMI Anda',
+      resultLabel: 'Indeks Massa Tubuh',
       categoryPrefix: 'Kategori',
-      maxIncreaseLabel: 'Batas Naik Jarak/Mgg',
-      maxPrefix: 'Maks',
+      maxIncreaseLabel: 'Saran Progres Awal/Mgg',
+      maxPrefix: 'Patokan',
       extraEasyLabel: 'Porsi Lari Santai Tambahan',
-      hrSectionTitle: 'Zona Detak Jantung (HR) & Perkiraan Kebugaran (VO2max)',
+      hrSectionTitle: 'Zona Detak Jantung & Perkiraan VO2max',
       hrSectionSubtitle:
         'Panduan batas detak jantung agar lari santai tidak kelelahan dan sesi cepat tetap efektif.',
       restingHrLabel: 'Detak Jantung Istirahat (bpm)',
@@ -934,99 +1030,143 @@ export const UI_COPY: Record<AppLanguage, PaceCraftCopy> = {
       hrZonesTitle: '5 Zona Detak Jantung Latihan Anda',
       tabsAriaLabel: 'Kategori pengaturan profil',
       tabs: {
-        body: 'Tubuh & BMI',
-        hr: 'Detak Jantung & VO2',
-        shoes: 'Sepatu Lari',
-        account: 'Backup & Akun',
+        body: 'Profil Pelari',
+        hr: 'Performa',
+        shoes: 'Sepatu',
+        account: 'Pengaturan',
         admin: 'Admin Pemilik',
       },
       helperTip:
-        'BMI dipakai sebagai pengaman awal; tetap sesuaikan porsi latihan dengan riwayat lari, rasa nyeri, dan respons pemulihan Anda.',
+        'BMI tidak menentukan keamanan kenaikan jarak secara mutlak. Selalu sesuaikan latihan dengan riwayat lari, pemulihan, rasa sakit, dan respons tubuh.',
       vo2NonLabDisclaimer:
         'Estimasi kebugaran non-lab (bukan pengganti uji VO2max laboratorium). Nilai dipengaruhi variasi HR maksimal individu, kelelahan, suhu panas, rute tanjakan, dan tidur.',
       vo2MethodResting: 'Sumber: Rumus Uth (15,3 × HRmaks / HRistirahat)',
       vo2MethodBlended: 'Sumber: Gabungan rumus Uth & kecepatan–HR submaximal Strava',
       shoeDisclaimer:
         'Catatan: Kilometer sepatu saja tidak memastikan kondisi bantalan atau mencegah cedera. Periksa juga keausan sol, respons pantulan, dan kenyamanan saat mendarat.',
+      bmiOptionalTitle: 'Indeks Massa Tubuh (opsional)',
+      bmiOptionalSubtitle:
+        'Membantu memberi patokan awal progres volume dan porsi lari santai. Tidak menggantikan evaluasi medis atau sinyal pemulihan tubuh.',
+      metricsOverviewTitle: 'Metrik Tubuh & Kebugaran',
+      editBmiAction: 'Atur Berat & BMI',
+      editVo2Action: 'Atur HR & Performa',
+      nonEssentialHint:
+        'Estimasi pendukung yang disimpan di Profil agar beranda tetap fokus ke latihan hari ini.',
     },
     training: {
-      heading: 'Kalkulator Menu Latihan Ideal',
-      subtitlePrefix: 'Menyesuaikan target lomba dengan rata-rata volume 4 minggu (',
+      heading: 'Rencana Lari',
+      subtitlePrefix: 'Mengikuti rata-rata volume 4 minggu (',
       weekUnit: 'km/mgg',
       subtitleMiddle: ') dan pace dasar',
       defaultBaselineTag: ' (acuan awal bawaan)',
       stravaBaselineTag: ' (dari riwayat Strava)',
       step1Title: '1. Pilih Target Jarak Lomba',
       raceGroupAria: 'Target jarak lomba',
-      step2Title: '2. Frekuensi Latihan per Minggu',
+      step2Title: '2. Hari Lari per Minggu',
       freqGroupAria: 'Frekuensi hari latihan per minggu',
       daysPerWeekShort: 'hari/mgg',
       totalPlannedLabel: 'Total rencana minggu ini:',
-      paceZonesHeading: 'Zona Pace Latihan Anda',
+      paceZonesHeading: 'Zona Pace Latihan',
       progressionHeading: 'Progresi Volume 4 Minggu',
-      progressionDescPrefix: 'Kenaikan bertahap maksimal',
+      progressionDescPrefix: 'Saran progres awal hingga',
       progressionDescSuffix:
-        'per minggu, disertai pekan pemulihan (cutback -20%) di minggu ke-4.',
-      scheduleHeadingPrefix: 'Jadwal Menu Mingguan',
-      activeDaysUnit: 'hari aktif',
-      restLabel: 'Pemulihan',
-      loggedBtn: 'Tercatat',
-      logCompleteBtn: 'Catat Selesai',
-      taperNoticeTitle: 'Penyesuaian Otomatis Fase Tapering',
+        'per minggu, disertai pekan pemulihan (cutback -20%) di minggu ke-4. Sesuaikan dengan respons tubuh.',
+      scheduleHeadingPrefix: 'Jadwal Mingguan',
+      activeDaysUnit: 'hari lari',
+      restLabel: 'Istirahat',
+      loggedBtn: '✓ Selesai',
+      logCompleteBtn: 'Catat Hasil',
+      taperNoticeTitle: 'Penyesuaian Fase Tapering',
       taperNoticeBody: (days, reductionPct, eventLabel) =>
-        `Sisa ${days} hari menuju ${eventLabel}. Volume minggu ini otomatis diturunkan ${reductionPct}% agar otot pulih dan segar di garis start.`,
-      raceWeekNoticeTitle: 'Penyesuaian Otomatis Pekan Lomba',
+        `Sisa ${days} hari menuju ${eventLabel}. Volume minggu ini diturunkan ${reductionPct}% agar otot pulih di garis start.`,
+      raceWeekNoticeTitle: 'Penyesuaian Pekan Lomba',
       raceWeekNoticeBody: (days, eventLabel) =>
-        `Tinggal ${days} hari menuju ${eventLabel}. Seluruh sesi diubah menjadi lari ringan (shakeout) bervolume rendah agar kaki siap maksimal.`,
+        `Tinggal ${days} hari menuju ${eventLabel}. Sesi diubah menjadi lari ringan (shakeout) agar kaki segar.`,
       raceDayNoticeTitle: 'Hari Lomba Telah Tiba!',
       raceDayNoticeBody: (eventLabel) =>
-        `Hari ini jadwal perlombaan ${eventLabel}. Lakukan pemanasan santai, jaga ritme awal, dan utamakan pemulihan setelah finis.`,
+        `Hari ini jadwal ${eventLabel}. Pemanasan santai, jaga ritme awal, dan nikmati larimu.`,
       strengthHeaderTag: (count) =>
         count > 0 ? `· ${count}x Strength Training` : '',
-      strengthBadgePrefix: 'Strength Training',
-      minuteShort: 'mnt',
-      viewScheduleTab: 'Jadwal Mingguan',
-      viewZonesTab: 'Zona Pace & Progresi',
-      customPaceBadge: 'Target Kalkulator Aktif',
+      strengthBadgePrefix: 'Strength & Mobility',
+      minuteShort: 'menit',
+      viewScheduleTab: 'Minggu ini',
+      viewZonesTab: 'Progres program',
+      viewSimulatorTab: 'Simulasi Target',
+      customPaceBadge: 'Target Simulasi Diterapkan',
       resetCustomPaceBtn: 'Pakai Acuan Strava',
       baselineVolumeChip: 'Acuan Volume',
       baselinePaceChip: 'Acuan Pace',
       strengthToggleShow: 'Lihat gerakan',
       strengthToggleHide: 'Sembunyikan gerakan',
       exportIcsBtn: 'Simpan ke Kalender HP (.ics)',
-      exportedIcsNotice: 'File jadwal .ics berhasil diunduh. Buka file tersebut untuk menyimpan ke Google Calendar atau Apple Calendar lengkap dengan pengingat.',
+      exportedIcsNotice: 'File jadwal .ics berhasil diunduh untuk Google Calendar atau Apple Calendar.',
       paceBasisLabel: 'Basis Zona Pace',
       paceBasisTags: {
-        race_goal: 'Target Kalkulator Lomba',
+        race_goal: 'Target Race Diterapkan',
         strava_baseline: 'Baseline Strava 30 Hari',
         default: 'Acuan Awal Bawaan',
       },
-      adaptiveHeading: 'Aturan Penyesuaian Konservatif',
-      adaptiveToggleLabel: 'Kaki Terasa Berat / Mode Pemulihan',
+      adaptiveHeading: 'Penyesuaian Latihan Saat Lelah',
+      adaptiveToggleLabel: 'Mode Pemulihan (Lagi Terasa Berat)',
       adaptiveToggleHint:
-        'Nyalakan jika tubuh terasa lelah tidak biasa. Sisa sesi Tempo/Interval minggu ini diubah ke Easy dan target jarak dipangkas konservatif.',
+        'Saat dinyalakan, sisa sesi Tempo/Interval minggu ini berubah menjadi Easy Run dan target jarak dipangkas 15–20%.',
+      adaptiveStatusNormal: 'Rencana berjalan normal',
+      adaptiveAdjustCta: 'Lagi terasa berat? Sesuaikan latihan',
+      planHeading: (race) => `Rencana ${race} kamu`,
+      planMetaLine: (days, raceDateLabel) =>
+        `${days} hari lari/minggu · Target race ${raceDateLabel}`,
+      editPlanBtn: 'Ubah rencana',
+      previewHeading: 'Pratinjau perubahan rencana',
+      confirmPlanBtn: 'Konfirmasi & Simpan Rencana',
+      cancelEditPlanBtn: 'Batal',
+      basisDisclosureLabel: 'Dasar rekomendasi',
+      nutritionLinkLabel: 'Lihat panduan Makan & Pulih',
+      blockWeeksHeading: 'Blok 4 Minggu',
+      weekChipLabel: (weekNumber) => `Minggu ${weekNumber}`,
+      activeWeekTag: 'Minggu aktif',
+      weeklyMixSummary: (easyCount, qualityCount, longCount, strengthCount) => {
+        const parts = [`${easyCount} Easy`];
+        if (qualityCount > 0) parts.push(`${qualityCount} Cepat/Tempo`);
+        if (longCount > 0) parts.push(`${longCount} Long Run`);
+        if (strengthCount > 0) parts.push(`${strengthCount} Strength`);
+        return parts.join(' · ');
+      },
+      workoutStepsHeading: 'Struktur Latihan',
+      coachCueLabel: 'Catatan coach',
+      estDurationShort: (min) => `~${min} mnt`,
+      predictorHeading: 'Proyeksi Finis Lomba (5K–42K)',
+      predictorSubtitle:
+        'Estimasi ekivalen Riegel berdasarkan pace acuanmu saat ini untuk membantu menilai kesiapan target waktu.',
+      predictorDisclaimer:
+        'Angka proyeksi bersifat estimasi matematis; hasil hari lomba tetap bergantung pada konsistensi long run, rute, cuaca, dan pemulihan.',
+      predictorCurrentTargetBadge: 'Target aktif',
       zoneLabels: {
-        easy: 'Santai (Easy)',
+        easy: 'Easy Run',
         tempo: 'Tempo',
-        interval: 'Interval Cepat',
-        long_run: 'Lari Jauh (Long Run)',
+        interval: 'Interval',
+        long_run: 'Long Run',
         rest: 'Istirahat',
       },
     },
     nutrition: {
-      headingPrefix: 'Rekomendasi Nutrisi & Pemulihan',
+      headingPrefix: 'Makan & Pulih',
       subtitleBeforeWeight:
-        'Kebutuhan karbohidrat, protein, dan perkiraan awal hidrasi harian dihitung untuk berat badan',
-      subtitleAfterWeight: 'agar glikogen dan jaringan otot pulih optimal.',
+        'Panduan praktis sekitar waktu lari agar energi cukup dan pemulihan tetap nyaman (referensi berat',
+      subtitleAfterWeight: ').',
       carbsLabel: 'Karbohidrat Harian',
-      carbsUnitNote: 'g/kg BB · Sumber energi utama',
+      carbsUnitNote: 'g/kg BB · Energi utama',
       proteinLabel: 'Protein Pemulihan',
       proteinUnitNote: 'g/kg BB · Perbaikan otot',
       hydrationLabel: 'Hidrasi Harian',
       hydrationUnitNote:
-        'Perkiraan awal air & elektrolit (sesuaikan cuaca, kelembapan & laju keringat)',
-      strategyHeadingPrefix: 'Strategi Asupan Sesuai Beban Latihan & Profil',
-      examplesLabel: 'Contoh:',
+        'Perkiraan awal air & elektrolit (sesuaikan cuaca & keringat)',
+      strategyHeadingPrefix: 'Panduan Praktis Harian',
+      examplesLabel: 'Contoh menu:',
+      practicalHeading: 'Panduan Makan & Minum di Sekitar Jam Lari',
+      macroToggleShow: 'Lihat perkiraan kebutuhan harian ▾',
+      macroToggleHide: 'Sembunyikan perkiraan kebutuhan harian ▴',
+      macroCalcNote:
+        'Angka di atas adalah estimasi kasar berdasarkan berat badan dan jarak target—bukan resep medis ketat.',
     },
     dailyProgress: {
       heading: 'Pelacakan Progres Harian',
@@ -1056,35 +1196,40 @@ export const UI_COPY: Record<AppLanguage, PaceCraftCopy> = {
       comfortScoreAria: 'Skor kenyamanan',
       comfortRatings: {
         1: 'Berat',
-        2: 'Cukup Lelah',
-        3: 'Stabil',
+        2: 'Berat',
+        3: 'Biasa',
         4: 'Nyaman',
-        5: 'Sangat Segar',
+        5: 'Nyaman',
+      },
+      feelSimpleOptions: {
+        hard: 'Berat',
+        steady: 'Biasa',
+        comfy: 'Nyaman',
       },
       noteLabel: 'Catatan Singkat (opsional)',
       notePlaceholder:
         'Misal: Napas lebih ringan, kaki terasa segar di km terakhir',
-      saveBtn: 'Simpan Progres Hari Ini',
+      saveBtn: 'Simpan Hasil',
       savedFeedback: (dayName, title) =>
-        `Progres ${dayName} (${title}) berhasil disimpan.`,
-      savedLogsHeading: 'Catatan Progres Tersimpan',
+        `Hasil ${dayName} (${title}) berhasil disimpan.`,
+      savedLogsHeading: 'Riwayat Catatan Tersimpan',
       emptyLogsBeforeBtn: 'Belum ada sesi harian yang dicatat. Pilih hari dan tekan',
-      emptyLogsBtnName: 'Simpan Progres Hari Ini',
-      emptyLogsAfterBtn: 'untuk membangun streak Anda.',
+      emptyLogsBtnName: 'Simpan Hasil',
+      emptyLogsAfterBtn: 'untuk mencatat progres.',
       feelingPrefix: 'Rasa',
       deleteLogAria: 'Hapus catatan',
-      quickLogDefaultNote: 'Diselesaikan sesuai menu mingguan',
+      quickLogDefaultNote: 'Diselesaikan sesuai rencana',
       stravaSyncTitle: (count) =>
-        `${count} sesi Strava terbaru siap disinkronkan ke Progres Harian`,
+        `${count} sesi Strava terbaru siap dicocokkan ke Progres`,
       stravaSyncDesc:
         'Otomatis mencocokkan jarak lari dari riwayat Strava Anda ke hari yang sesuai tanpa menimpa catatan manual.',
       stravaSyncBtn: (count) => `Sinkronkan dari Strava (${count} sesi)`,
       stravaSyncSuccess: (count) =>
-        `${count} sesi Strava berhasil dicatat ke Progres Harian Anda.`,
+        `${count} sesi Strava berhasil dicatat ke Progres.`,
       stravaSyncedTag: 'Sinkronisasi Strava',
-      paceInputLabel: 'Catatan Pace (mnt:dtk/km)',
+      paceInputLabel: 'Pace (mnt:dtk/km)',
       paceInputPlaceholder: 'Misal: 06:15',
-      hrInputLabel: 'Detak Jantung (bpm, opsional)',
+      hrInputLabel: 'Detak Jantung (bpm)',
       hrInputPlaceholder: 'Misal: 148',
       avgPaceLabel: 'Rata-rata Pace',
       avgHrLabel: 'Rata-rata HR',
@@ -1094,12 +1239,16 @@ export const UI_COPY: Record<AppLanguage, PaceCraftCopy> = {
       jumpToCalendarBtn: 'Lihat Kalender Bulanan',
       streakRestNote:
         'Hari istirahat terjadwal tetap menjaga streak (lari setiap hari tidak wajib).',
-      runSessionsLabel: 'Sesi Lari',
-      runDistanceLabel: 'Jarak Lari',
+      runSessionsLabel: 'Sesi lari',
+      runDistanceLabel: 'Jarak lari',
       strengthRestSummary: (crossCount, restCount) =>
         `Aktivitas tambahan pekan ini: ${crossCount} strength/mobilitas · ${restCount} hari istirahat tercatat`,
       overloadCautionBanner: (pct, plannedKm, actualKm) =>
-        `Perhatian beban latihan: jarak lari tercatat pekan ini (${actualKm} km) sudah ${pct}% dari rencana (${plannedKm} km). Pertimbangkan menjaga sisa sesi tetap santai dan utamakan pemulihan.`,
+        `Perhatian beban latihan: jarak lari tercatat pekan ini (${actualKm} km) sudah ${pct}% dari rencana (${plannedKm} km). Tinjau beban dan utamakan pemulihan.`,
+      subTabCheckInCalendar: 'Catat & Kalender',
+      subTabRunHistory: 'Riwayat Lari',
+      historyToggleShow: 'Lihat riwayat catatan',
+      historyToggleHide: 'Tutup riwayat catatan',
       shareModal: {
         title: 'Bagikan Ringkasan Progres',
         subtitle:
@@ -1242,8 +1391,15 @@ export const UI_COPY: Record<AppLanguage, PaceCraftCopy> = {
         },
       ],
       flaggedAnomalyBanner: (count) =>
-        `${count} aktivitas memiliki selisih kecepatan/pace tidak wajar di file sumber sehingga ditandai "Perlu Dicek" dan dikecualikan dari kalibrasi baseline & VO2max.`,
+        `${count} aktivitas perlu diperiksa · Sebagian data pace tidak terbaca wajar dan belum digunakan untuk rekomendasi terkait.`,
       anomalyBadge: 'Perlu Dicek',
+      flaggedBannerCompact: (count) =>
+        `${count} aktivitas perlu diperiksa · Sebagian data pace tidak terbaca wajar dan belum digunakan untuk rekomendasi terkait.`,
+      reviewAnomaliesBtn: 'Periksa Aktivitas',
+      showAllRunsBtn: 'Tampilkan semua',
+      weeklyAvgSummaryLabel: 'Rata-rata jarak mingguan',
+      thirtyDayTotalSummaryLabel: 'Total jarak 30 hari',
+      sessionsCountLabel: 'Jumlah sesi',
     },
     detailModal: {
       closeAria: 'Tutup detail aktivitas',
@@ -1263,13 +1419,20 @@ export const UI_COPY: Record<AppLanguage, PaceCraftCopy> = {
         strava_oauth: 'Strava OAuth API',
       },
       closeBtn: 'Tutup',
-      anomalyTitle: 'Anomali Kecepatan / Pace Terdeteksi',
+      anomalyTitle: 'Data Aktivitas Perlu Diperiksa',
       anomalyBody: (computedPace, reportedPace, reason) =>
         reportedPace && reportedPace !== computedPace
-          ? `Kolom kecepatan di file sumber terbaca setara ${reportedPace}, tetapi jarak dan waktu bergerak menghasilkan ${computedPace}. PaceCraft menggunakan ${computedPace} dan mengecualikan sesi ini dari rata-rata kalibrasi.`
+          ? `Kolom kecepatan di file sumber terbaca setara ${reportedPace}, sedangkan jarak dan waktu bergerak menghasilkan ${computedPace}. PaceCraft menampilkan ${computedPace} dan belum memakainya untuk rekomendasi terkait.`
           : reason === 'speed_distance_mismatch'
-            ? `Kolom kecepatan pada file sumber tidak selaras dengan jarak dan waktu bergerak. PaceCraft otomatis memakai hasil hitung Jarak ÷ Waktu Bergerak (${computedPace}) dan mengecualikan sesi ini dari rata-rata kalibrasi.`
-            : `Kombinasi jarak dan waktu bergerak menghasilkan ${computedPace} yang berada di luar rentang lari wajar, sehingga aktivitas ini ditandai untuk dicek dan dikecualikan dari baseline otomatis.`,
+            ? `Kolom kecepatan pada file sumber tidak selaras dengan jarak dan waktu bergerak (${computedPace}). Kamu bisa memperbaiki jarak/waktu di bawah atau menghapus aktivitas ini.`
+            : `Kombinasi jarak dan waktu bergerak menghasilkan ${computedPace} di luar batas wajar. Perbaiki jarak/waktu di bawah atau hapus aktivitas ini.`,
+      editSectionHeading: 'Perbaiki Jarak atau Durasi Aktivitas',
+      editDistanceLabel: 'Jarak (km)',
+      editDurationMinLabel: 'Durasi Bergerak (menit)',
+      saveEditBtn: 'Simpan Perbaikan',
+      deleteActivityBtn: 'Hapus Aktivitas Ini',
+      confirmDeleteActivityBtn: 'Konfirmasi Hapus Aktivitas',
+      cancelEditBtn: 'Batal',
     },
     disconnectModal: {
       titleOAuth: 'Putuskan Koneksi & Hapus Riwayat?',
@@ -1415,6 +1578,8 @@ export const UI_COPY: Record<AppLanguage, PaceCraftCopy> = {
       applyConservativeBtn: (pace) => `Pakai Pace Latihan Konservatif (${pace})`,
       goalVsTrainingNote:
         'Target race pace adalah sasaran hari lomba; zona latihan harian idealnya tetap bertumpu pada kemampuan saat ini.',
+      statusActiveBadge: 'Rencana aktif',
+      statusSimulationBadge: 'Simulasi—belum diterapkan',
     },
     shoeTracker: {
       heading: 'Pelacak Jarak Sepatu Lari (Shoe Mileage Tracker)',
@@ -1483,8 +1648,8 @@ export const UI_COPY: Record<AppLanguage, PaceCraftCopy> = {
       manualCardDesc:
         'Sudah melakukan pembayaran manual? Kirim nomor referensi transaksi agar pemilik dapat mengaktifkan akses akun Anda.',
       planLabel: 'Paket Dipilih',
-      planLifetime: 'Akses Penuh (Lifetime)',
-      planPro: 'Paket Pro Pelari',
+      planLifetime: 'PaceCraft Lifetime (Rp99.000 · Sekali bayar selamanya)',
+      planPro: 'PaceCraft Essential (Rp59.000 · Akses 12 bulan)',
       orderRefLabel: 'Nomor Referensi / Bukti Transfer',
       orderRefPlaceholder: 'Misal: INV-20261121-001 / QRIS-8821',
       noteLabel: 'Catatan Singkat (opsional)',
@@ -1501,10 +1666,10 @@ export const UI_COPY: Record<AppLanguage, PaceCraftCopy> = {
         'Memverifikasi status pembayaran checkout Anda...',
       stripeCanceledNotice:
         'Pembayaran checkout dibatalkan. Anda dapat mencoba kembali kapan saja.',
-      planChooseLabel: '1. Pilih Paket Akses PaceCraft',
+      planChooseLabel: '1. Pilih Paket PaceCraft',
       qrisSectionTitle: '2. Transfer via QRIS / Rekening',
-      qrisSectionDesc:
-        'Scan QRIS di bawah sesuai nominal paket, lalu klik tombol WhatsApp agar pesan email Google dan paket Anda otomatis terisi.',
+      qrisSectionDesc: (planTitle, priceLabel) =>
+        `Scan QRIS di bawah sebesar ${priceLabel} (${planTitle}), lalu klik tombol WhatsApp agar email Google dan paket Anda otomatis terisi.`,
       qrisScanHint: 'Scan menggunakan GoPay, OVO, DANA, ShopeePay, atau Mobile Banking',
       qrisNotConfiguredNote:
         'Gambar QRIS merchant belum diisi di konfigurasi server (NEXT_PUBLIC_QRIS_IMAGE_URL). Gunakan info rekening di bawah atau hubungi Admin via WhatsApp.',
@@ -1524,8 +1689,8 @@ export const UI_COPY: Record<AppLanguage, PaceCraftCopy> = {
       subtitle:
         'Buat License Key unik di koleksi access-codes (otomatis hangus setelah dipakai 1 akun Google) atau setujui konfirmasi QRIS secara real-time.',
       planLabel: 'Jenis Paket',
-      planLifetime: 'Lifetime',
-      planPro: 'Pro Pelari',
+      planLifetime: 'PaceCraft Lifetime (Rp99.000)',
+      planPro: 'PaceCraft Essential 12 Bulan (Rp59.000)',
       customCodeLabel: 'Kode Kustom (opsional, kosongkan agar otomatis)',
       customCodePlaceholder: 'Misal: VIP-JAKARTA-01',
       buyerNoteLabel: 'Nama / Catatan Pembeli QRIS (opsional)',
@@ -1580,11 +1745,11 @@ export const UI_COPY: Record<AppLanguage, PaceCraftCopy> = {
         peak: 'Puncak',
       },
       intensityDescriptions: {
-        rest: 'Hari pemulihan atau belum ada sesi lari tercatat',
+        rest: 'Hari istirahat atau tidak ada sesi lari tercatat',
         light: 'Sesi Easy / pemulihan singkat (< 6 km)',
         moderate: 'Sesi aerobik stabil (6–11,9 km) atau trail ringan',
-        high: 'Tempo run, Long Run menengah (12–17,9 km), atau HR zona Z3–Z4',
-        peak: 'Interval kecepatan, VO2max (Z5), atau Long Run ≥ 18 km',
+        high: 'Menandakan sesi tempo atau lari jauh (12–17,9 km), bukan risiko cedera',
+        peak: 'Menandakan sesi interval cepat atau long run ≥ 18 km (butuh pemulihan cukup)',
       },
       todayTag: 'Hari Ini',
       restLoggedTag: 'Pemulihan Tercatat',
@@ -1613,69 +1778,83 @@ export const UI_COPY: Record<AppLanguage, PaceCraftCopy> = {
       metricDuration: 'Durasi',
       metricHr: 'HR Rata-rata',
       metricElevation: 'Elevasi',
-      metricComfort: 'Nyaman',
+      metricComfort: 'Rasa',
     },
     landing: {
       navFeatures: 'Fitur',
       navDemo: 'Kalkulator Gratis',
       navPricing: 'Harga',
       navFaq: 'FAQ',
-      navLoginBtn: 'Masuk / Aktivasi',
-      heroBadge: 'Siap Lomba 5K · 10K · Half & Full Marathon',
-      heroTitle: 'Susun Menu Latihan Lari Sesuai Tubuh Anda dalam 30 Detik.',
+      navLoginBtn: 'Masuk',
+      heroBadge: 'Perencana Lari 5K · 10K · 21K · 42K',
+      heroTitle: 'Target lomba jelas. Latihan harian nggak bikin bingung.',
       heroSubtitle:
-        'Kalkulator pace target lomba, jadwal mingguan berpengaman BMI, kalender intensitas bulanan, hingga impor Strava CSV/GPX gratis tanpa wajib berlangganan Strava berbayar.',
-      heroDemoCta: 'Coba Kalkulator Pace',
-      heroOpenDemoCta: 'Tonton Video Demo',
-      heroBuyCta: 'Lihat Harga & Paket',
+        'Susun rencana lari sesuai rutinitas dan riwayat latihanmu—dari 5K hingga maraton. Lihat latihan hari ini, catat progres, dan tetap pegang kendali saat rencana perlu diubah.',
+      heroDemoCta: 'Coba Kalkulator Gratis',
+      heroOpenDemoCta: 'Lihat Cara Kerjanya',
+      heroBuyCta: 'Lihat Paket',
       heroImageAlt: 'Pelari pagi di jalur lari berlatar cahaya matahari terbit',
-      trust1: 'Impor Strava CSV/GPX Gratis',
-      trust2: 'Bisa Dipakai di HP (PWA)',
-      trust3: 'Data Terisolasi per Akun Google',
-      showcaseHeading: 'Semua Alat Penting Pelari dalam Satu Ruang yang Rapi',
+      trust1: 'Kalkulator pace tetap gratis',
+      trust2: 'Impor Strava CSV/GPX tanpa langganan berbayar',
+      trust3: 'Mulai Rp59.000/12 bln · atau Rp99.000 Lifetime',
+      previewLabel: 'Pratinjau Ruang Kerja PaceCraft',
+      previewTodayTag: 'Latihan Hari Ini · Selasa · Tempo Terkontrol',
+      previewTodayHeadline: 'Hari ini, lari tempo',
+      previewTodayMetrics: '6,2 km · Pace panduan 05:25–05:35/km',
+      previewTodaySteps: 'Pemanasan 1,5 km · Inti 3,7 km Tempo · Pendinginan 1 km · ~36 mnt',
+      previewTodayCue: 'Kunci ritme stabil di sesi inti—masih cukup terkontrol untuk 3–4 kata.',
+      previewActivePlan: 'Target aktif: 10K · 4 hari/minggu',
+      previewWeeklyTitle: 'Progres minggu ini',
+      previewWeeklySessionLabel: 'Sesi selesai',
+      previewWeeklySessionVal: '3 dari 4 selesai',
+      previewWeeklyDistLabel: 'Jarak lari',
+      previewWeeklyDistVal: '16,2 dari 26,1 km',
+      previewWeeklyCrossLabel: 'Strength / istirahat',
+      previewWeeklyCrossVal: '1 strength · 2 rest',
+      showcaseHeading: 'Latihan Terstruktur ala Coach, Satu Manfaat per Bagian',
       showcaseSubtitle:
-        'Dirancang agar pelari pemula hingga target Personal Best bisa berlatih konsisten tanpa menebak-nebak pace atau membebani lutut.',
-      showcaseTryDemoBtn: 'Tonton Video Demo Aplikasi',
+        'Setiap bagian punya peran jelas—mulai dari struktur sesi harian lengkap hingga proyeksi finis lomba dan riwayat larimu.',
       showcaseCards: [
         {
-          badge: 'Menu Adaptif',
-          title: 'Menu Latihan + Pengaman BMI & Tapering',
-          desc: 'Atur jarak 5K–42K dan frekuensi 3–6 hari/minggu. Volume otomatis aman <=10% per minggu dan tapering menjelang hari lomba.',
-          highlightLabel: 'Ekspor Kalender HP',
-          highlightValue: 'Format .ics + pengingat 30 mnt',
+          badge: '01 · Jadwal Terstruktur',
+          title: 'Blok 4 Minggu, Pemanasan–Inti & Strength',
+          desc: 'Pilih target 5K–42K dan frekuensi lari. Tiap sesi dipecah jelas menjadi Pemanasan, Sesi Inti, Pendinginan, perkiraan durasi, plus panduan set & repetisi strength.',
         },
         {
-          badge: 'Kalender Bulanan',
-          title: 'Kalender Intensitas & Rekor Personal Best',
-          desc: 'Pantau peta warna intensitas bulanan dari catatan harian maupun Strava, ketuk tanggal mana saja untuk detail sesi, dan simpan rekor PB 5K–42K.',
-          highlightLabel: 'IG Story Ready',
-          highlightValue: 'Unduh kartu progres 9:16 & 1:1',
+          badge: '02 · Progres Mingguan',
+          title: 'Catat Hasil & Pantau Beban Secara Terpisah',
+          desc: 'Sesi lari, jarak aktual, rasa nyaman, dan latihan strength/istirahat dipisahkan rapi agar kamu mudah menilai konsistensi tanpa mencampur angka.',
         },
         {
-          badge: 'Tanpa Langganan Strava',
-          title: 'Impor CSV/GPX Strava Langsung di Browser',
-          desc: 'Cukup unggah file activities.csv atau .gpx ekspor Strava Anda—langsung menyaring aktivitas non-lari dan menghitung pace dasar pribadi.',
-          highlightLabel: 'Pelacak Sepatu',
-          highlightValue: 'Peringatan ganti bantalan 600–800 km',
+          badge: '03 · Riwayat Strava',
+          title: 'Impor CSV/GPX Gratis & Kalibrasi Baseline',
+          desc: 'Unggah file ekspor Strava langsung di browser tanpa langganan berbayar untuk menyaring aktivitas non-lari dan menghitung pace dasar pribadi.',
+        },
+        {
+          badge: '04 · Proyeksi & Perlengkapan',
+          title: 'Proyeksi Finis, Kalender Intensitas & Sepatu',
+          desc: 'Lihat estimasi waktu finis 5K–42K, peta intensitas bulanan, rekor PB, kilometer sepatu, ekspor kalender ponsel (.ics), dan kartu progres PNG.',
         },
       ],
-      demoHeading: 'Tonton Video Demo & Coba Kalkulator Pace Gratis',
+      progressionNote:
+        'Catatan pendekatan: saran kenaikan volume bertahap dan penyesuaian menjelang lomba bersifat panduan umum—selalu sesuaikan dengan riwayat latihan, rasa nyeri, dan pemulihan tubuhmu.',
+      demoHeading: 'Lihat Cara Kerjanya & Coba Kalkulator Pace Gratis',
       demoSubtitle:
-        'Lihat cuplikan nyata ruang latihan PaceCraft (Fokus Hari Ini, Progres Pekan Ini, Kalender Intensitas, dan Impor Strava), lalu uji target pace lomba Anda di kalkulator gratis di bawah.',
-      demoOpenFullBtn: 'Tonton Video Demo',
+        'Tonton cuplikan singkat ruang kerja PaceCraft, lalu uji target waktu lombamu di kalkulator gratis tanpa perlu login.',
+      demoOpenFullBtn: 'Lihat Cara Kerjanya',
       demoApplyCta: 'Masuk untuk Simpan Target & Buat Jadwal',
       demoAppliedHint:
-        'Target pace Anda dicatat! Silakan masuk dengan Akun Google di atas untuk membangun jadwal mingguan lengkap.',
+        'Target pace Anda dicatat! Masuk dengan Akun Google di bawah untuk mulai menyusun jadwal mingguan.',
       videoDemoBadge: 'Cuplikan Rekaman Layar (Data Contoh 21K)',
-      videoDemoTitle: 'Lihat Cara Kerja PaceCraft Tanpa Perlu Login',
+      videoDemoTitle: 'Lihat Cara Kerja PaceCraft Sebelum Masuk',
       videoDemoDesc:
-        'Tonton cuplikan singkat tiga fitur utama: Pelacakan Progres harian & kalender bulanan, Kalkulator Pace lomba, dan Sinkronisasi Strava CSV/GPX.',
+        'Tonton alur tiga fitur utama: Pelacakan Progres harian & kalender bulanan, Kalkulator Pace lomba, serta Sinkronisasi Strava CSV/GPX.',
       videoDemoFallback: 'Browser Anda tidak mendukung pemutaran video HTML5.',
       videoDemoChapters: [
         {
           id: 'progress',
           label: 'Pelacakan Progres',
-          caption: 'Fokus Latihan Hari Ini, progres mingguan terpisah, dan kalender intensitas bulanan.',
+          caption: 'Latihan hari ini, progres mingguan terpisah, dan kalender intensitas bulanan.',
           timeSec: 0,
         },
         {
@@ -1691,32 +1870,40 @@ export const UI_COPY: Record<AppLanguage, PaceCraftCopy> = {
           timeSec: 25,
         },
       ],
-      pricingHeading: 'Harga Transparan, Tanpa Biaya Bulanan Mengikat',
+      pricingHeading: 'Pilih Paket yang Sesuai Ritme Latihanmu',
       pricingSubtitle:
-        'Bandingkan Paket Lifetime dan Paket Pro Tahunan. Aktivasi mudah lewat QRIS + WhatsApp atau License Key sekali pakai.',
-      pricingSelectBtn: 'Pilih Paket Ini',
-      pricingSelectedBtn: 'Paket Dipilih',
-      comparisonTableHeading: 'Tabel Perbandingan Paket Lifetime vs Tahunan',
-      comparisonFeatureHeader: 'Fitur & Akses',
+        'Mulai dengan PaceCraft Essential Rp59.000 untuk 12 bulan, atau pilih PaceCraft Lifetime Rp99.000 sekali bayar selamanya. Kalkulator pace publik tetap gratis.',
+      pricingBestValueBadge: 'Paling Hemat · Selamanya',
+      pricingFooterNote: 'Sekali bayar sesuai paket · Tanpa tagihan bulanan.',
+      comparisonTableHeading: 'Perbandingan Essential vs Lifetime',
+      comparisonFeatureHeader: 'Fitur Utama',
       comparisonIncludedLabel: 'Termasuk',
+      comparisonNotIncludedLabel: 'Tidak termasuk',
+      selectedPlanHint: (planTitle, priceLabel) =>
+        `Paket aktif: ${planTitle} (${priceLabel}). Masuk dengan Akun Google untuk melanjutkan pembayaran QRIS atau aktivasi akses.`,
+      alreadyBoughtToggleLabel: 'Sudah membeli? Aktifkan akses',
+      photoSectionTitle: 'Latihan terukur, mulai dari satu sesi hari ini.',
+      photoSectionDesc:
+        'Coba kalkulator gratisnya lebih dulu, pilih paket Essential 12 bulan atau Lifetime, lalu aktifkan aksesmu lewat Google.',
       faqHeading: 'Pertanyaan yang Sering Diajukan',
-      faqSubtitle: 'Jawaban singkat sebelum Anda memulai latihan bersama PaceCraft.',
+      faqSubtitle: 'Jawaban singkat sebelum kamu memulai latihan bersama PaceCraft.',
       faqItems: [
         {
-          q: 'Apakah wajib punya langganan Strava berbayar (Strava Subscription)?',
-          a: 'Tidak wajib sama sekali. Anda bisa mengekspor file activities.csv atau .gpx dari akun Strava gratis dan langsung mengimpornya di browser tanpa biaya tambahan.',
+          q: 'Kalau aku coba kalkulator, apakah rencana aktif berubah?',
+          a: 'Tidak. Mengubah jarak atau waktu di kalkulator halaman depan maupun menu Simulasi Target hanya bersifat simulasi dan tidak mengubah rencana aktif kecuali kamu menyimpannya.',
         },
         {
-          q: 'Apakah ini sekali bayar atau langganan bulanan?',
-          a: 'Anda bisa memilih Paket Lifetime (bayar sekali Rp 149.000 untuk akses selamanya) atau Paket Pro Tahunan (Rp 99.000/tahun) tanpa tagihan bulanan otomatis.',
+          q: 'Apakah wajib punya langganan Strava berbayar (Strava Subscription)?',
+          a: 'Tidak wajib. Pada paket Lifetime kamu cukup mengunggah file activities.csv atau .gpx hasil ekspor akun Strava gratis langsung di browser.',
+        },
+        {
+          q: 'Apa beda paket Rp59.000 (12 bulan) dan Rp99.000 (Lifetime)?',
+          a: 'Essential (Rp59.000) memberi akses 12 bulan ke rencana terstruktur 5K–42K, struktur Warm-up/Inti/Cool-down, strength, dan check-in harian. Lifetime (Rp99.000) bayar sekali selamanya plus impor Strava CSV/GPX, proyeksi finis, kalender intensitas, pelacak sepatu, dan ekspor .ics—keduanya tanpa perpanjangan otomatis.',
         },
         {
           q: 'Apakah bisa dipakai di HP seperti aplikasi?',
-          a: 'Ya. PaceCraft mendukung mode PWA (Progressive Web App). Cukup klik "Pasang di Layar Utama" di Android Chrome atau Add to Home Screen di Safari iPhone.',
-        },
-        {
-          q: 'Bagaimana cara melihat demo dan mengaktifkan akun lewat QRIS?',
-          a: 'Anda dapat menonton video demo lengkap serta mencoba Kalkulator Pace gratis di halaman ini. Saat siap, masuk dengan Akun Google, scan QRIS, lalu konfirmasi via WhatsApp untuk menerima License Key sekali pakai guna membuka seluruh fitur ruang latihan.',
+          a: 'Ya. PaceCraft mendukung mode PWA (Progressive Web App) sehingga bisa dipasang ke layar utama HP lewat Chrome Android atau Safari iPhone.',
+          hasPwaAction: true,
         },
       ],
     },
@@ -1774,13 +1961,13 @@ export const UI_COPY: Record<AppLanguage, PaceCraftCopy> = {
       closeBtn: 'Mengerti',
     },
     personalBests: {
-      heading: 'Rekam Jejak Personal Best (PB) Lomba',
-      subtitle: 'Catat waktu terbaik pribadi Anda untuk jarak 5K hingga 42K, atau deteksi otomatis dari riwayat lari Strava Anda.',
-      detectBtn: 'Deteksi dari Riwayat Strava',
-      detectedNotice: (count) => `Berhasil mendeteksi ${count} rekor PB lebih cepat dari riwayat Strava Anda.`,
-      noRunsDetectedNotice: 'Belum ditemukan aktivitas lari Strava di rentang jarak lomba (5K/10K/21K/42K) yang lebih cepat dari catatan saat ini.',
+      heading: 'Perkiraan Terbaik dari Aktivitas (Personal Best)',
+      subtitle: 'Tinjau perkiraan waktu tercepat 5K hingga 42K dari aktivitas larimu, lalu konfirmasi atau ubah manual.',
+      detectBtn: 'Pindai dari Riwayat Lari',
+      detectedNotice: (count) => `Menemukan ${count} perkiraan waktu terbaik dari riwayat aktivitasmu.`,
+      noRunsDetectedNotice: 'Belum ditemukan aktivitas lari di rentang jarak lomba (5K/10K/21K/42K) yang lebih cepat dari catatan saat ini.',
       clearBtn: 'Hapus',
-      overviewLabel: 'Personal Best Tercatat',
+      overviewLabel: 'Perkiraan Terbaik Tercatat',
       placeholder: 'mm:dd atau j:mm:dd',
       saveHint: 'Format waktu: mm:dd (contoh 24:30) atau j:mm:dd (contoh 1:52:10). Kosongkan untuk menghapus.',
       invalidHint: 'Format belum valid. Gunakan mm:dd atau j:mm:dd (minimal 10 menit).',
@@ -1790,11 +1977,11 @@ export const UI_COPY: Record<AppLanguage, PaceCraftCopy> = {
     nav: {
       mainAriaLabel: 'Main navigation',
       mobileAriaLabel: 'Mobile quick navigation',
-      profileBmi: 'Profile & BMI',
-      trainingPlan: 'Training Plan',
-      nutrition: 'Nutrition',
-      dailyProgress: 'Daily Progress',
-      stravaHistory: 'Strava History',
+      profileBmi: 'Profile',
+      trainingPlan: 'Plan',
+      nutrition: 'Eat & Recover',
+      dailyProgress: 'Progress',
+      stravaHistory: 'Run History',
       buildMenuCta: 'Build Plan',
       languageGroupLabel: 'Select language',
       idButton: 'ID',
@@ -1804,55 +1991,55 @@ export const UI_COPY: Record<AppLanguage, PaceCraftCopy> = {
       ariaLabel: 'PaceCraft feature menu',
       openMenuAria: 'Open sidebar menu',
       closeMenuAria: 'Close sidebar menu',
-      workspaceCaption: 'Friendly Running Assistant',
+      workspaceCaption: 'Running Training Planner',
       items: {
-        overview: { label: 'Home', hint: "Today's focus & summary" },
-        training: { label: 'Training Plan', hint: 'Schedule & pace calculator' },
-        progress: { label: 'Progress & Calendar', hint: 'Quick log & monthly view' },
-        profile: { label: 'Profile & Tools', hint: 'BMI, HR, shoes & backup' },
-        nutrition: { label: 'Nutrition', hint: 'Daily fueling & hydration' },
-        strava: { label: 'Strava History', hint: 'CSV/GPX import & charts' },
+        overview: { label: 'Today', hint: "Today's workout & progress" },
+        training: { label: 'Plan', hint: 'Weekly schedule & goal sim' },
+        progress: { label: 'Progress', hint: 'Logs, calendar & history' },
+        profile: { label: 'Profile', hint: 'Runner profile, stats & shoes' },
+        nutrition: { label: 'Eat & Recover', hint: 'Daily fueling & hydration' },
+        strava: { label: 'Run History', hint: 'CSV/GPX import & charts' },
       },
     },
     overview: {
-      greetingTitle: 'Ready to run today? Take it one comfortable step at a time.',
+      greetingTitle: 'Ready for today’s run? Start with one clear step.',
       greetingSubtitle:
-        'Everything is organized simply. Start with today’s workout below.',
-      quickPlanBtn: 'Customize Plan',
-      quickLogBtn: "Log Today's Run",
-      todaySectionLabel: "Today's Focus",
-      todayDoneBadge: 'Logged Today',
+        'Your workout today, weekly progress, and active goal in one calm view.',
+      quickPlanBtn: 'Edit Goal',
+      quickLogBtn: 'Log Result',
+      todaySectionLabel: "Today's Workout",
+      todayDoneBadge: 'Done',
       todayRestDesc:
         'Today is a recovery day so your legs rebuild stronger. A light walk or gentle stretch is plenty.',
-      todayQuickLogBtn: 'Mark Done',
+      todayQuickLogBtn: 'Log Result',
       todayViewProgressBtn: 'View in Progress',
-      todayViewPlanBtn: 'Full Weekly Plan',
+      todayViewPlanBtn: 'View plan',
       todayLookWorkoutBtn: 'View Workout',
-      activePlanLabel: 'Active plan',
+      activePlanLabel: 'Active goal',
       paceGuidePrefix: 'Target pace',
       todayWarmHeadlines: {
-        easy: 'Keep it easy today',
-        tempo: 'Steady tempo run today',
-        interval: 'Focused interval session today',
-        long: 'Steady long run today',
+        easy: 'Easy run today',
+        tempo: 'Tempo run today',
+        interval: 'Interval session today',
+        long: 'Long run today',
         rest: 'Rest & recovery day today',
-        strength: 'Strength & mobility session today',
+        strength: 'Strength & mobility today',
       },
       cards: {
-        trainingTitle: 'Weekly Schedule',
-        trainingAction: 'Open Schedule',
+        trainingTitle: 'Running Plan',
+        trainingAction: 'View plan',
         progressTitle: 'This Week Progress',
         progressAction: 'Log / Calendar',
-        profileTitle: 'Body, Heart Rate & Shoes',
+        profileTitle: 'Runner Profile',
         profileAction: 'Open Profile',
-        nutritionTitle: 'Daily Fueling Guide',
+        nutritionTitle: 'Eat & Recover',
         nutritionAction: 'View Guide',
       },
       stravaEmptyBanner:
-        'New to PaceCraft? Load sample runs so your weekly schedule and paces calibrate automatically.',
+        'New to PaceCraft? Load sample runs so your weekly baseline calibrates automatically.',
       stravaLoadSampleShort: 'Try Sample Runs',
-      extraMetricsHeading: 'Additional Metrics & Summary',
-      weeklyProgressRunSessions: 'Run sessions',
+      extraMetricsHeading: 'Additional Summary',
+      weeklyProgressRunSessions: 'Completed sessions',
       weeklyProgressDistance: 'Run distance',
       weeklyProgressCrossTrain: 'Strength / rest',
       overloadAlertTitle: 'Actual distance well above plan (>115%)',
@@ -1862,6 +2049,15 @@ export const UI_COPY: Record<AppLanguage, PaceCraftCopy> = {
       proteinShort: 'Protein',
       estVo2Short: 'Est. VO2',
       hydrationEstPrefix: 'Initial est.',
+      weeklyTitle: 'This week progress',
+      activeGoalTitle: 'Active goal',
+      viewPlanLink: 'View plan',
+      editGoalLink: 'Edit goal',
+      nutritionLink: 'Eat & Recover Guide',
+      daysToRaceText: (days) => `${days} days to race`,
+      todayStructureLabel: "Today's session breakdown",
+      estDurationUnit: 'min',
+      predictedFinishPrefix: 'Projected finish',
     },
     hero: {
       eyebrow: '5K · 10K · 21K · 42K Running Planner',
@@ -1900,9 +2096,9 @@ export const UI_COPY: Record<AppLanguage, PaceCraftCopy> = {
       doneEditBtn: 'Done',
     },
     bmi: {
-      heading: 'Runner Profile & Tools',
+      heading: 'Runner Profile',
       subtitle:
-        'Manage your body metrics, heart-rate zones, running shoes, and data backups from one tidy space.',
+        'Manage your runner details, performance metrics, shoes, and account settings.',
       methodLabel: 'Calculation Method',
       weightHeightBtn: 'Weight & Height',
       directBmiBtn: 'Direct BMI',
@@ -1918,10 +2114,10 @@ export const UI_COPY: Record<AppLanguage, PaceCraftCopy> = {
         recovering: 'Mild recovery',
         active: 'Active injury / joint pain',
       },
-      resultLabel: 'Your BMI Result',
+      resultLabel: 'Body Mass Index',
       categoryPrefix: 'Category',
-      maxIncreaseLabel: 'Max Weekly Increase',
-      maxPrefix: 'Max',
+      maxIncreaseLabel: 'Initial Build Suggestion/Wk',
+      maxPrefix: 'Guide',
       extraEasyLabel: 'Extra Easy Share',
       hrSectionTitle: 'Heart Rate Zones & VO2max Estimate',
       hrSectionSubtitle:
@@ -1938,103 +2134,146 @@ export const UI_COPY: Record<AppLanguage, PaceCraftCopy> = {
       hrZonesTitle: 'Your 5 Heart Rate Training Zones',
       tabsAriaLabel: 'Profile tool categories',
       tabs: {
-        body: 'Body & BMI',
-        hr: 'Heart Rate & VO2',
-        shoes: 'Running Shoes',
-        account: 'Backup & Account',
+        body: 'Runner Profile',
+        hr: 'Performance',
+        shoes: 'Shoes',
+        account: 'Settings',
         admin: 'Owner Admin',
       },
       helperTip:
-        'BMI acts as an initial starting safeguard; always adjust your load based on training history, pain signals, and recovery response.',
+        'BMI alone does not determine safe weekly mileage growth. Always adjust to your training history, recovery, soreness, and body response.',
       vo2NonLabDisclaimer:
         'Non-lab fitness estimate (not a substitute for clinical VO2max testing). Values shift with true HRmax, fatigue, heat, hills, and sleep.',
       vo2MethodResting: 'Source: Uth formula (15.3 × HRmax / HRrest)',
       vo2MethodBlended: 'Source: Blended Uth ratio & submaximal Strava Speed–HR',
       shoeDisclaimer:
         'Note: Shoe mileage alone does not guarantee midsole condition or prevent injury. Also inspect outsole wear, responsiveness, and landing comfort.',
+      bmiOptionalTitle: 'Body Mass Index (optional)',
+      bmiOptionalSubtitle:
+        'Used only as an initial volume/easy-pace baseline guide. Does not replace medical evaluation or recovery signals.',
+      metricsOverviewTitle: 'Body & Fitness Metrics',
+      editBmiAction: 'Adjust Weight & BMI',
+      editVo2Action: 'Adjust HR & Performance',
+      nonEssentialHint:
+        'Supporting estimates kept in Profile so your dashboard stays focused on today’s run.',
     },
     training: {
-      heading: 'Ideal Training Plan Calculator',
-      subtitlePrefix: 'Calibrates your race target to your 4-week average volume (',
+      heading: 'Running Plan',
+      subtitlePrefix: 'Calibrated to your 4-week average volume (',
       weekUnit: 'km/wk',
       subtitleMiddle: ') and baseline pace',
       defaultBaselineTag: ' (default baseline)',
       stravaBaselineTag: ' (from Strava history)',
       step1Title: '1. Choose Target Race Distance',
       raceGroupAria: 'Target race distance',
-      step2Title: '2. Weekly Training Frequency',
+      step2Title: '2. Running Days per Week',
       freqGroupAria: 'Weekly training days frequency',
       daysPerWeekShort: 'days/wk',
       totalPlannedLabel: 'Planned weekly total:',
-      paceZonesHeading: 'Your Training Pace Zones',
+      paceZonesHeading: 'Training Pace Zones',
       progressionHeading: '4-Week Volume Progression',
-      progressionDescPrefix: 'Gradual progression capped at',
+      progressionDescPrefix: 'Initial build suggestion up to',
       progressionDescSuffix:
-        'per week, with a mandatory recovery cutback (-20%) on week 4.',
-      scheduleHeadingPrefix: 'Weekly Training Schedule',
-      activeDaysUnit: 'active days',
-      restLabel: 'Recovery',
-      loggedBtn: 'Logged',
-      logCompleteBtn: 'Mark Done',
-      taperNoticeTitle: 'Automatic Tapering Adjustment',
+        'per week, with a recovery cutback (-20%) on week 4. Adjust to recovery and body response.',
+      scheduleHeadingPrefix: 'Weekly Schedule',
+      activeDaysUnit: 'running days',
+      restLabel: 'Rest',
+      loggedBtn: '✓ Done',
+      logCompleteBtn: 'Log Result',
+      taperNoticeTitle: 'Tapering Phase Adjustment',
       taperNoticeBody: (days, reductionPct, eventLabel) =>
-        `${days} days left until ${eventLabel}. This week's volume is automatically trimmed by ${reductionPct}% so your legs arrive fresh at the start line.`,
-      raceWeekNoticeTitle: 'Automatic Race Week Adjustment',
+        `${days} days left until ${eventLabel}. Volume is trimmed by ${reductionPct}% so legs stay fresh.`,
+      raceWeekNoticeTitle: 'Race Week Adjustment',
       raceWeekNoticeBody: (days, eventLabel) =>
-        `Only ${days} days left until ${eventLabel}. Hard workouts are swapped for light shakeout runs at reduced volume.`,
+        `Only ${days} days left until ${eventLabel}. Workouts shift to relaxed shakeout runs.`,
       raceDayNoticeTitle: 'Race Day Has Arrived!',
       raceDayNoticeBody: (eventLabel) =>
-        `Today is ${eventLabel}. Keep your warm-up relaxed, start at a calm rhythm, and prioritize post-race recovery.`,
+        `Today is ${eventLabel}. Keep your warm-up calm and enjoy your race.`,
       strengthHeaderTag: (count) =>
         count > 0 ? `· ${count}x Strength Training` : '',
-      strengthBadgePrefix: 'Strength Training',
+      strengthBadgePrefix: 'Strength & Mobility',
       minuteShort: 'min',
-      viewScheduleTab: 'Weekly Schedule',
-      viewZonesTab: 'Pace Zones & Progression',
-      customPaceBadge: 'Calculator Pace Active',
+      viewScheduleTab: 'This week',
+      viewZonesTab: 'Program progress',
+      viewSimulatorTab: 'Goal Simulator',
+      customPaceBadge: 'Simulated Target Active',
       resetCustomPaceBtn: 'Use Strava Baseline',
       baselineVolumeChip: 'Baseline Volume',
       baselinePaceChip: 'Baseline Pace',
       strengthToggleShow: 'Show exercises',
       strengthToggleHide: 'Hide exercises',
       exportIcsBtn: 'Save to Phone Calendar (.ics)',
-      exportedIcsNotice: 'Schedule .ics file downloaded. Open it to add this week’s workouts with 30-min reminders to Google or Apple Calendar.',
+      exportedIcsNotice: 'Schedule .ics file downloaded for Google or Apple Calendar.',
       paceBasisLabel: 'Pace Zone Basis',
       paceBasisTags: {
-        race_goal: 'Race Goal Pace',
+        race_goal: 'Applied Goal Pace',
         strava_baseline: '30-Day Strava Baseline',
         default: 'Default Baseline',
       },
-      adaptiveHeading: 'Conservative Plan Adjustment Rules',
-      adaptiveToggleLabel: 'Legs Feel Heavy / Recovery Mode',
+      adaptiveHeading: 'Fatigue Adjustment',
+      adaptiveToggleLabel: 'Recovery Mode (Feeling Heavy)',
       adaptiveToggleHint:
-        'Toggle on when unusually fatigued so remaining Tempo/Interval sessions downgrade to Easy and weekly volume eases back conservatively.',
+        'When enabled, remaining Tempo/Interval sessions switch to Easy Run and weekly distance eases back 15–20%.',
+      adaptiveStatusNormal: 'Plan running normally',
+      adaptiveAdjustCta: 'Feeling heavy? Adjust training',
+      planHeading: (race) => `Your ${race} plan`,
+      planMetaLine: (days, raceDateLabel) =>
+        `${days} running days/week · Target race ${raceDateLabel}`,
+      editPlanBtn: 'Edit plan',
+      previewHeading: 'Preview plan changes',
+      confirmPlanBtn: 'Confirm & Save Plan',
+      cancelEditPlanBtn: 'Cancel',
+      basisDisclosureLabel: 'Recommendation basis',
+      nutritionLinkLabel: 'View Eat & Recover guide',
+      blockWeeksHeading: '4-Week Block',
+      weekChipLabel: (weekNumber) => `Week ${weekNumber}`,
+      activeWeekTag: 'Current week',
+      weeklyMixSummary: (easyCount, qualityCount, longCount, strengthCount) => {
+        const parts = [`${easyCount} Easy`];
+        if (qualityCount > 0) parts.push(`${qualityCount} Quality/Tempo`);
+        if (longCount > 0) parts.push(`${longCount} Long Run`);
+        if (strengthCount > 0) parts.push(`${strengthCount} Strength`);
+        return parts.join(' · ');
+      },
+      workoutStepsHeading: 'Workout Steps',
+      coachCueLabel: 'Coach cue',
+      estDurationShort: (min) => `~${min} min`,
+      predictorHeading: 'Race Finish Predictor (5K–42K)',
+      predictorSubtitle:
+        'Riegel equivalent finish estimates based on your current baseline pace to sanity-check race targets.',
+      predictorDisclaimer:
+        'Predictions are mathematical estimates; race-day performance depends on long-run endurance, terrain, weather, and recovery.',
+      predictorCurrentTargetBadge: 'Active goal',
       zoneLabels: {
         easy: 'Easy Run',
         tempo: 'Tempo',
-        interval: 'Speed Intervals',
+        interval: 'Interval',
         long_run: 'Long Run',
         rest: 'Rest',
       },
     },
     nutrition: {
-      headingPrefix: 'Daily Nutrition & Recovery Guide',
+      headingPrefix: 'Eat & Recover',
       subtitleBeforeWeight:
-        'Daily carbohydrate, protein, and initial hydration estimates calculated for',
-      subtitleAfterWeight:
-        'so muscle glycogen and fibers recover smoothly.',
+        'Practical fueling around runs so energy and recovery stay steady (reference weight',
+      subtitleAfterWeight: ').',
       carbsLabel: 'Daily Carbohydrates',
-      carbsUnitNote: 'g/kg BW · Primary fuel source',
+      carbsUnitNote: 'g/kg BW · Primary fuel',
       proteinLabel: 'Recovery Protein',
       proteinUnitNote: 'g/kg BW · Muscle repair',
       hydrationLabel: 'Daily Hydration',
       hydrationUnitNote:
-        'Initial water & electrolyte estimate (adjust for heat, humidity & sweat rate)',
-      strategyHeadingPrefix: 'Fueling Strategy by Training Load & Profile',
+        'Initial water & electrolyte estimate (adjust for heat & sweat)',
+      strategyHeadingPrefix: 'Daily Practical Guide',
       examplesLabel: 'Examples:',
+      practicalHeading: 'Practical Fueling Around Your Runs',
+      macroToggleShow: 'View daily intake estimate ▾',
+      macroToggleHide: 'Hide daily intake estimate ▴',
+      macroCalcNote:
+        'Numbers above are rough estimates from weight and race target—not a strict medical prescription.',
     },
     dailyProgress: {
-      heading: 'Daily Progress Tracker',
+      heading: 'Progress & Intensity Calendar',
       motivationDone:
         'Outstanding! You have completed every planned running session for this week.',
       motivationStreak: (days) =>
@@ -2053,43 +2292,48 @@ export const UI_COPY: Record<AppLanguage, PaceCraftCopy> = {
       dayAriaDone: ' (Completed)',
       selectDayPrefix: 'Select day',
       restShort: 'Rest',
-      logSectionPrefix: 'Log Progress',
+      logSectionPrefix: 'Log Result',
       targetLabel: 'Target:',
       actualDistanceLabel: 'Actual Distance (km)',
-      comfortLabel: 'Comfort Rating',
-      comfortGroupAria: 'Session comfort rating',
-      comfortScoreAria: 'Comfort score',
+      comfortLabel: 'How Did It Feel?',
+      comfortGroupAria: 'Session feel rating',
+      comfortScoreAria: 'Feel score',
       comfortRatings: {
         1: 'Hard',
-        2: 'Tired',
+        2: 'Hard',
         3: 'Steady',
         4: 'Comfortable',
-        5: 'Very Fresh',
+        5: 'Comfortable',
+      },
+      feelSimpleOptions: {
+        hard: 'Hard',
+        steady: 'Steady',
+        comfy: 'Comfortable',
       },
       noteLabel: 'Quick Note (optional)',
       notePlaceholder:
         'E.g., Easy breathing, legs felt light on the final kilometer',
-      saveBtn: "Save Today's Progress",
+      saveBtn: 'Save Result',
       savedFeedback: (dayName, title) =>
-        `Progress for ${dayName} (${title}) saved.`,
-      savedLogsHeading: 'Saved Progress Logs',
+        `Result for ${dayName} (${title}) saved.`,
+      savedLogsHeading: 'Saved Check-In History',
       emptyLogsBeforeBtn: 'No daily sessions logged yet. Pick a day and click',
-      emptyLogsBtnName: "Save Today's Progress",
-      emptyLogsAfterBtn: 'to start building your streak.',
+      emptyLogsBtnName: 'Save Result',
+      emptyLogsAfterBtn: 'to start tracking.',
       feelingPrefix: 'Feel',
       deleteLogAria: 'Delete log',
-      quickLogDefaultNote: 'Completed per weekly schedule',
+      quickLogDefaultNote: 'Completed per plan',
       stravaSyncTitle: (count) =>
-        `${count} recent Strava runs ready to sync into Daily Progress`,
+        `${count} recent Strava runs ready to match into Progress`,
       stravaSyncDesc:
         'Automatically maps matching run distances from your Strava history to the right weekday without overwriting manual entries.',
       stravaSyncBtn: (count) => `Sync from Strava (${count} runs)`,
       stravaSyncSuccess: (count) =>
-        `${count} Strava runs have been logged into your Daily Progress.`,
+        `${count} Strava runs matched into Progress.`,
       stravaSyncedTag: 'Strava Sync',
-      paceInputLabel: 'Pace Log (min:sec/km)',
+      paceInputLabel: 'Pace (min:sec/km)',
       paceInputPlaceholder: 'E.g., 06:15',
-      hrInputLabel: 'Heart Rate (bpm, optional)',
+      hrInputLabel: 'Heart Rate (bpm)',
       hrInputPlaceholder: 'E.g., 148',
       avgPaceLabel: 'Avg Pace',
       avgHrLabel: 'Avg HR',
@@ -2099,12 +2343,16 @@ export const UI_COPY: Record<AppLanguage, PaceCraftCopy> = {
       jumpToCalendarBtn: 'View Monthly Calendar',
       streakRestNote:
         'Scheduled rest days preserve your streak (daily running is not required).',
-      runSessionsLabel: 'Run Sessions',
-      runDistanceLabel: 'Run Distance',
+      runSessionsLabel: 'Run sessions',
+      runDistanceLabel: 'Run distance',
       strengthRestSummary: (crossCount, restCount) =>
         `Extra logs this week: ${crossCount} strength/mobility · ${restCount} logged rest days`,
       overloadCautionBanner: (pct, plannedKm, actualKm) =>
-        `Load & recovery check: logged running distance this week (${actualKm} km) is ${pct}% of plan (${plannedKm} km). Consider keeping remaining days relaxed and prioritizing recovery.`,
+        `Load & recovery check: logged running distance this week (${actualKm} km) is ${pct}% of plan (${plannedKm} km). Review load and prioritize recovery.`,
+      subTabCheckInCalendar: 'Check-In & Calendar',
+      subTabRunHistory: 'Run History',
+      historyToggleShow: 'View check-in history',
+      historyToggleHide: 'Hide check-in history',
       shareModal: {
         title: 'Share Progress Summary',
         subtitle:
@@ -2247,8 +2495,15 @@ export const UI_COPY: Record<AppLanguage, PaceCraftCopy> = {
         },
       ],
       flaggedAnomalyBanner: (count) =>
-        `${count} imported activities had implausible pace/speed values in the source file and are flagged "Needs Review" and excluded from baseline & VO2max calibration.`,
+        `${count} activities need review · Some pace values look unrealistic and are excluded from related recommendations.`,
       anomalyBadge: 'Needs Review',
+      flaggedBannerCompact: (count) =>
+        `${count} activities need review · Some pace values look unrealistic and are excluded from related recommendations.`,
+      reviewAnomaliesBtn: 'Review Activities',
+      showAllRunsBtn: 'Show all',
+      weeklyAvgSummaryLabel: 'Weekly distance average',
+      thirtyDayTotalSummaryLabel: '30-day total distance',
+      sessionsCountLabel: 'Session count',
     },
     detailModal: {
       closeAria: 'Close activity details',
@@ -2268,13 +2523,20 @@ export const UI_COPY: Record<AppLanguage, PaceCraftCopy> = {
         strava_oauth: 'Strava OAuth API',
       },
       closeBtn: 'Close',
-      anomalyTitle: 'Pace / Speed Anomaly Detected',
+      anomalyTitle: 'Activity Data Needs Review',
       anomalyBody: (computedPace, reportedPace, reason) =>
         reportedPace && reportedPace !== computedPace
-          ? `The source file speed column implied ${reportedPace}, whereas distance ÷ moving time yields ${computedPace}. PaceCraft displays ${computedPace} and excludes this entry from baseline calibration.`
+          ? `The source speed column implied ${reportedPace}, whereas distance ÷ moving time yields ${computedPace}. PaceCraft displays ${computedPace} and excludes it from calibration.`
           : reason === 'speed_distance_mismatch'
-            ? `The source speed column disagreed with distance and moving time. PaceCraft safely fell back to Distance ÷ Moving Time (${computedPace}) and excluded this entry from baseline calibration.`
-            : `Distance ÷ moving time yields ${computedPace}, which falls outside normal running bounds, so this entry is flagged for review and excluded from automatic calibration.`,
+            ? `The source speed column disagreed with distance and moving time (${computedPace}). You can correct distance/time below or remove this activity.`
+            : `Distance ÷ moving time yields ${computedPace}, outside normal running bounds. Fix distance/time below or delete this entry.`,
+      editSectionHeading: 'Fix Distance or Moving Time',
+      editDistanceLabel: 'Distance (km)',
+      editDurationMinLabel: 'Moving Time (minutes)',
+      saveEditBtn: 'Save Fix',
+      deleteActivityBtn: 'Delete This Activity',
+      confirmDeleteActivityBtn: 'Confirm Delete Activity',
+      cancelEditBtn: 'Cancel',
     },
     disconnectModal: {
       titleOAuth: 'Disconnect & Clear History?',
@@ -2420,6 +2682,8 @@ export const UI_COPY: Record<AppLanguage, PaceCraftCopy> = {
       applyConservativeBtn: (pace) => `Use Conservative Training Pace (${pace})`,
       goalVsTrainingNote:
         'Goal race pace is what you aim for on race day; daily training zones should reflect your current readiness.',
+      statusActiveBadge: 'Active plan',
+      statusSimulationBadge: 'Simulation—not applied yet',
     },
     shoeTracker: {
       heading: 'Shoe Mileage Tracker',
@@ -2488,8 +2752,8 @@ export const UI_COPY: Record<AppLanguage, PaceCraftCopy> = {
       manualCardDesc:
         'Already paid via bank transfer or QRIS? Submit your transaction reference so the owner can activate your account.',
       planLabel: 'Selected Plan',
-      planLifetime: 'Full Access (Lifetime)',
-      planPro: 'Pro Runner Plan',
+      planLifetime: 'PaceCraft Lifetime (Rp99.000 · One-time forever)',
+      planPro: 'PaceCraft Essential (Rp59.000 · 12-month access)',
       orderRefLabel: 'Order / Transfer Reference',
       orderRefPlaceholder: 'E.g., INV-20261121-001 / QRIS-8821',
       noteLabel: 'Short Note (optional)',
@@ -2505,10 +2769,10 @@ export const UI_COPY: Record<AppLanguage, PaceCraftCopy> = {
       stripeReturnedChecking: 'Verifying your checkout payment status...',
       stripeCanceledNotice:
         'Checkout was canceled. You can retry whenever you are ready.',
-      planChooseLabel: '1. Select Your PaceCraft Access Plan',
+      planChooseLabel: '1. Choose PaceCraft Plan',
       qrisSectionTitle: '2. Pay via QRIS / Bank Transfer',
-      qrisSectionDesc:
-        'Scan the QRIS code below for the selected plan amount, then tap WhatsApp so your Google email and chosen plan are pre-filled.',
+      qrisSectionDesc: (planTitle, priceLabel) =>
+        `Scan the QRIS code below for ${priceLabel} (${planTitle}), then tap WhatsApp so your Google email and selected plan are pre-filled.`,
       qrisScanHint: 'Scan using GoPay, OVO, DANA, ShopeePay, or any QRIS banking app',
       qrisNotConfiguredNote:
         'Merchant QRIS image URL (NEXT_PUBLIC_QRIS_IMAGE_URL) is not configured yet. Use the bank details below or message the Owner via WhatsApp.',
@@ -2528,8 +2792,8 @@ export const UI_COPY: Record<AppLanguage, PaceCraftCopy> = {
       subtitle:
         'Create single-use keys in access-codes (marked "used" upon first Google account login) or approve QRIS payment confirmations in real time.',
       planLabel: 'Plan Type',
-      planLifetime: 'Lifetime',
-      planPro: 'Pro Runner',
+      planLifetime: 'PaceCraft Lifetime (Rp99.000)',
+      planPro: 'PaceCraft Essential 12 Months (Rp59.000)',
       customCodeLabel: 'Custom Key (optional, leave blank to auto-generate)',
       customCodePlaceholder: 'E.g., VIP-JAKARTA-01',
       buyerNoteLabel: 'Buyer Name / QRIS Note (optional)',
@@ -2584,11 +2848,11 @@ export const UI_COPY: Record<AppLanguage, PaceCraftCopy> = {
         peak: 'Peak',
       },
       intensityDescriptions: {
-        rest: 'Recovery day or no running sessions logged',
+        rest: 'Rest day or no running sessions logged',
         light: 'Short Easy / recovery effort (< 6 km)',
         moderate: 'Steady aerobic run (6–11.9 km) or light trail',
-        high: 'Tempo workout, medium Long Run (12–17.9 km), or Z3–Z4 HR',
-        peak: 'Speed intervals, Z5 VO2max effort, or Long Run ≥ 18 km',
+        high: 'Indicates tempo effort or 12–17.9 km run (not injury risk)',
+        peak: 'Indicates speed intervals or ≥ 18 km long run (plan recovery after)',
       },
       todayTag: 'Today',
       restLoggedTag: 'Rest Logged',
@@ -2617,59 +2881,73 @@ export const UI_COPY: Record<AppLanguage, PaceCraftCopy> = {
       metricDuration: 'Duration',
       metricHr: 'Avg HR',
       metricElevation: 'Elevation',
-      metricComfort: 'Comfort',
+      metricComfort: 'Feel',
     },
     landing: {
       navFeatures: 'Features',
       navDemo: 'Free Calculator',
       navPricing: 'Pricing',
       navFaq: 'FAQ',
-      navLoginBtn: 'Sign In / Activate',
-      heroBadge: 'Built for 5K · 10K · Half & Full Marathon',
-      heroTitle: 'Build Your Body-Smart Running Plan in 30 Seconds.',
+      navLoginBtn: 'Sign In',
+      heroBadge: '5K · 10K · 21K · 42K Running Planner',
+      heroTitle: 'Clear race goals. Daily workouts without the guesswork.',
       heroSubtitle:
-        'Target race pace calculator, BMI-safe weekly schedules, monthly training intensity calendar, plus free browser-based Strava CSV/GPX import—no paid Strava Subscription required.',
-      heroDemoCta: 'Try Pace Calculator',
-      heroOpenDemoCta: 'Watch Demo Video',
-      heroBuyCta: 'View Plans & Pricing',
+        'Build a running schedule around your routine and past runs—from 5K to marathon. See today’s workout, log progress, and stay in control when plans need to adjust.',
+      heroDemoCta: 'Try Free Calculator',
+      heroOpenDemoCta: 'See How It Works',
+      heroBuyCta: 'View Plan',
       heroImageAlt: 'Runner jogging at sunrise along a calm running path',
-      trust1: 'Free Strava CSV/GPX Import',
-      trust2: 'Installable Phone App (PWA)',
-      trust3: 'Private Per-Account Cloud Sync',
-      showcaseHeading: 'Every Essential Running Tool in One Calm Workspace',
+      trust1: 'Public pace calculator stays free',
+      trust2: 'Strava CSV/GPX import without paid Strava',
+      trust3: 'From Rp59.000/12 mos · or Rp99.000 Lifetime',
+      previewLabel: 'PaceCraft Workspace Preview',
+      previewTodayTag: "Today's Workout · Tuesday · Controlled Tempo",
+      previewTodayHeadline: 'Tempo run today',
+      previewTodayMetrics: '6.2 km · Target pace 05:25–05:35/km',
+      previewTodaySteps: 'Warm-up 1.5 km · Main 3.7 km Tempo · Cool-down 1 km · ~36 min',
+      previewTodayCue: 'Lock into a smooth threshold rhythm—comfortable for 3–4 word cues.',
+      previewActivePlan: 'Active goal: 10K · 4 days/week',
+      previewWeeklyTitle: 'This week progress',
+      previewWeeklySessionLabel: 'Completed sessions',
+      previewWeeklySessionVal: '3 of 4 done',
+      previewWeeklyDistLabel: 'Run distance',
+      previewWeeklyDistVal: '16.2 of 26.1 km',
+      previewWeeklyCrossLabel: 'Strength / rest',
+      previewWeeklyCrossVal: '1 strength · 2 rest',
+      showcaseHeading: 'Coach-Style Structured Training, One Clear Benefit per Section',
       showcaseSubtitle:
-        'Built so beginners and Personal Best chasers can train consistently without guessing paces or overloading knees.',
-      showcaseTryDemoBtn: 'Watch App Demo Video',
+        'Every piece of PaceCraft stays focused—from daily structured blocks to race finish predictions and run history calibration.',
       showcaseCards: [
         {
-          badge: 'Adaptive Schedule',
-          title: 'Training Plan + BMI Guard & Auto Tapering',
-          desc: 'Choose 5K–42K and 3–6 training days per week. Volume stays capped safely <=10% weekly and tapers automatically before race day.',
-          highlightLabel: 'Phone Calendar Export',
-          highlightValue: 'One-click .ics + 30m reminder',
+          badge: '01 · Structured Blocks',
+          title: '4-Week Blocks, Warm-up/Main Steps & Strength',
+          desc: 'Pick 5K–42K targets and your weekly days. Every workout breaks down into Warm-up, Main Set, Cool-down, estimated time, plus sets × reps strength work.',
         },
         {
-          badge: 'Monthly Calendar',
-          title: 'Intensity Heatmap & Personal Best Records',
-          desc: 'Track monthly effort zones across daily check-ins and Strava runs, tap any day for full metrics, and maintain your 5K–42K PB wall.',
-          highlightLabel: 'IG Story Ready',
-          highlightValue: 'Download 9:16 & 1:1 progress cards',
+          badge: '02 · Weekly Progress',
+          title: 'Log Workouts & Track Load Separately',
+          desc: 'Run sessions, actual kilometers, comfort ratings, and strength/rest days stay clearly separated so you can review consistency without mixed numbers.',
         },
         {
-          badge: 'No Strava Subscription',
-          title: 'Browser Strava CSV/GPX Import',
-          desc: 'Upload activities.csv or .gpx exports right in your browser—filters non-runs automatically and calibrates your personal training pace.',
-          highlightLabel: 'Shoe Tracker',
-          highlightValue: '600–800 km cushioning alerts',
+          badge: '03 · Strava History',
+          title: 'Free Browser CSV/GPX Import & Baseline',
+          desc: 'Upload your Strava archive directly in the browser—filters non-runs automatically and calibrates your personal training baseline without a paid Strava subscription.',
+        },
+        {
+          badge: '04 · Predictions & Gear',
+          title: 'Finish Predictor, Intensity Calendar & Shoes',
+          desc: 'See 5K–42K projected finish times, monthly intensity heatmaps, PB records, shoe mileage, phone calendar (.ics) export, and PNG progress cards.',
         },
       ],
-      demoHeading: 'Watch the App Demo & Try the Free Pace Calculator',
+      progressionNote:
+        'Approach note: gradual weekly volume guidelines and pre-race tapering are general planning aids—always adapt to your training history, soreness, and recovery.',
+      demoHeading: 'See How It Works & Try the Free Pace Calculator',
       demoSubtitle:
-        'Preview the real PaceCraft workspace in action (Today Focus, Weekly Progress, Monthly Calendar, and Strava Import), then test your race goal in the free calculator below.',
-      demoOpenFullBtn: 'Watch Demo Video',
+        'Watch a quick walkthrough of the PaceCraft workspace, then test your race goal in the free pace calculator with no sign-in needed.',
+      demoOpenFullBtn: 'See How It Works',
       demoApplyCta: 'Sign In to Save Target & Build Plan',
       demoAppliedHint:
-        'Target pace noted! Sign in with Google above to generate your complete weekly training schedule.',
+        'Target pace noted! Sign in with Google below to start building your weekly running schedule.',
       videoDemoBadge: 'Screen Recording Preview (21K Sample Data)',
       videoDemoTitle: 'See How PaceCraft Works Before You Sign In',
       videoDemoDesc:
@@ -2695,32 +2973,40 @@ export const UI_COPY: Record<AppLanguage, PaceCraftCopy> = {
           timeSec: 25,
         },
       ],
-      pricingHeading: 'Clear Pricing, Zero Recurring Traps',
+      pricingHeading: 'Choose the Plan That Fits Your Training Rhythm',
       pricingSubtitle:
-        'Compare Lifetime vs Annual Pro plans. Fast activation via QRIS + WhatsApp or a single-use License Key.',
-      pricingSelectBtn: 'Choose This Plan',
-      pricingSelectedBtn: 'Selected Plan',
-      comparisonTableHeading: 'Lifetime vs Annual Pro Plan Comparison',
-      comparisonFeatureHeader: 'Feature & Access',
+        'Start with Essential at Rp59.000 for 12 months, or lock in Lifetime at Rp99.000 one-time forever. The public pace calculator remains free anytime.',
+      pricingBestValueBadge: 'Best Value · Lifetime',
+      pricingFooterNote: 'One-time payment per tier · Zero auto-renewals.',
+      comparisonTableHeading: 'Essential vs Lifetime Comparison',
+      comparisonFeatureHeader: 'Feature',
       comparisonIncludedLabel: 'Included',
+      comparisonNotIncludedLabel: 'Not included',
+      selectedPlanHint: (planTitle, priceLabel) =>
+        `Active plan: ${planTitle} (${priceLabel}). Sign in with Google to continue QRIS payment or license activation.`,
+      alreadyBoughtToggleLabel: 'Already purchased? Activate access',
+      photoSectionTitle: 'Consistent training starts with today’s run.',
+      photoSectionDesc:
+        'Test the free calculator first, pick Essential (12 months) or Lifetime, and unlock your workspace with Google.',
       faqHeading: 'Frequently Asked Questions',
       faqSubtitle: 'Quick answers before you start training with PaceCraft.',
       faqItems: [
         {
-          q: 'Do I need a paid Strava Subscription?',
-          a: 'Not at all. You can export activities.csv or .gpx files from a free Strava account and upload them directly in your browser with zero recurring API fees.',
+          q: 'If I test the calculator, does my active plan change?',
+          a: 'No. Changing distances or finish times in the public calculator or Goal Simulator never alters your active training plan unless you confirm saving it.',
         },
         {
-          q: 'Is PaceCraft a one-time payment or a monthly subscription?',
-          a: 'You choose: Lifetime Access (one-time Rp 149.000, pay once forever) or Annual Pro (Rp 99.000/year) with no surprise auto-charges.',
+          q: 'Do I need a paid Strava Subscription?',
+          a: 'Not at all. On the Lifetime plan, simply export activities.csv or .gpx files from a free Strava account and import them directly in your browser.',
+        },
+        {
+          q: 'What is the difference between Rp59.000 (12 months) and Rp99.000 (Lifetime)?',
+          a: 'Essential (Rp59.000) unlocks 12 months of structured 5K–42K plans, Warm-up/Main/Cool-down steps, strength sessions, and daily check-ins. Lifetime (Rp99.000) is a one-time forever unlock adding Strava CSV/GPX import, 5K–42K finish predictor, monthly intensity calendar, shoe mileage, and .ics calendar export—zero auto-renewals on either plan.',
         },
         {
           q: 'Can I use it like a mobile app on my phone?',
-          a: 'Yes! PaceCraft is an installable PWA. Tap "Install on Home Screen" in Chrome on Android or Add to Home Screen in Safari on iPhone.',
-        },
-        {
-          q: 'How can I preview the app and activate via QRIS?',
-          a: 'Watch the full app walkthrough video and test the free Pace Calculator right on this page. When ready, sign in with Google, scan QRIS, and confirm via WhatsApp for a single-use License Key to unlock the complete workspace.',
+          a: 'Yes. PaceCraft supports PWA mode so you can add it to your phone home screen via Android Chrome or iPhone Safari.',
+          hasPwaAction: true,
         },
       ],
     },
@@ -2778,13 +3064,13 @@ export const UI_COPY: Record<AppLanguage, PaceCraftCopy> = {
       closeBtn: 'Got It',
     },
     personalBests: {
-      heading: 'Personal Best (PB) Race Records',
-      subtitle: 'Track your fastest official times across 5K to 42K, or auto-detect them from your Strava run history.',
-      detectBtn: 'Detect from Strava History',
-      detectedNotice: (count) => `Detected ${count} faster PB record(s) from your Strava runs.`,
-      noRunsDetectedNotice: 'No Strava runs found within race distances (5K/10K/21K/42K) faster than your current saved PBs.',
+      heading: 'Estimated Bests from Activities (Personal Best)',
+      subtitle: 'Review your fastest estimated times across 5K to 42K from your activity history, then confirm or edit manually.',
+      detectBtn: 'Scan from Run History',
+      detectedNotice: (count) => `Found ${count} fastest estimated time(s) from your run history.`,
+      noRunsDetectedNotice: 'No runs found within race distances (5K/10K/21K/42K) faster than your current saved estimates.',
       clearBtn: 'Clear',
-      overviewLabel: 'Recorded Personal Bests',
+      overviewLabel: 'Estimated Best Records',
       placeholder: 'mm:ss or h:mm:ss',
       saveHint: 'Time format: mm:ss (e.g. 24:30) or h:mm:ss (e.g. 1:52:10). Leave blank to clear.',
       invalidHint: 'Invalid time format. Use mm:ss or h:mm:ss (at least 10 minutes).',

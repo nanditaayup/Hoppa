@@ -598,6 +598,19 @@ export async function saveCloudRunsBatch(
   }
 }
 
+export async function deleteCloudRun(
+  uid: string,
+  runId: string
+): Promise<void> {
+  const cleanId = sanitizeFirestoreId(runId);
+  const path = `users/${uid}/runs/${cleanId}`;
+  try {
+    await deleteDoc(doc(db, 'users', uid, 'runs', cleanId));
+  } catch (error) {
+    handleFirestoreError(error, OperationType.DELETE, path);
+  }
+}
+
 export async function clearAllCloudRuns(uid: string): Promise<void> {
   const path = `users/${uid}/runs`;
   try {

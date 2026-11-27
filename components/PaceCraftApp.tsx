@@ -7,20 +7,23 @@ import { motion, useReducedMotion } from 'motion/react';
 import {
   Activity,
   AlertTriangle,
+  ArrowLeft,
   ArrowRight,
-  Award,
   CalendarCheck2,
   CheckCircle2,
   ChevronRight,
   CloudDownload,
+  Flag,
   Flame,
   Gauge,
   HeartPulse,
+  KeyRound,
   Languages,
   LayoutDashboard,
   Leaf,
   LogOut,
   Menu,
+  PencilLine,
   Sparkles,
   Timer,
   Utensils,
@@ -41,7 +44,6 @@ import {
   computeWeeklyChartBuckets,
   findStravaProgressMatches,
   formatDecimalComma,
-  formatPace,
   generateTrainingPlan,
   getDefaultRaceDateKey,
 } from '@/lib/strava/transform';
@@ -56,7 +58,6 @@ import {
 } from '@/lib/strava/types';
 import { UI_COPY } from '@/lib/strava/i18n';
 import { buildBackupPayload } from '@/lib/strava/backup';
-import { getProfilePersonalBests } from '@/lib/strava/personal-bests';
 import {
   clearAllCloudRuns,
   clearLegacyLocalData,
@@ -64,9 +65,11 @@ import {
   DEFAULT_RUNNER_PROFILE,
   deleteAllCloudUserData,
   deleteCloudDailyProgress,
+  deleteCloudRun,
   isLocalMigrationHandled,
   LegacyLocalSnapshot,
   markLocalMigrationHandled,
+  OWNER_ADMIN_EMAIL,
   readLegacyLocalSnapshot,
   restoreCloudBackup,
   saveCloudDailyProgress,
@@ -77,7 +80,7 @@ import {
   subscribeToUserWorkspace,
 } from '@/lib/firebase/firestore-sync';
 import ProfileBmiCalculator from './ProfileBmiCalculator';
-import RaceCountdown from './RaceCountdown';
+import OwnerAdminPanel from './OwnerAdminPanel';
 import TrainingPlanSection from './TrainingPlanSection';
 import NutritionRecoverySection from './NutritionRecoverySection';
 import DailyProgressTracker from './DailyProgressTracker';
@@ -88,7 +91,7 @@ import ActivityDetailModal from './ActivityDetailModal';
 import DisconnectModal from './DisconnectModal';
 import OnboardingWizardModal from './OnboardingWizardModal';
 import PrivacyTermsModal from './PrivacyTermsModal';
-import { OfflineIndicator, PWAInstallButton } from './PWAInstallButton';
+import { OfflineIndicator } from './PWAInstallButton';
 import DeleteAccountModal from './DeleteAccountModal';
 import ThemeToggle from './ThemeToggle';
 
@@ -239,14 +242,29 @@ export default function PaceCraftApp({
   }, [lang, customRaceDate, customRaceName, migratedFromLocal, profile]);
 
   const [activeTab, setActiveTab] = useState<WorkspaceTabId>('overview');
+  const [progressSubTab, setProgressSubTab] = useState<'checkin' | 'history'>('checkin');
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [stravaSyncNoticeCount, setStravaSyncNoticeCount] = useState<
     number | null
   >(null);
   const [manualFatigueMode, setManualFatigueMode] = useState(false);
+  const [isOwnerAdminOpen, setIsOwnerAdminOpen] = useState(false);
+  const [isGoalEditOpen, setIsGoalEditOpen] = useState(false);
+  const [quickCheckInSession, setQuickCheckInSession] =
+    useState<DailySessionPlan | null>(null);
+  const [quickCheckInKm, setQuickCheckInKm] = useState('');
+  const [quickCheckInFeel, setQuickCheckInFeel] = useState<
+    'hard' | 'steady' | 'comfy'
+  >('comfy');
 
   const safeLang: AppLanguage = lang === 'en' ? 'en' : 'id';
   const t = UI_COPY[safeLang];
+  const canShowOwnerAdmin = Boolean(
+    isOwnerAdmin &&
+      !isDemoMode &&
+      user?.emailVerified === true &&
+      user.email?.toLowerCase() === OWNER_ADMIN_EMAIL
+  );
 
   useEffect(() => {
     if (typeof document !== 'undefined') {
@@ -733,31 +751,72 @@ export default function PaceCraftApp({
     }
   };
 
+  const handleUpdateRun = (updatedRun: RunActivity) => {
+    setRuns((prev) =>
+      prev.map((item) => (item.id === updatedRun.id ? updatedRun : item))
+    );
+    setSelectedActivity(updatedRun);
+    if (!isDemoMode && user) {
+      void saveCloudRunsBatch(user.uid, [updatedRun]);
+    }
+  };
+
+  const handleDeleteRun = (runId: string) => {
+    setRuns((prev) => prev.filter((item) => item.id !== runId));
+    setSelectedActivity(null);
+    if (!isDemoMode && user) {
+      void deleteCloudRun(user.uid, runId);
+    }
+  };
+
   const handleSelectTab = (tabId: WorkspaceTabId) => {
-    setActiveTab(tabId);
+    if (tabId === 'strava') {
+      setActiveTab('progress');
+      setProgressSubTab('history');
+    } else {
+      setActiveTab(tabId);
+    }
     setIsMobileSidebarOpen(false);
     if (typeof window !== 'undefined') {
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
   };
 
-  const handleQuickLogSession = (session: DailySessionPlan) => {
+  const handleOpenQuickCheckIn = (session: DailySessionPlan) => {
     setSelectedDayIndex(session.dayIndex);
+    setQuickCheckInSession(session);
+    setQuickCheckInKm(
+      session.zone === 'rest'
+        ? '0'
+        : String(Math.round(session.targetDistanceKm * 10) / 10)
+    );
+    setQuickCheckInFeel('comfy');
+  };
+
+  const handleConfirmQuickCheckIn = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!quickCheckInSession) return;
+    const parsedKm =
+      quickCheckInSession.zone === 'rest'
+        ? 0
+        : Math.max(0, Number(quickCheckInKm.replace(',', '.')) || 0);
+    const comfortRating: 1 | 3 | 5 =
+      quickCheckInFeel === 'hard' ? 1 : quickCheckInFeel === 'steady' ? 3 : 5;
+
     handleAddDailyProgress({
       dateKey: todayInfo.dateKey,
-      dayIndex: session.dayIndex,
-      sessionTitle: session.title,
-      zone: session.zone,
-      plannedKm: session.targetDistanceKm,
-      actualKm: session.targetDistanceKm,
-      paceSecPerKm:
-        session.zone !== 'rest' ? trainingPlan.baselinePaceSecPerKm : null,
+      dayIndex: quickCheckInSession.dayIndex,
+      sessionTitle: quickCheckInSession.title,
+      zone: quickCheckInSession.zone,
+      plannedKm: quickCheckInSession.targetDistanceKm,
+      actualKm: Math.round(parsedKm * 10) / 10,
+      paceSecPerKm: null,
       avgHeartRateBpm: null,
-      comfortRating: 4,
-      note: t.dailyProgress.quickLogDefaultNote,
+      comfortRating,
+      note: '',
       completedAt: new Date().toISOString(),
     });
-    handleSelectTab('progress');
+    setQuickCheckInSession(null);
   };
 
   const handleSyncStravaToDailyProgress = (openProgressTab = false) => {
@@ -783,6 +842,7 @@ export default function PaceCraftApp({
 
     setStravaSyncNoticeCount(syncedCount);
     if (openProgressTab) {
+      setProgressSubTab('checkin');
       handleSelectTab('progress');
     }
   };
@@ -856,22 +916,12 @@ export default function PaceCraftApp({
       hint: t.sidebar.items.profile.hint,
       icon: HeartPulse,
     },
-    {
-      id: 'nutrition',
-      label: t.sidebar.items.nutrition.label,
-      hint: t.sidebar.items.nutrition.hint,
-      icon: Utensils,
-    },
-    {
-      id: 'strava',
-      label: t.sidebar.items.strava.label,
-      hint: t.sidebar.items.strava.hint,
-      icon: Activity,
-    },
   ];
 
   const activeNavMeta =
-    sidebarItems.find((item) => item.id === activeTab) ?? sidebarItems[0];
+    activeTab === 'nutrition'
+      ? t.sidebar.items.nutrition
+      : sidebarItems.find((item) => item.id === activeTab) ?? sidebarItems[0];
 
   const userInitials = isDemoMode
     ? 'DM'
@@ -999,6 +1049,21 @@ export default function PaceCraftApp({
               </p>
             </div>
           </div>
+
+          {canShowOwnerAdmin && (
+            <button
+              type="button"
+              onClick={() => {
+                setIsOwnerAdminOpen(true);
+                setIsMobileSidebarOpen(false);
+              }}
+              data-testid="open-owner-admin-btn"
+              className="w-full min-h-[36px] px-3 py-1.5 rounded-lg bg-[#E6F3EE] dark:bg-teal-950/60 border border-[#DFE7E2] dark:border-teal-800 text-xs font-semibold text-[#087F73] dark:text-teal-200 hover:border-[#087F73] transition-colors inline-flex items-center justify-center gap-1.5 whitespace-nowrap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#087F73]"
+            >
+              <KeyRound className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
+              <span>{t.bmi.tabs.admin}</span>
+            </button>
+          )}
 
           {isDemoMode ? (
             <button
@@ -1132,7 +1197,7 @@ export default function PaceCraftApp({
             {activeTab !== 'progress' && (
               <button
                 type="button"
-                onClick={() => handleSelectTab('progress')}
+                onClick={() => handleOpenQuickCheckIn(todaySession)}
                 className="hidden sm:inline-flex min-h-[40px] px-4 py-2 rounded-xl bg-[#087F73] dark:bg-teal-600 text-white text-xs font-semibold hover:bg-[#06685E] dark:hover:bg-teal-500 transition-colors whitespace-nowrap shrink-0 items-center gap-1.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#087F73] dark:focus-visible:ring-teal-400"
               >
                 {t.overview.quickLogBtn}
@@ -1142,8 +1207,8 @@ export default function PaceCraftApp({
           </div>
         </header>
 
-        {/* Focused Single-Feature Viewport */}
-        <main className="flex-1 max-w-5xl w-full mx-auto px-4 sm:px-8 py-5 sm:py-8 space-y-6">
+        {/* Focused Single-Feature Viewport (1080px max, readable 15px-16px base) */}
+        <main className="flex-1 max-w-[1080px] w-full mx-auto px-4 sm:px-8 py-5 sm:py-8 space-y-6 text-[15px] sm:text-base">
           <OfflineIndicator lang={safeLang} />
 
           {isDemoMode && (
@@ -1294,7 +1359,7 @@ export default function PaceCraftApp({
           >
             {activeTab === 'overview' && (
               <div data-testid="overview-panel" className="space-y-6">
-                {/* 1. Primary Hero: Warm Sport Today's Workout Centerpiece */}
+                {/* ① Latihan hari ini */}
                 {(() => {
                   const formattedTodayDate = formatReadableTodayDate(
                     todayInfo.dateKey,
@@ -1326,26 +1391,36 @@ export default function PaceCraftApp({
                     >
                       <div className="space-y-2.5">
                         <div className="flex flex-wrap items-center gap-2 text-xs text-[#596866] dark:text-slate-300">
-                          <span className="font-semibold text-[#202A2A] dark:text-slate-100">
+                          <span className="font-semibold text-[#087F73] dark:text-teal-300">
+                            {t.overview.todaySectionLabel}
+                          </span>
+                          <span aria-hidden="true">·</span>
+                          <span className="font-medium text-[#202A2A] dark:text-slate-100">
                             {formattedTodayDate}
                           </span>
                           {todaySession.zone !== 'rest' && (
                             <>
                               <span aria-hidden="true">·</span>
-                              <span className="px-2 py-0.5 rounded-md bg-[#E6F3EE] dark:bg-teal-950/70 text-[#202A2A] dark:text-teal-200 font-medium">
+                              <span className="font-medium text-[#596866] dark:text-slate-300">
                                 {t.training.zoneLabels[todaySession.zone]}
                               </span>
                             </>
                           )}
                           {isTodayLogged && (
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-[#E9957D] text-[#202A2A] font-semibold">
-                              <CheckCircle2 className="w-3 h-3" aria-hidden="true" />
-                              {t.overview.todayDoneBadge}
-                            </span>
+                            <>
+                              <span aria-hidden="true">·</span>
+                              <span
+                                data-testid="overview-today-done-badge"
+                                className="inline-flex items-center gap-1 text-[#087F73] dark:text-emerald-300 font-semibold"
+                              >
+                                <CheckCircle2 className="w-3.5 h-3.5" aria-hidden="true" />
+                                {t.overview.todayDoneBadge}
+                              </span>
+                            </>
                           )}
                         </div>
 
-                        <h1 className="text-2xl sm:text-3xl font-bold text-[#202A2A] dark:text-slate-100 tracking-tight flex items-center gap-2.5 flex-wrap">
+                        <h1 className="text-2xl sm:text-3xl font-bold text-[#202A2A] dark:text-slate-100 tracking-tight text-balance flex items-center gap-2.5 flex-wrap">
                           <span>{warmHeadline}</span>
                           <ZoneWarmIcon
                             className="w-6 h-6 text-[#087F73] dark:text-teal-400 shrink-0"
@@ -1354,17 +1429,40 @@ export default function PaceCraftApp({
                         </h1>
 
                         {todaySession.zone === 'rest' ? (
-                          <p className="text-sm sm:text-base text-[#596866] dark:text-slate-300 leading-relaxed max-w-2xl">
-                            {t.overview.todayRestDesc}
-                          </p>
+                          <div className="space-y-2">
+                            <p className="text-sm sm:text-base text-[#596866] dark:text-slate-300 leading-relaxed max-w-2xl">
+                              {t.overview.todayRestDesc}
+                            </p>
+                            {todaySession.strengthSession && (
+                              <p className="text-xs sm:text-sm font-medium text-[#202A2A] dark:text-slate-200">
+                                {todaySession.strengthSession.title} ({todaySession.strengthSession.durationMin}{' '}
+                                {t.overview.estDurationUnit}):{' '}
+                                <span className="text-[#596866] dark:text-slate-400">
+                                  {todaySession.strengthSession.exercises}
+                                </span>
+                              </p>
+                            )}
+                          </div>
                         ) : (
                           <div className="space-y-1.5">
                             <p className="text-base sm:text-lg font-semibold text-[#202A2A] dark:text-slate-100">
-                              {formatDecimalComma(todaySession.targetDistanceKm, 1, safeLang)}{' '}
+                              <span className="font-mono tabular-nums">
+                                {formatDecimalComma(
+                                  todaySession.targetDistanceKm,
+                                  1,
+                                  safeLang
+                                )}
+                              </span>{' '}
                               km · {t.overview.paceGuidePrefix}{' '}
                               <span className="font-mono tabular-nums font-bold text-[#087F73] dark:text-teal-300">
                                 {todaySession.paceRange}
                               </span>
+                              {todaySession.estimatedDurationMin && (
+                                <span className="text-sm font-mono tabular-nums text-[#596866] dark:text-slate-400">
+                                  {' '}
+                                  · ~{todaySession.estimatedDurationMin} {t.overview.estDurationUnit}
+                                </span>
+                              )}
                             </p>
                             <p className="text-sm text-[#596866] dark:text-slate-300 leading-relaxed max-w-2xl">
                               {todaySession.guidance}
@@ -1373,38 +1471,51 @@ export default function PaceCraftApp({
                         )}
                       </div>
 
-                      <div className="flex flex-wrap items-center gap-2.5">
+                      <div className="flex flex-wrap items-center gap-2.5 pt-1">
                         <button
                           type="button"
                           onClick={() => handleSelectTab('training')}
                           data-testid="overview-today-view-workout-btn"
-                          className="min-h-[44px] px-5 py-2.5 rounded-xl bg-[#087F73] dark:bg-teal-600 text-white text-sm font-semibold hover:bg-[#06685E] dark:hover:bg-teal-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#087F73] dark:focus-visible:ring-teal-400 inline-flex items-center gap-2 transition-colors whitespace-nowrap"
+                          className="min-h-[44px] px-5 py-2.5 rounded-xl bg-[#087F73] dark:bg-teal-600 text-white text-sm font-semibold hover:bg-[#06685E] dark:hover:bg-teal-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#087F73] dark:focus-visible:ring-teal-400 inline-flex items-center gap-2 transition-colors whitespace-nowrap shrink-0"
                         >
                           <CalendarCheck2 className="w-4 h-4" aria-hidden="true" />
-                          {t.overview.todayLookWorkoutBtn}
+                          <span>{t.overview.todayLookWorkoutBtn}</span>
                         </button>
 
-                        {!isTodayLogged && todaySession.zone !== 'rest' ? (
+                        {!isTodayLogged ? (
                           <button
                             type="button"
-                            onClick={() => handleQuickLogSession(todaySession)}
+                            onClick={() => handleOpenQuickCheckIn(todaySession)}
                             data-testid="overview-today-quicklog-btn"
-                            className="min-h-[44px] px-4 py-2.5 rounded-xl bg-white dark:bg-slate-800 border border-[#DFE7E2] dark:border-slate-700 text-[#202A2A] dark:text-slate-100 text-sm font-semibold hover:bg-[#E6F3EE] hover:border-[#087F73] dark:hover:border-teal-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#087F73] dark:focus-visible:ring-teal-400 inline-flex items-center gap-2 transition-colors whitespace-nowrap"
+                            className="min-h-[44px] px-4 py-2.5 rounded-xl bg-white dark:bg-slate-800 border border-[#DFE7E2] dark:border-slate-700 text-[#202A2A] dark:text-slate-100 text-sm font-semibold hover:bg-[#E6F3EE] hover:border-[#087F73] dark:hover:border-teal-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#087F73] dark:focus-visible:ring-teal-400 inline-flex items-center gap-2 transition-colors whitespace-nowrap shrink-0"
                           >
                             <CheckCircle2 className="w-4 h-4 text-[#087F73]" aria-hidden="true" />
-                            {t.overview.todayQuickLogBtn}
+                            <span>{t.overview.todayQuickLogBtn}</span>
                           </button>
                         ) : (
                           <button
                             type="button"
-                            onClick={() => handleSelectTab('progress')}
+                            onClick={() => {
+                              setProgressSubTab('checkin');
+                              handleSelectTab('progress');
+                            }}
                             data-testid="overview-today-progress-btn"
-                            className="min-h-[44px] px-4 py-2.5 rounded-xl bg-white dark:bg-slate-800 border border-[#DFE7E2] dark:border-slate-700 text-[#202A2A] dark:text-slate-100 text-sm font-semibold hover:bg-[#E6F3EE] hover:border-[#087F73] dark:hover:border-teal-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#087F73] dark:focus-visible:ring-teal-400 inline-flex items-center gap-2 transition-colors whitespace-nowrap"
+                            className="min-h-[44px] px-4 py-2.5 rounded-xl bg-white dark:bg-slate-800 border border-[#DFE7E2] dark:border-slate-700 text-[#202A2A] dark:text-slate-100 text-sm font-semibold hover:bg-[#E6F3EE] hover:border-[#087F73] dark:hover:border-teal-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#087F73] dark:focus-visible:ring-teal-400 inline-flex items-center gap-2 transition-colors whitespace-nowrap shrink-0"
                           >
                             <Flame className="w-4 h-4 text-[#087F73]" aria-hidden="true" />
-                            {t.overview.todayViewProgressBtn}
+                            <span>{t.overview.todayViewProgressBtn}</span>
                           </button>
                         )}
+
+                        <button
+                          type="button"
+                          onClick={() => handleSelectTab('nutrition')}
+                          data-testid="overview-nutrition-link"
+                          className="min-h-[44px] px-3 py-2 text-xs font-semibold text-[#087F73] dark:text-teal-400 hover:underline inline-flex items-center gap-1.5 whitespace-nowrap shrink-0"
+                        >
+                          <Utensils className="w-3.5 h-3.5" aria-hidden="true" />
+                          <span>{t.overview.nutritionLink}</span>
+                        </button>
                       </div>
 
                       {adaptiveAdjustment.triggered && (
@@ -1425,363 +1536,268 @@ export default function PaceCraftApp({
                           </div>
                         </div>
                       )}
-
-                      <div className="pt-4 border-t border-[#DFE7E2] dark:border-slate-800 flex flex-wrap items-center justify-between gap-2 text-xs text-[#596866] dark:text-slate-400">
-                        <span>
-                          {t.overview.activePlanLabel}:{' '}
-                          <strong className="font-semibold text-[#202A2A] dark:text-slate-100">
-                            {profile.targetRace} · {profile.trainingDaysPerWeek}{' '}
-                            {t.hero.daysPerWeekUnit}
-                          </strong>
-                        </span>
-                        <span>
-                          {todaySession.title}
-                        </span>
-                      </div>
                     </section>
                   );
                 })()}
 
-                {/* 2. Weekly Progress Summary (Single White Card, Hairline Dividers, Zero Nested Boxes) */}
-                <section
-                  data-testid="overview-card-progress"
-                  className="bg-white dark:bg-slate-900 border border-[#DFE7E2] dark:border-slate-800 rounded-2xl p-5 sm:p-6 space-y-5"
-                >
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <div className="flex items-center gap-2">
-                      <Flame
-                        className="w-4 h-4 text-[#087F73] dark:text-teal-400 shrink-0"
-                        aria-hidden="true"
-                      />
-                      <h2 className="text-sm font-bold text-[#202A2A] dark:text-slate-100">
-                        {t.overview.cards.progressTitle}
-                      </h2>
-                      {volumeProgressPct >= 100 && (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-[#E9957D] text-[#202A2A] text-[11px] font-bold">
-                          100%+
-                        </span>
-                      )}
-                    </div>
-
-                    <button
-                      type="button"
-                      onClick={() => handleSelectTab('progress')}
-                      className="text-xs font-semibold text-[#087F73] dark:text-teal-400 hover:underline inline-flex items-center gap-1 whitespace-nowrap"
-                    >
-                      {t.overview.cards.progressAction}
-                      <ArrowRight className="w-3.5 h-3.5" aria-hidden="true" />
-                    </button>
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-3 divide-y sm:divide-y-0 sm:divide-x divide-[#DFE7E2] dark:divide-slate-800">
-                    <div className="pb-3 sm:pb-0 sm:pr-5 space-y-1">
-                      <p className="text-xs text-[#596866] dark:text-slate-400">
-                        {t.overview.weeklyProgressRunSessions}
-                      </p>
-                      <p className="text-xl font-bold text-[#202A2A] dark:text-slate-100">
-                        {dailyProgressStats.completedThisWeekCount}/
-                        {dailyProgressStats.plannedRunSessionsCount}{' '}
-                        <span className="text-xs font-semibold text-[#087F73] dark:text-teal-400">
-                          ({dailyProgressStats.completionPct}%)
-                        </span>
-                      </p>
-                    </div>
-
-                    <div className="py-3 sm:py-0 sm:px-5 space-y-1">
-                      <p className="text-xs text-[#596866] dark:text-slate-400">
-                        {t.overview.weeklyProgressDistance}
-                      </p>
-                      <p
-                        data-testid="hero-volume-progress-text"
-                        className="text-xl font-bold text-[#087F73] dark:text-teal-400"
-                      >
-                        {formatDecimalComma(
-                          dailyProgressStats.totalLoggedKm,
-                          1,
-                          safeLang
-                        )}{' '}
-                        / {formatDecimalComma(dailyProgressStats.plannedWeekKm, 1, safeLang)}{' '}
-                        km ({volumeProgressPct}%)
-                      </p>
-                    </div>
-
-                    <div className="pt-3 sm:pt-0 sm:pl-5 space-y-1">
-                      <p className="text-xs text-[#596866] dark:text-slate-400">
-                        {t.overview.weeklyProgressCrossTrain}
-                      </p>
-                      <p className="text-sm font-semibold text-[#202A2A] dark:text-slate-100 mt-1">
-                        {dailyProgressStats.completedCrossTrainCount} strength ·{' '}
-                        {dailyProgressStats.loggedRestDaysCount} rest ·{' '}
-                        {dailyProgressStats.currentStreakDays} {t.dailyProgress.daysUnit}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div
-                    role="progressbar"
-                    aria-label={t.hero.progressBarAria}
-                    aria-valuenow={Math.min(100, volumeProgressPct)}
-                    aria-valuemin={0}
-                    aria-valuemax={100}
-                    data-testid="hero-volume-progress-bar"
-                    className="h-2 w-full rounded-full bg-[#E6F3EE] dark:bg-teal-950 overflow-hidden"
+                {/* Balanced 2-Column Summary Row: ② Progres minggu ini + ③ Target aktif */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
+                  {/* ② Progres minggu ini */}
+                  <section
+                    data-testid="overview-card-progress"
+                    className="bg-white dark:bg-slate-900 border border-[#DFE7E2] dark:border-slate-800 rounded-2xl p-6 space-y-5"
                   >
-                    <motion.div
-                      initial={{ scaleX: 0 }}
-                      animate={{ scaleX: volumeProgressRatio }}
-                      transition={{
-                        duration: shouldReduceMotion ? 0 : 0.55,
-                        ease: [0.16, 1, 0.3, 1],
-                      }}
-                      style={{ transformOrigin: 'left' }}
-                      data-testid="hero-volume-progress-fill"
-                      className="h-full w-full rounded-full bg-[#087F73]"
-                    />
-                  </div>
-
-                  {dailyProgressStats.isVolumeSignificantlyOverPlan && (
-                    <div
-                      role="status"
-                      data-testid="overview-overload-caution"
-                      className="pt-3 border-t border-[#DFE7E2] dark:border-slate-800 flex items-start gap-2 text-xs text-[#202A2A] dark:text-amber-100"
-                    >
-                      <AlertTriangle
-                        className="w-4 h-4 text-rose-700 dark:text-amber-400 shrink-0 mt-0.5"
-                        aria-hidden="true"
-                      />
-                      <div>
-                        <span className="font-bold">
-                          {t.overview.overloadAlertTitle}:{' '}
-                        </span>
-                        <span className="text-[#596866] dark:text-slate-200">
-                          {t.overview.overloadAlertBody(
-                            dailyProgressStats.actualVsPlannedPct
-                          )}
-                        </span>
-                      </div>
-                    </div>
-                  )}
-                </section>
-
-                {/* 3. Race Target & Countdown (Calm Secondary Section) */}
-                <section
-                  data-testid="overview-countdown-section"
-                  className="bg-white dark:bg-slate-900 border border-[#DFE7E2] dark:border-slate-800 rounded-2xl p-5 sm:p-6"
-                >
-                  <RaceCountdown
-                    targetRace={profile.targetRace}
-                    countdown={raceCountdown}
-                    customRaceName={customRaceName}
-                    hasCustomDate={Boolean(customRaceDate)}
-                    lang={safeLang}
-                    onChangeRaceName={(name) => setRaceNameAndSync(name)}
-                    onChangeRaceDate={(dateKey) =>
-                      setRaceDateAndSync(dateKey || null)
-                    }
-                    onResetRaceMeta={() => {
-                      setRaceDateAndSync(null);
-                      setRaceNameAndSync('');
-                    }}
-                  />
-                </section>
-
-                {/* 4. Additional Metrics (Unified Single White Card with Hairline Dividers) */}
-                <div className="space-y-3">
-                  <h2 className="text-xs font-bold uppercase tracking-wide text-[#596866] dark:text-slate-400 px-1">
-                    {t.overview.extraMetricsHeading}
-                  </h2>
-
-                  <div className="bg-white dark:bg-slate-900 border border-[#DFE7E2] dark:border-slate-800 rounded-2xl grid grid-cols-1 md:grid-cols-3 divide-y md:divide-y-0 md:divide-x divide-[#DFE7E2] dark:divide-slate-800 overflow-hidden">
-                    {/* Cell 1: Training Plan */}
-                    <button
-                      type="button"
-                      onClick={() => handleSelectTab('training')}
-                      data-testid="overview-card-training"
-                      className="text-left p-5 hover:bg-[#F7F6F2]/70 dark:hover:bg-slate-800/40 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#087F73] dark:focus-visible:ring-teal-400 flex flex-col justify-between gap-4"
-                    >
-                      <div className="flex items-start justify-between gap-3">
-                        <div>
-                          <p className="text-xs font-medium text-[#596866] dark:text-slate-400">
-                            {t.overview.cards.trainingTitle}
-                          </p>
-                          <p className="text-lg font-bold text-[#202A2A] dark:text-slate-100 mt-1">
-                            {profile.targetRace} · {profile.trainingDaysPerWeek}{' '}
-                            {t.hero.daysPerWeekUnit}
-                          </p>
-                        </div>
-                        <CalendarCheck2
-                          className="w-5 h-5 text-[#087F73] dark:text-teal-400 shrink-0"
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <Flame
+                          className="w-4 h-4 text-[#087F73] dark:text-teal-400 shrink-0"
                           aria-hidden="true"
                         />
+                        <h2 className="text-base font-bold text-[#202A2A] dark:text-slate-100 truncate">
+                          {t.overview.weeklyTitle}
+                        </h2>
                       </div>
-                      <div className="flex items-center justify-between gap-2 text-xs">
-                        <span className="text-[#596866] dark:text-slate-300">
-                          {formatDecimalComma(
-                            trainingPlan.totalPlannedWeekKm,
-                            1,
-                            safeLang
-                          )}{' '}
-                          km ·{' '}
-                          <span className="font-mono tabular-nums text-[#202A2A] dark:text-slate-200">
-                            {formatPace(trainingPlan.baselinePaceSecPerKm)}
-                          </span>
-                        </span>
-                        <span className="font-semibold text-[#087F73] dark:text-teal-400 inline-flex items-center gap-1 whitespace-nowrap">
-                          {t.overview.cards.trainingAction}
-                          <ArrowRight className="w-3.5 h-3.5" aria-hidden="true" />
-                        </span>
-                      </div>
-                    </button>
 
-                    {/* Cell 2: Profile, BMI & Est. VO2max */}
-                    <button
-                      type="button"
-                      onClick={() => handleSelectTab('profile')}
-                      data-testid="overview-card-profile"
-                      className="text-left p-5 hover:bg-[#F7F6F2]/70 dark:hover:bg-slate-800/40 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#087F73] dark:focus-visible:ring-teal-400 flex flex-col justify-between gap-4"
-                    >
-                      <div className="flex items-start justify-between gap-3">
-                        <div>
-                          <p className="text-xs font-medium text-[#596866] dark:text-slate-400">
-                            {t.overview.cards.profileTitle}
-                          </p>
-                          <p className="text-lg font-bold text-[#202A2A] dark:text-slate-100 mt-1">
-                            BMI {bmiResult.formattedBmi} · {t.overview.estVo2Short}{' '}
-                            {formatDecimalComma(hrVo2Summary.vo2Max, 1, safeLang)}
-                          </p>
-                        </div>
-                        <HeartPulse
-                          className="w-5 h-5 text-[#087F73] dark:text-teal-400 shrink-0"
-                          aria-hidden="true"
-                        />
-                      </div>
-                      <div className="flex items-center justify-between gap-2 text-xs">
-                        <span className="text-[#596866] dark:text-slate-300 truncate">
-                          {bmiResult.categoryLabel} · {hrVo2Summary.vo2MaxCategory}
-                        </span>
-                        <span className="font-semibold text-[#087F73] dark:text-teal-400 inline-flex items-center gap-1 whitespace-nowrap shrink-0">
-                          {t.overview.cards.profileAction}
-                          <ArrowRight className="w-3.5 h-3.5" aria-hidden="true" />
-                        </span>
-                      </div>
-                    </button>
-
-                    {/* Cell 3: Nutrition with Explicit Carbs/Protein Labels */}
-                    <button
-                      type="button"
-                      onClick={() => handleSelectTab('nutrition')}
-                      data-testid="overview-card-nutrition"
-                      className="text-left p-5 hover:bg-[#F7F6F2]/70 dark:hover:bg-slate-800/40 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#087F73] dark:focus-visible:ring-teal-400 flex flex-col justify-between gap-4"
-                    >
-                      <div className="flex items-start justify-between gap-3">
-                        <div>
-                          <p className="text-xs font-medium text-[#596866] dark:text-slate-400">
-                            {t.overview.cards.nutritionTitle}
-                          </p>
-                          <p className="text-sm sm:text-base font-bold text-[#202A2A] dark:text-slate-100 mt-1">
-                            {t.overview.carbsShort}: {nutritionRecommendation.carbsMinG}–
-                            {nutritionRecommendation.carbsMaxG} g · {t.overview.proteinShort}:{' '}
-                            {nutritionRecommendation.proteinMinG}–
-                            {nutritionRecommendation.proteinMaxG} g
-                          </p>
-                        </div>
-                        <Utensils
-                          className="w-5 h-5 text-[#087F73] dark:text-teal-400 shrink-0"
-                          aria-hidden="true"
-                        />
-                      </div>
-                      <div className="flex items-center justify-between gap-2 text-xs">
-                        <span className="text-[#596866] dark:text-slate-300 truncate">
-                          {t.overview.hydrationEstPrefix}:{' '}
-                          {formatDecimalComma(
-                            nutritionRecommendation.hydrationLitersMin,
-                            1,
-                            safeLang
-                          )}
-                          –
-                          {formatDecimalComma(
-                            nutritionRecommendation.hydrationLitersMax,
-                            1,
-                            safeLang
-                          )}{' '}
-                          L
-                        </span>
-                        <span className="font-semibold text-[#087F73] dark:text-teal-400 inline-flex items-center gap-1 whitespace-nowrap shrink-0">
-                          {t.overview.cards.nutritionAction}
-                          <ArrowRight className="w-3.5 h-3.5" aria-hidden="true" />
-                        </span>
-                      </div>
-                    </button>
-                  </div>
-                </div>
-
-                {/* Quiet Personal Best Summary Strip (if any PB saved) */}
-                {(() => {
-                  const savedPbs = getProfilePersonalBests(profile).filter(
-                    (item) => item.seconds !== null
-                  );
-                  if (savedPbs.length === 0) return null;
-                  return (
-                    <div
-                      data-testid="overview-pb-summary"
-                      className="bg-white dark:bg-slate-900 border border-[#DFE7E2] dark:border-slate-800 rounded-2xl px-5 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3"
-                    >
-                      <div className="flex items-center gap-2.5 text-xs font-bold text-[#202A2A] dark:text-slate-100">
-                        <span className="w-6 h-6 rounded-full bg-[#E9957D] text-[#202A2A] inline-flex items-center justify-center shrink-0">
-                          <Award className="w-3.5 h-3.5" aria-hidden="true" />
-                        </span>
-                        <span>{t.personalBests.overviewLabel}</span>
-                      </div>
-                      <div className="flex flex-wrap items-center gap-2.5">
-                        {savedPbs.map((pb) => (
-                          <span
-                            key={pb.key}
-                            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[#E6F3EE] dark:bg-slate-800 text-xs"
-                          >
-                            <span className="font-semibold text-[#596866] dark:text-slate-400">
-                              {pb.key}
-                            </span>
-                            <span className="font-mono tabular-nums font-bold text-[#202A2A] dark:text-slate-100">
-                              {pb.formatted}
-                            </span>
-                          </span>
-                        ))}
-                        <button
-                          type="button"
-                          onClick={() => handleSelectTab('profile')}
-                          className="text-xs font-semibold text-[#087F73] dark:text-teal-400 hover:underline whitespace-nowrap"
-                        >
-                          {t.overview.cards.profileAction}
-                        </button>
-                      </div>
-                    </div>
-                  );
-                })()}
-
-                {/* Quiet Strava quick-start banner if no runs yet */}
-                {runs.length === 0 && (
-                  <div className="bg-[#E6F3EE] dark:bg-slate-900 border border-[#DFE7E2] dark:border-slate-800 rounded-2xl px-5 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                    <p className="text-xs sm:text-sm text-[#202A2A] dark:text-slate-300">
-                      {t.overview.stravaEmptyBanner}
-                    </p>
-                    <div className="flex items-center gap-2 shrink-0">
                       <button
                         type="button"
-                        onClick={handleLoadSampleData}
-                        className="min-h-[40px] px-4 py-2 rounded-xl bg-[#087F73] dark:bg-teal-600 text-white text-xs font-semibold hover:bg-[#06685E] dark:hover:bg-teal-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#087F73] dark:focus-visible:ring-teal-400 inline-flex items-center gap-1.5 whitespace-nowrap"
+                        onClick={() => {
+                          setProgressSubTab('checkin');
+                          handleSelectTab('progress');
+                        }}
+                        className="text-xs font-semibold text-[#087F73] dark:text-teal-400 hover:underline inline-flex items-center gap-1 whitespace-nowrap shrink-0"
                       >
-                        <Activity className="w-3.5 h-3.5" aria-hidden="true" />
-                        {t.overview.stravaLoadSampleShort}
+                        <span>{t.overview.cards.progressAction}</span>
+                        <ArrowRight className="w-3.5 h-3.5" aria-hidden="true" />
                       </button>
                     </div>
-                  </div>
-                )}
 
-                <PWAInstallButton
-                  lang={safeLang}
-                  variant="banner"
-                  testId="overview-pwa-install-btn"
-                />
+                    <div className="grid grid-cols-1 sm:grid-cols-2 divide-y sm:divide-y-0 sm:divide-x divide-[#DFE7E2] dark:divide-slate-800">
+                      <div className="pb-3 sm:pb-0 sm:pr-5 space-y-1">
+                        <p className="text-xs text-[#596866] dark:text-slate-400">
+                          {t.overview.weeklyProgressRunSessions}
+                        </p>
+                        <p className="text-xl font-bold text-[#202A2A] dark:text-slate-100">
+                          <span className="font-mono tabular-nums">
+                            {dailyProgressStats.completedThisWeekCount}/
+                            {dailyProgressStats.plannedRunSessionsCount}
+                          </span>{' '}
+                          <span className="text-sm font-medium text-[#596866] dark:text-slate-300">
+                            {t.hero.sessionsUnit}
+                          </span>{' '}
+                          <span className="text-xs font-mono tabular-nums font-semibold text-[#087F73] dark:text-teal-400">
+                            ({dailyProgressStats.completionPct}%)
+                          </span>
+                        </p>
+                      </div>
+
+                      <div className="pt-3 sm:pt-0 sm:pl-5 space-y-1">
+                        <p className="text-xs text-[#596866] dark:text-slate-400">
+                          {t.overview.weeklyProgressDistance}
+                        </p>
+                        <p
+                          data-testid="hero-volume-progress-text"
+                          className="text-xl font-bold font-mono tabular-nums text-[#087F73] dark:text-teal-400"
+                        >
+                          {formatDecimalComma(
+                            dailyProgressStats.totalLoggedKm,
+                            1,
+                            safeLang
+                          )}{' '}
+                          /{' '}
+                          {formatDecimalComma(
+                            dailyProgressStats.plannedWeekKm,
+                            1,
+                            safeLang
+                          )}{' '}
+                          km
+                        </p>
+                      </div>
+                    </div>
+
+                    <div
+                      role="progressbar"
+                      aria-label={t.hero.progressBarAria}
+                      aria-valuenow={Math.min(100, volumeProgressPct)}
+                      aria-valuemin={0}
+                      aria-valuemax={100}
+                      data-testid="hero-volume-progress-bar"
+                      className="h-2.5 w-full rounded-full bg-[#E6F3EE] dark:bg-teal-950 overflow-hidden"
+                    >
+                      <motion.div
+                        initial={{ scaleX: 0 }}
+                        animate={{ scaleX: volumeProgressRatio }}
+                        transition={{
+                          duration: shouldReduceMotion ? 0 : 0.55,
+                          ease: [0.16, 1, 0.3, 1],
+                        }}
+                        style={{ transformOrigin: 'left' }}
+                        data-testid="hero-volume-progress-fill"
+                        className="h-full w-full rounded-full bg-[#087F73]"
+                      />
+                    </div>
+
+                    <p className="text-xs text-[#596866] dark:text-slate-400">
+                      <span className="font-mono tabular-nums">
+                        {dailyProgressStats.completedCrossTrainCount}
+                      </span>{' '}
+                      strength ·{' '}
+                      <span className="font-mono tabular-nums">
+                        {dailyProgressStats.loggedRestDaysCount}
+                      </span>{' '}
+                      rest · {t.dailyProgress.streakLabel}:{' '}
+                      <span className="font-mono tabular-nums font-semibold text-[#202A2A] dark:text-slate-200">
+                        {dailyProgressStats.currentStreakDays} {t.dailyProgress.daysUnit}
+                      </span>
+                    </p>
+
+                    {dailyProgressStats.isVolumeSignificantlyOverPlan && (
+                      <div
+                        role="status"
+                        data-testid="overview-overload-caution"
+                        className="pt-3 border-t border-[#DFE7E2] dark:border-slate-800 flex items-start gap-2 text-xs text-[#202A2A] dark:text-amber-100"
+                      >
+                        <AlertTriangle
+                          className="w-4 h-4 text-rose-700 dark:text-amber-400 shrink-0 mt-0.5"
+                          aria-hidden="true"
+                        />
+                        <div>
+                          <span className="font-bold">
+                            {t.overview.overloadAlertTitle}:{' '}
+                          </span>
+                          <span className="text-[#596866] dark:text-slate-200">
+                            {t.overview.overloadAlertBody(
+                              dailyProgressStats.actualVsPlannedPct
+                            )}
+                          </span>
+                        </div>
+                      </div>
+                    )}
+                  </section>
+
+                  {/* ③ Target aktif (Clean Countdown Panel) */}
+                  <section
+                    data-testid="overview-countdown-section"
+                    className="bg-white dark:bg-slate-900 border border-[#DFE7E2] dark:border-slate-800 rounded-2xl p-6 space-y-5"
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <Flag
+                          className="w-4 h-4 text-[#087F73] dark:text-teal-400 shrink-0"
+                          aria-hidden="true"
+                        />
+                        <h2 className="text-base font-bold text-[#202A2A] dark:text-slate-100 truncate">
+                          {t.overview.activeGoalTitle}
+                        </h2>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => setIsGoalEditOpen((prev) => !prev)}
+                        aria-expanded={isGoalEditOpen}
+                        data-testid="race-countdown-edit-toggle"
+                        className="text-xs font-semibold text-[#087F73] dark:text-teal-400 hover:underline inline-flex items-center gap-1 whitespace-nowrap shrink-0"
+                      >
+                        <PencilLine className="w-3.5 h-3.5" aria-hidden="true" />
+                        <span>
+                          {isGoalEditOpen ? t.countdown.doneEditBtn : t.overview.editGoalLink}
+                        </span>
+                      </button>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <p
+                        data-testid="race-countdown-days"
+                        className="text-2xl font-bold font-mono tabular-nums text-[#202A2A] dark:text-slate-100 tracking-tight"
+                      >
+                        {raceCountdown.status === 'race_day'
+                          ? t.countdown.todayLabel
+                          : raceCountdown.status === 'passed'
+                            ? `${Math.abs(raceCountdown.daysRemaining)} ${t.countdown.passedDaysSuffix}`
+                            : t.overview.daysToRaceText(
+                                raceCountdown.daysRemaining
+                              )}
+                      </p>
+                      <p
+                        data-testid="race-countdown-title"
+                        className="text-sm font-semibold text-[#087F73] dark:text-teal-300"
+                      >
+                        {profile.targetRace} · {profile.trainingDaysPerWeek}{' '}
+                        {t.hero.daysPerWeekUnit}
+                      </p>
+                      <p className="text-xs text-[#596866] dark:text-slate-300">
+                        {customRaceName.trim() ? `${customRaceName.trim()} · ` : ''}
+                        {raceCountdown.formattedRaceDate} · {raceCountdown.phaseLabel}
+                      </p>
+                    </div>
+
+                    <div className="pt-1 flex flex-wrap items-center gap-2.5">
+                      <button
+                        type="button"
+                        onClick={() => handleSelectTab('training')}
+                        data-testid="overview-active-goal-plan-btn"
+                        className="min-h-[40px] px-4 py-2 rounded-xl bg-[#E6F3EE] dark:bg-teal-950/60 border border-[#DFE7E2] dark:border-teal-800 text-xs font-semibold text-[#087F73] dark:text-teal-200 hover:border-[#087F73] transition-colors whitespace-nowrap shrink-0"
+                      >
+                        {t.overview.viewPlanLink}
+                      </button>
+                    </div>
+
+                    {isGoalEditOpen && (
+                      <div className="pt-4 border-t border-[#DFE7E2] dark:border-slate-800 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div className="space-y-1">
+                          <label
+                            htmlFor="overview-race-name-input"
+                            className="block text-xs font-medium text-[#596866] dark:text-slate-300"
+                          >
+                            {t.countdown.nameInputLabel}
+                          </label>
+                          <input
+                            id="overview-race-name-input"
+                            type="text"
+                            maxLength={40}
+                            value={customRaceName}
+                            onChange={(e) => setRaceNameAndSync(e.target.value)}
+                            placeholder={t.countdown.nameInputPlaceholder}
+                            data-testid="race-countdown-name-input"
+                            className="w-full min-h-[40px] px-3 py-1.5 rounded-xl border border-[#DFE7E2] dark:border-slate-700 bg-[#F7F6F2] dark:bg-slate-900 text-xs sm:text-sm text-[#202A2A] dark:text-slate-100 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#087F73]"
+                          />
+                        </div>
+
+                        <div className="space-y-1">
+                          <label
+                            htmlFor="overview-race-date-input"
+                            className="block text-xs font-medium text-[#596866] dark:text-slate-300"
+                          >
+                            {t.countdown.dateInputLabel}
+                          </label>
+                          <input
+                            id="overview-race-date-input"
+                            type="date"
+                            value={raceCountdown.raceDateKey}
+                            onChange={(e) => setRaceDateAndSync(e.target.value || null)}
+                            data-testid="race-countdown-date-input"
+                            className="w-full min-h-[40px] px-3 py-1.5 rounded-xl border border-[#DFE7E2] dark:border-slate-700 bg-[#F7F6F2] dark:bg-slate-900 text-xs sm:text-sm font-mono tabular-nums text-[#202A2A] dark:text-slate-100 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#087F73]"
+                          />
+                        </div>
+
+                        {(customRaceDate || customRaceName.trim()) && (
+                          <div className="sm:col-span-2">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setRaceDateAndSync(null);
+                                setRaceNameAndSync('');
+                              }}
+                              data-testid="race-countdown-reset-btn"
+                              className="min-h-[38px] px-3 py-1.5 rounded-xl border border-[#DFE7E2] dark:border-slate-700 bg-white dark:bg-slate-900 text-xs font-medium text-[#202A2A] dark:text-slate-200 hover:border-[#087F73] whitespace-nowrap"
+                            >
+                              {t.countdown.resetDateBtn}
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </section>
+                </div>
               </div>
             )}
 
@@ -1798,55 +1814,118 @@ export default function PaceCraftApp({
                 progressEntries={progressEntries}
                 countdownDaysRemaining={raceCountdown.daysRemaining}
                 raceEventLabel={raceEventLabel}
+                raceDateLabel={raceCountdown.formattedRaceDate}
                 todayDateKey={todayInfo.dateKey}
                 todayDayIndex={todayInfo.dayIndex}
                 lang={safeLang}
                 onChangeProfile={setProfileAndSync}
-                onQuickLogSession={handleQuickLogSession}
+                onQuickLogSession={handleOpenQuickCheckIn}
+                onNavigateNutrition={() => handleSelectTab('nutrition')}
               />
             )}
 
             {activeTab === 'progress' && (
               <div className="space-y-6">
-                <DailyProgressTracker
-                  weeklySchedule={trainingPlan.weeklySchedule}
-                  entries={progressEntries}
-                  todayDateKey={todayInfo.dateKey}
-                  selectedDayIndex={selectedDayIndex}
-                  stravaMatches={stravaSyncMatches}
-                  stravaSyncNotice={
-                    stravaSyncNoticeCount
-                      ? t.dailyProgress.stravaSyncSuccess(stravaSyncNoticeCount)
-                      : null
-                  }
-                  hrVo2={hrVo2Summary}
-                  raceEventLabel={raceEventLabel}
-                  lang={safeLang}
-                  onSelectDayIndex={setSelectedDayIndex}
-                  onAddEntry={handleAddDailyProgress}
-                  onRemoveEntry={handleRemoveDailyProgress}
-                  onSyncStravaProgress={() =>
-                    handleSyncStravaToDailyProgress(false)
-                  }
-                />
+                <div
+                  role="tablist"
+                  aria-label={t.sidebar.items.progress.label}
+                  data-testid="progress-subtabs"
+                  className="inline-flex items-center gap-1.5 p-1 bg-white dark:bg-slate-900 border border-[#DFE7E2] dark:border-slate-800 rounded-xl"
+                >
+                  <button
+                    type="button"
+                    role="tab"
+                    aria-selected={progressSubTab === 'checkin'}
+                    data-testid="progress-subtab-checkin"
+                    onClick={() => setProgressSubTab('checkin')}
+                    className={`min-h-[40px] px-4 py-2 rounded-lg text-xs font-semibold transition-colors whitespace-nowrap ${
+                      progressSubTab === 'checkin'
+                        ? 'bg-[#087F73] dark:bg-teal-600 text-white'
+                        : 'text-[#596866] dark:text-slate-300 hover:bg-[#F7F6F2] dark:hover:bg-slate-800'
+                    }`}
+                  >
+                    {t.dailyProgress.subTabCheckInCalendar}
+                  </button>
+                  <button
+                    type="button"
+                    role="tab"
+                    aria-selected={progressSubTab === 'history'}
+                    data-testid="progress-subtab-history"
+                    onClick={() => setProgressSubTab('history')}
+                    className={`min-h-[40px] px-4 py-2 rounded-lg text-xs font-semibold transition-colors whitespace-nowrap inline-flex items-center gap-1.5 ${
+                      progressSubTab === 'history'
+                        ? 'bg-[#087F73] dark:bg-teal-600 text-white'
+                        : 'text-[#596866] dark:text-slate-300 hover:bg-[#F7F6F2] dark:hover:bg-slate-800'
+                    }`}
+                  >
+                    <Activity className="w-3.5 h-3.5" aria-hidden="true" />
+                    <span>
+                      {t.dailyProgress.subTabRunHistory} ({runs.length})
+                    </span>
+                  </button>
+                </div>
 
-                <MonthlyIntensityCalendar
-                  entries={progressEntries}
-                  runs={runs}
-                  weeklySchedule={trainingPlan.weeklySchedule}
-                  paceZones={trainingPlan.paceZones}
-                  hrZones={hrVo2Summary.zones}
-                  todayDateKey={todayInfo.dateKey}
-                  lang={safeLang}
-                  onJumpToLogWeekday={(dayIndex) => {
-                    setSelectedDayIndex(dayIndex);
-                    if (typeof document !== 'undefined') {
-                      document
-                        .getElementById('progres-harian')
-                        ?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                {progressSubTab === 'checkin' ? (
+                  <div className="space-y-6">
+                    <DailyProgressTracker
+                      weeklySchedule={trainingPlan.weeklySchedule}
+                      entries={progressEntries}
+                      todayDateKey={todayInfo.dateKey}
+                      selectedDayIndex={selectedDayIndex}
+                      stravaMatches={stravaSyncMatches}
+                      stravaSyncNotice={
+                        stravaSyncNoticeCount
+                          ? t.dailyProgress.stravaSyncSuccess(stravaSyncNoticeCount)
+                          : null
+                      }
+                      hrVo2={hrVo2Summary}
+                      raceEventLabel={raceEventLabel}
+                      lang={safeLang}
+                      onSelectDayIndex={setSelectedDayIndex}
+                      onAddEntry={handleAddDailyProgress}
+                      onRemoveEntry={handleRemoveDailyProgress}
+                      onSyncStravaProgress={() =>
+                        handleSyncStravaToDailyProgress(false)
+                      }
+                    />
+
+                    <MonthlyIntensityCalendar
+                      entries={progressEntries}
+                      runs={runs}
+                      weeklySchedule={trainingPlan.weeklySchedule}
+                      paceZones={trainingPlan.paceZones}
+                      hrZones={hrVo2Summary.zones}
+                      todayDateKey={todayInfo.dateKey}
+                      lang={safeLang}
+                      onJumpToLogWeekday={(dayIndex) => {
+                        setSelectedDayIndex(dayIndex);
+                        if (typeof document !== 'undefined') {
+                          document
+                            .getElementById('progres-harian')
+                            ?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                        }
+                      }}
+                    />
+                  </div>
+                ) : (
+                  <StravaDashboard
+                    runs={runs}
+                    kpi={kpi}
+                    weeklyBuckets={weeklyBuckets}
+                    isOAuthConnected={isOAuthConnected}
+                    importNotice={resolvedImportNotice}
+                    stravaSyncCount={stravaSyncMatches.length}
+                    lang={safeLang}
+                    onLoadSampleData={handleLoadSampleData}
+                    onImportRuns={handleImportRuns}
+                    onSyncStravaOAuthRuns={handleSyncStravaOAuthRuns}
+                    onSyncStravaToProgress={() =>
+                      handleSyncStravaToDailyProgress(true)
                     }
-                  }}
-                />
+                    onOpenDisconnectModal={() => setIsDisconnectOpen(true)}
+                    onSelectActivity={setSelectedActivity}
+                  />
+                )}
               </div>
             )}
 
@@ -1862,8 +1941,6 @@ export default function PaceCraftApp({
                     ? Math.round((runs[0].distanceMeters / 1000) * 10) / 10
                     : 0
                 }
-                isOwnerAdmin={isDemoMode ? false : isOwnerAdmin}
-                firebaseUser={isDemoMode ? null : user}
                 onChangeProfile={setProfileAndSync}
                 onExportBackup={handleExportBackup}
                 onRestoreBackup={handleRestoreBackup}
@@ -1877,34 +1954,26 @@ export default function PaceCraftApp({
                       }
                 }
                 onReopenWizard={() => setWizardManuallyOpened(true)}
+                onNavigateNutrition={() => handleSelectTab('nutrition')}
               />
             )}
 
             {activeTab === 'nutrition' && (
-              <NutritionRecoverySection
-                nutrition={nutritionRecommendation}
-                lang={safeLang}
-              />
-            )}
-
-            {activeTab === 'strava' && (
-              <StravaDashboard
-                runs={runs}
-                kpi={kpi}
-                weeklyBuckets={weeklyBuckets}
-                isOAuthConnected={isOAuthConnected}
-                importNotice={resolvedImportNotice}
-                stravaSyncCount={stravaSyncMatches.length}
-                lang={safeLang}
-                onLoadSampleData={handleLoadSampleData}
-                onImportRuns={handleImportRuns}
-                onSyncStravaOAuthRuns={handleSyncStravaOAuthRuns}
-                onSyncStravaToProgress={() =>
-                  handleSyncStravaToDailyProgress(true)
-                }
-                onOpenDisconnectModal={() => setIsDisconnectOpen(true)}
-                onSelectActivity={setSelectedActivity}
-              />
+              <div className="space-y-4">
+                <button
+                  type="button"
+                  onClick={() => handleSelectTab('overview')}
+                  data-testid="nutrition-back-home-btn"
+                  className="min-h-[40px] px-3.5 py-2 rounded-xl bg-white dark:bg-slate-900 border border-[#DFE7E2] dark:border-slate-800 text-xs font-semibold text-[#202A2A] dark:text-slate-200 hover:border-[#087F73] inline-flex items-center gap-1.5"
+                >
+                  <ArrowLeft className="w-3.5 h-3.5 text-[#087F73]" aria-hidden="true" />
+                  <span>{t.sidebar.items.overview.label}</span>
+                </button>
+                <NutritionRecoverySection
+                  nutrition={nutritionRecommendation}
+                  lang={safeLang}
+                />
+              </div>
             )}
           </motion.div>
         </main>
@@ -1912,10 +1981,10 @@ export default function PaceCraftApp({
         {/* Health Disclaimer & App Footer */}
         <footer
           data-testid="health-disclaimer-footer"
-          className="max-w-5xl w-full mx-auto px-4 sm:px-8 py-5 border-t border-slate-200/80 dark:border-slate-800 text-xs text-slate-500 dark:text-slate-400 flex flex-col sm:flex-row sm:items-center justify-between gap-2"
+          className="max-w-[1080px] w-full mx-auto px-4 sm:px-8 py-5 border-t border-[#DFE7E2] dark:border-slate-800 text-xs text-[#596866] dark:text-slate-400 flex flex-col sm:flex-row sm:items-center justify-between gap-2"
         >
           <span>{t.disclaimer.text}</span>
-          <span className="text-[11px] text-slate-400 dark:text-slate-500 shrink-0">
+          <span className="text-[11px] text-[#596866]/80 dark:text-slate-500 shrink-0">
             {t.footer.right}
           </span>
         </footer>
@@ -1926,7 +1995,154 @@ export default function PaceCraftApp({
         activity={selectedActivity}
         lang={safeLang}
         onClose={() => setSelectedActivity(null)}
+        onUpdateRun={handleUpdateRun}
+        onDeleteRun={handleDeleteRun}
       />
+
+      {/* Lightweight Home / Plan Check-In Modal (confirms actual km & feel before logging) */}
+      {quickCheckInSession && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="quick-checkin-title"
+          data-testid="quick-checkin-modal"
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#202A2A]/45 dark:bg-black/70 backdrop-blur-[1px]"
+          onClick={() => setQuickCheckInSession(null)}
+        >
+          <form
+            onSubmit={handleConfirmQuickCheckIn}
+            onClick={(e) => e.stopPropagation()}
+            className="w-full max-w-md bg-white dark:bg-slate-900 border border-[#DFE7E2] dark:border-slate-800 rounded-2xl p-6 space-y-5 shadow-xl"
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div className="space-y-0.5">
+                <p className="text-xs font-semibold text-[#087F73] dark:text-teal-400">
+                  {t.dailyProgress.logSectionPrefix} · {quickCheckInSession.dayName}
+                </p>
+                <h3
+                  id="quick-checkin-title"
+                  className="text-lg font-bold text-[#202A2A] dark:text-slate-100"
+                >
+                  {quickCheckInSession.title}
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setQuickCheckInSession(null)}
+                aria-label={t.detailModal.closeAria}
+                className="min-h-[36px] min-w-[36px] inline-flex items-center justify-center rounded-xl border border-[#DFE7E2] dark:border-slate-700 text-[#596866] hover:text-[#202A2A]"
+              >
+                <X className="w-4 h-4" aria-hidden="true" />
+              </button>
+            </div>
+
+            {quickCheckInSession.zone !== 'rest' && (
+              <div>
+                <label
+                  htmlFor="quick-checkin-km"
+                  className="block text-sm font-medium text-[#202A2A] dark:text-slate-200 mb-1.5"
+                >
+                  {t.dailyProgress.actualDistanceLabel}
+                </label>
+                <input
+                  id="quick-checkin-km"
+                  data-testid="quick-checkin-km-input"
+                  type="number"
+                  min={0}
+                  max={100}
+                  step={0.1}
+                  value={quickCheckInKm}
+                  onChange={(e) => setQuickCheckInKm(e.target.value)}
+                  className="w-full min-h-[44px] px-3.5 py-2 rounded-xl border border-[#DFE7E2] dark:border-slate-700 bg-[#F7F6F2] dark:bg-slate-800 text-[#202A2A] dark:text-slate-100 font-mono tabular-nums focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#087F73]"
+                />
+              </div>
+            )}
+
+            <div>
+              <span className="block text-sm font-medium text-[#202A2A] dark:text-slate-200 mb-1.5">
+                {t.dailyProgress.comfortLabel}
+              </span>
+              <div className="grid grid-cols-3 gap-2">
+                {(
+                  [
+                    { key: 'hard', label: t.dailyProgress.feelSimpleOptions.hard },
+                    { key: 'steady', label: t.dailyProgress.feelSimpleOptions.steady },
+                    { key: 'comfy', label: t.dailyProgress.feelSimpleOptions.comfy },
+                  ] as const
+                ).map((item) => (
+                  <button
+                    key={item.key}
+                    type="button"
+                    data-testid={`quick-checkin-feel-${item.key}`}
+                    onClick={() => setQuickCheckInFeel(item.key)}
+                    aria-pressed={quickCheckInFeel === item.key}
+                    className={`min-h-[44px] px-3 py-2 rounded-xl border text-sm font-semibold transition-colors ${
+                      quickCheckInFeel === item.key
+                        ? 'bg-[#087F73] border-[#087F73] text-white'
+                        : 'bg-[#F7F6F2] dark:bg-slate-800 border-[#DFE7E2] dark:border-slate-700 text-[#202A2A] dark:text-slate-200 hover:border-[#087F73]'
+                    }`}
+                  >
+                    {item.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2.5 pt-2">
+              <button
+                type="button"
+                onClick={() => setQuickCheckInSession(null)}
+                className="min-h-[44px] px-4 py-2 rounded-xl border border-[#DFE7E2] dark:border-slate-700 text-xs font-semibold text-[#596866] hover:text-[#202A2A]"
+              >
+                {t.training.cancelEditPlanBtn}
+              </button>
+              <button
+                type="submit"
+                data-testid="quick-checkin-submit-btn"
+                className="min-h-[44px] px-5 py-2 rounded-xl bg-[#087F73] text-white text-sm font-semibold hover:bg-[#06685E]"
+              >
+                {t.dailyProgress.saveBtn}
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {/* Separated Owner Admin Modal (strictly hidden from regular user profile tabs) */}
+      {isOwnerAdminOpen && canShowOwnerAdmin && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label={t.bmi.tabs.admin}
+          data-testid="owner-admin-modal"
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#202A2A]/45 dark:bg-black/75 backdrop-blur-[1px]"
+          onClick={() => setIsOwnerAdminOpen(false)}
+        >
+          <div
+            className="w-full max-w-4xl max-h-[90vh] overflow-y-auto rounded-2xl bg-[#F7F6F2] dark:bg-slate-950 p-4 sm:p-6 space-y-4 shadow-2xl border border-[#DFE7E2] dark:border-slate-800"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between gap-3">
+              <span className="text-sm font-bold text-[#202A2A] dark:text-slate-100">
+                {t.bmi.tabs.admin}
+              </span>
+              <button
+                type="button"
+                onClick={() => setIsOwnerAdminOpen(false)}
+                aria-label={t.detailModal.closeAria}
+                className="min-h-[38px] min-w-[38px] inline-flex items-center justify-center rounded-xl bg-white dark:bg-slate-900 border border-[#DFE7E2] dark:border-slate-700 text-[#596866] hover:text-[#202A2A]"
+              >
+                <X className="w-4 h-4" aria-hidden="true" />
+              </button>
+            </div>
+            <OwnerAdminPanel
+              lang={safeLang}
+              firebaseUser={user}
+              isOwnerAdmin={isOwnerAdmin}
+            />
+          </div>
+        </div>
+      )}
 
       <DisconnectModal
         isOpen={isDisconnectOpen}

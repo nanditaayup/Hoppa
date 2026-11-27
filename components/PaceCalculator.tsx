@@ -109,6 +109,11 @@ export default function PaceCalculator({
     );
   };
 
+  const isMatchesActivePlan =
+    typeof activeCustomPaceSecPerKm === 'number' &&
+    activeCustomPaceSecPerKm > 0 &&
+    Math.abs(activeCustomPaceSecPerKm - result.racePaceSec) <= 1;
+
   return (
     <section
       data-testid="pace-calculator-section"
@@ -116,17 +121,29 @@ export default function PaceCalculator({
       className="bg-white dark:bg-slate-900 border border-[#DFE7E2] dark:border-slate-800 rounded-2xl p-5 sm:p-6 space-y-6"
     >
       <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
-        <div className="space-y-1">
-          <h3
-            id="pace-calculator-heading"
-            className="text-lg sm:text-xl font-bold text-[#202A2A] dark:text-slate-100 flex items-center gap-2"
-          >
-            <Calculator
-              className="w-5 h-5 text-[#087F73] dark:text-teal-400 shrink-0"
-              aria-hidden="true"
-            />
-            <span>{t.heading}</span>
-          </h3>
+        <div className="space-y-1.5">
+          <div className="flex flex-wrap items-center gap-2">
+            <h3
+              id="pace-calculator-heading"
+              className="text-lg sm:text-xl font-bold text-[#202A2A] dark:text-slate-100 flex items-center gap-2"
+            >
+              <Calculator
+                className="w-5 h-5 text-[#087F73] dark:text-teal-400 shrink-0"
+                aria-hidden="true"
+              />
+              <span>{t.heading}</span>
+            </h3>
+            <span
+              data-testid="pace-calc-status-badge"
+              className={`px-2.5 py-0.5 rounded-lg text-[11px] font-semibold ${
+                isMatchesActivePlan
+                  ? 'bg-[#E6F3EE] dark:bg-teal-950/60 text-[#087F73] dark:text-teal-300 border border-[#087F73]/25'
+                  : 'bg-[#F7F6F2] dark:bg-slate-800 text-[#596866] dark:text-slate-300 border border-[#DFE7E2] dark:border-slate-700'
+              }`}
+            >
+              {isMatchesActivePlan ? t.statusActiveBadge : t.statusSimulationBadge}
+            </span>
+          </div>
           <p className="text-xs sm:text-sm text-[#596866] dark:text-slate-300 leading-relaxed max-w-2xl">
             {t.subtitle}
           </p>
